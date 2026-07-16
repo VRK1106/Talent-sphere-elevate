@@ -142,6 +142,24 @@ def delete_chat_session(session_id: str) -> bool:
         return False
 
 
+def rename_chat_session(session_id: str, new_title: str) -> bool:
+    """Rename an existing chat session."""
+    init_chats_db()
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE chat_sessions SET title = ? WHERE session_id = ?",
+            (new_title.strip(), session_id)
+        )
+        conn.commit()
+        conn.close()
+        return True
+    except Exception:
+        return False
+
+
+
 def get_global_chat_stats() -> dict[str, Any]:
     """Compile global statistics across all chat conversations (for Admin view)."""
     init_chats_db()

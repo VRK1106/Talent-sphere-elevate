@@ -73,6 +73,8 @@ infosys_springboard/
 chroma_db/
 *.db
 *.sqlite
+documents/*.pdf
+
 
 # Large Media / Presentation Files (Optional - uncomment to ignore)
 # *.mp4

@@ -22,7 +22,8 @@ from src.chats import (
     get_chat_messages,
     create_chat_session,
     add_chat_message,
-    delete_chat_session
+    delete_chat_session,
+    rename_chat_session
 )
 
 # Load custom styles
@@ -72,31 +73,62 @@ with st.sidebar:
         chat_title = f"Chat {datetime.datetime.now().strftime('%b %d, %H:%M')}"
         create_chat_session(new_id, emp_id, chat_title)
         st.session_state.active_chat_session_id = new_id
+        if "renaming_session_id" in st.session_state:
+            st.session_state.renaming_session_id = None
         st.rerun()
         
     st.write("")
+    
+    # Inline rename form
+    if st.session_state.get("renaming_session_id"):
+        rename_id = st.session_state.renaming_session_id
+        current_title = ""
+        for s in user_sessions:
+            if s["session_id"] == rename_id:
+                current_title = s["title"]
+                break
+        
+        st.markdown("<div style='font-size: 0.85rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 0.2rem;'>✏️ Rename Session</div>", unsafe_allow_html=True)
+        new_title_val = st.text_input("New Title", value=current_title, key="rename_title_input", label_visibility="collapsed")
+        c_save, c_cancel = st.columns(2)
+        with c_save:
+            if st.button("Save", key="save_rename_btn", type="primary", use_container_width=True):
+                if new_title_val.strip():
+                    rename_chat_session(rename_id, new_title_val.strip())
+                    st.session_state.renaming_session_id = None
+                    st.rerun()
+        with c_cancel:
+            if st.button("Cancel", key="cancel_rename_btn", type="secondary", use_container_width=True):
+                st.session_state.renaming_session_id = None
+                st.rerun()
+        st.divider()
     
     # List of chat sessions
     if not user_sessions:
         st.caption("No chat history found.")
     else:
         for s in user_sessions:
-            col_sel, col_del = st.columns([5, 1.2])
+            col_sel, col_ren, col_del = st.columns([3.8, 1.1, 1.1])
             with col_sel:
                 # Active session highlighting
                 is_active = (s["session_id"] == st.session_state.active_chat_session_id)
-                # Streamlit secondary buttons look good with text, let's make it look active with custom emoji indicator
-                lbl = f"⭐ {s['title'][:16]}" if is_active else f"💬 {s['title'][:16]}"
-                if len(s['title']) > 16:
+                lbl = f"⭐ {s['title'][:12]}" if is_active else f"💬 {s['title'][:12]}"
+                if len(s['title']) > 12:
                     lbl += "..."
                 if st.button(lbl, key=f"sel_chat_{s['session_id']}", use_container_width=True, type="secondary"):
                     st.session_state.active_chat_session_id = s["session_id"]
+                    st.rerun()
+            with col_ren:
+                if st.button("✏️", key=f"ren_chat_{s['session_id']}", help="Rename chat session", use_container_width=True):
+                    st.session_state.renaming_session_id = s["session_id"]
                     st.rerun()
             with col_del:
                 if st.button("🗑️", key=f"del_chat_{s['session_id']}", help="Delete chat session", use_container_width=True):
                     delete_chat_session(s["session_id"])
                     if st.session_state.active_chat_session_id == s["session_id"]:
                         st.session_state.active_chat_session_id = None
+                    if st.session_state.get("renaming_session_id") == s["session_id"]:
+                        st.session_state.renaming_session_id = None
                     st.rerun()
                     
     st.divider()
