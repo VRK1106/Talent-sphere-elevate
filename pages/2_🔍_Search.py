@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.config import TOP_K  # noqa: E402
 from src.embeddings import embed_query  # noqa: E402
-from src.llm import generate_rag_answer, list_local_models  # noqa: E402
+from src.llm import generate_rag_answer, list_local_models, GROQ_API_KEY  # noqa: E402
 from src.ui import empty_state, info_banner, load_css, pill_row, result_card, section_header, render_sidebar  # noqa: E402
 from src.vectorstore import search, stats  # noqa: E402
 
@@ -34,7 +34,7 @@ info_banner(
     tone="info",
 )
 
-pill_row(["Natural-language Queries", "Confidence Thresholds", "Source Filtering", "Qwen RAG"])
+pill_row(["Natural-language Queries", "Confidence Thresholds", "Source Filtering", "Groq RAG"])
 
 index = stats()
 role = st.session_state.get("user_role", "trainee")
@@ -94,23 +94,23 @@ else:
                 )
 
             with col_llm:
-                if not ollama_models:
-                    st.info("Local Ollama server not detected. Please start Ollama to enable Qwen RAG generation.")
+                if not GROQ_API_KEY:
+                    st.info("Groq API Key not detected. Please add GROQ_API_KEY to your .env file to enable Groq RAG generation.")
                     enable_rag = False
                 else:
-                    enable_rag = st.toggle("Enable Qwen RAG Answer", value=True)
+                    enable_rag = st.toggle("Enable Groq RAG Answer", value=True)
                     
                     default_idx = 0
                     for idx, m in enumerate(ollama_models):
-                        if "qwen" in m.lower():
+                        if "llama-3.3" in m.lower() or "llama" in m.lower():
                             default_idx = idx
                             break
 
                     selected_model = st.selectbox(
-                        "Local LLM Model",
+                        "Groq LLM Model",
                         options=ollama_models,
                         index=default_idx,
-                        help="Choose which local model to use for answer synthesis.",
+                        help="Choose which Groq model to use for answer synthesis.",
                     )
 
     # --- Search Execution & Output ---
@@ -134,8 +134,8 @@ else:
             # 1. RAG Answer Generation
             if enable_rag:
                 st.write("")
-                section_header("🤖 Local Qwen RAG Response", f"Synthesized using {selected_model}")
-                with st.spinner(f"Qwen is compiling answer using {len(results)} chunks…"):
+                section_header("🤖 Groq RAG Response", f"Synthesized using {selected_model}")
+                with st.spinner(f"Groq is compiling answer using {len(results)} chunks…"):
                     answer = generate_rag_answer(query.strip(), results, selected_model)
                 
                 st.markdown(
@@ -143,7 +143,7 @@ else:
                     <div style='background: var(--ts-badge-bg); border: 1px solid var(--ts-badge-border); 
                     border-radius: 12px; padding: 1.4rem; margin-bottom: 1.8rem; box-shadow: var(--ts-shadow);'>
                         <div style='font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; 
-                        color: var(--ts-secondary); margin-bottom: 0.6rem;'>🤖 Qwen RAG Assistant</div>
+                        color: var(--ts-secondary); margin-bottom: 0.6rem;'>🤖 Groq RAG Assistant</div>
                         <div style='color: var(--ts-text); font-size: 1.02rem; line-height: 1.6;'>
                     """,
                     unsafe_allow_html=True,

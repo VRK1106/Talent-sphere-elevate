@@ -1,37 +1,77 @@
-"""Local Qwen LLM connector via Ollama.
+"""Groq LLM connector.
 
-Communicates with the local Ollama instance at http://127.0.0.1:11434.
+Communicates with the Groq API at https://api.groq.com.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import urllib.error
 import urllib.request
 from typing import Any
+from dotenv import load_dotenv
 
-OLLAMA_HOST = "http://127.0.0.1:11434"
+# Load environment variables
+load_dotenv()
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+# Standard headers to prevent 403 Forbidden blocks from WAFs
+HEADERS = {
+    "Content-Type": "application/json",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+}
 
 
 def list_local_models() -> list[str]:
-    """Fetch the list of model names currently available in Ollama."""
+    """Fetch the list of model names currently available in Groq API.
+    
+    If the API key is not set or request fails, falls back to a list of standard Groq models.
+    """
+    fallback_models = [
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+        "mixtral-8x7b-32768",
+        "gemma2-9b-it"
+    ]
+    if not GROQ_API_KEY:
+        return fallback_models
+        
     try:
-        url = f"{OLLAMA_HOST}/api/tags"
-        req = urllib.request.Request(url, method="GET")
-        with urllib.request.urlopen(req, timeout=3.0) as resp:
+        url = "https://api.groq.com/openai/v1/models"
+        req_headers = HEADERS.copy()
+        req_headers["Authorization"] = f"Bearer {GROQ_API_KEY}"
+        
+        req = urllib.request.Request(
+            url,
+            headers=req_headers,
+            method="GET"
+        )
+        with urllib.request.urlopen(req, timeout=5.0) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-            return [m["name"] for m in data.get("models", [])]
+            models = [m["id"] for m in data.get("data", [])]
+            # Keep only common text models (filter out audio/whisper models)
+            text_models = [
+                m for m in models 
+                if "whisper" not in m.lower() and "audio" not in m.lower() and "guard" not in m.lower()
+            ]
+            if text_models:
+                # Ensure our fallbacks are prioritized at the top of the list if returned by the API
+                prioritized = [m for m in fallback_models if m in text_models]
+                others = [m for m in text_models if m not in fallback_models]
+                return prioritized + others
+            return fallback_models
     except Exception:
-        return []
+        return fallback_models
 
 
 def generate_rag_answer(query: str, chunks: list[dict[str, Any]], model_name: str) -> str:
-    """Generate an answer using retrieved document contexts.
-
-    Formats the retrieved chunks into a prompt and calls Ollama.
-    """
+    """Generate an answer using retrieved document contexts via Groq API."""
     if not chunks:
         return "No context available to answer the query. Please upload documents first."
+
+    if not GROQ_API_KEY:
+        return "Groq API Key is not configured. Please add GROQ_API_KEY to your .env file."
 
     # Construct context block
     context_parts = []
@@ -51,71 +91,73 @@ def generate_rag_answer(query: str, chunks: list[dict[str, Any]], model_name: st
         "Cite your sources using bracketed numbers corresponding to the context passages (e.g. [1], [2]) where appropriate."
     )
 
-    prompt = (
-        f"{system_instruction}\n\n"
-        f"--- CONTEXT PASSAGES ---\n{context_str}\n\n"
-        f"--- USER QUERY ---\n{query}\n\n"
-        "--- DETAILED RESPONSE ---"
-    )
-
     try:
-        url = f"{OLLAMA_HOST}/api/generate"
+        url = "https://api.groq.com/openai/v1/chat/completions"
         payload = {
             "model": model_name,
-            "prompt": prompt,
-            "stream": False,
-            "options": {
-                "temperature": 0.2,
-                "top_p": 0.9,
-            },
+            "messages": [
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": f"--- CONTEXT PASSAGES ---\n{context_str}\n\n--- USER QUERY ---\n{query}"}
+            ],
+            "temperature": 0.2,
+            "max_tokens": 1024,
+            "top_p": 0.9,
         }
+
+        req_headers = HEADERS.copy()
+        req_headers["Authorization"] = f"Bearer {GROQ_API_KEY}"
 
         req = urllib.request.Request(
             url,
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers=req_headers,
             method="POST",
         )
 
         with urllib.request.urlopen(req, timeout=180.0) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-            return data.get("response", "").strip()
+            return data["choices"][0]["message"]["content"].strip()
     except urllib.error.URLError as e:
-        return f"Error connecting to Ollama: {e.reason}. Please make sure Ollama is running."
+        return f"Error connecting to Groq API: {e.reason}."
     except Exception as e:
         return f"An unexpected error occurred while generating answer: {e}"
 
 
 def generate_chat_answer(prompt: str, model_name: str, system_instruction: str | None = None) -> str:
-    """Generate a general model completion from a prompt (without RAG formatting)."""
+    """Generate a general model completion from a prompt via Groq API."""
+    if not GROQ_API_KEY:
+        return "Groq API Key is not configured. Please add GROQ_API_KEY to your .env file."
+
     try:
-        url = f"{OLLAMA_HOST}/api/generate"
+        url = "https://api.groq.com/openai/v1/chat/completions"
         
-        full_prompt = prompt
+        messages = []
         if system_instruction:
-            full_prompt = f"{system_instruction}\n\n{prompt}"
+            messages.append({"role": "system", "content": system_instruction})
+        messages.append({"role": "user", "content": prompt})
             
         payload = {
             "model": model_name,
-            "prompt": full_prompt,
-            "stream": False,
-            "options": {
-                "temperature": 0.7,
-                "top_p": 0.9,
-            },
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 1024,
+            "top_p": 0.9,
         }
+
+        req_headers = HEADERS.copy()
+        req_headers["Authorization"] = f"Bearer {GROQ_API_KEY}"
 
         req = urllib.request.Request(
             url,
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers=req_headers,
             method="POST",
         )
 
         with urllib.request.urlopen(req, timeout=180.0) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-            return data.get("response", "").strip()
+            return data["choices"][0]["message"]["content"].strip()
     except urllib.error.URLError as e:
-        return f"Error connecting to Ollama: {e.reason}. Please make sure Ollama is running."
+        return f"Error connecting to Groq API: {e.reason}."
     except Exception as e:
         return f"An unexpected error occurred: {e}"

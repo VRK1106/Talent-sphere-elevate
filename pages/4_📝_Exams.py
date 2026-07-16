@@ -26,7 +26,7 @@ from src.exams import (
     get_assignment_by_id,
     submit_exam_answers
 )
-from src.llm import list_local_models, generate_chat_answer
+from src.llm import list_local_models, generate_chat_answer, GROQ_API_KEY
 
 # Load custom styles
 load_css()
@@ -105,7 +105,7 @@ if role == "admin":
         # AI Generator Card
         with st.container(border=True):
             st.markdown("<div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 1rem;'>2. AI-Assisted Question Generator</div>", unsafe_allow_html=True)
-            st.markdown("<div style='font-size: 0.88rem; color: var(--ts-text-secondary); margin-bottom: 0.8rem;'>Select an uploaded PDF and let Qwen generate professional questions.</div>", unsafe_allow_html=True)
+            st.markdown("<div style='font-size: 0.88rem; color: var(--ts-text-secondary); margin-bottom: 0.8rem;'>Select an uploaded PDF and let Groq generate professional questions.</div>", unsafe_allow_html=True)
             
             doc_sources = index["source_names"]
             if not doc_sources:
@@ -119,20 +119,22 @@ if role == "admin":
                     
                 local_models = list_local_models()
                 ai_model = None
-                if local_models:
+                if not GROQ_API_KEY:
+                    st.info("Groq API Key not detected. Please add GROQ_API_KEY to your .env file to enable AI Question Generation.")
+                elif local_models:
                     d_idx = 0
                     for idx, m in enumerate(local_models):
-                        if "qwen" in m.lower():
+                        if "llama-3.3" in m.lower() or "llama" in m.lower():
                             d_idx = idx
                             break
-                    ai_model = st.selectbox("LLM Model for Generation", options=local_models, index=d_idx)
+                    ai_model = st.selectbox("Groq Model for Generation", options=local_models, index=d_idx)
                 
                 col_ai_btn, _ = st.columns([2, 4])
                 with col_ai_btn:
-                    gen_clicked = st.button("🤖 Generate with Qwen", type="primary", use_container_width=True, disabled=(ai_model is None))
+                    gen_clicked = st.button("🤖 Generate with Groq", type="primary", use_container_width=True, disabled=(ai_model is None or not GROQ_API_KEY))
                     
                 if gen_clicked and ai_model and ai_doc:
-                    with st.spinner("Qwen is reading document chunks and drafting questions..."):
+                    with st.spinner("Groq is reading document chunks and drafting questions..."):
                         # Get some chunks of the document to use as context
                         try:
                             coll = get_collection()
@@ -462,10 +464,10 @@ else:
                 with st.spinner("AI is grading your answers, please wait..."):
                     local_models = list_local_models()
                     grade_model = None
-                    if local_models:
+                    if GROQ_API_KEY and local_models:
                         d_idx = 0
                         for idx, m in enumerate(local_models):
-                            if "qwen" in m.lower():
+                            if "llama-3.3" in m.lower() or "llama" in m.lower():
                                 d_idx = idx
                                 break
                         grade_model = local_models[d_idx]

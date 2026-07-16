@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.ui import load_css, section_header, render_sidebar
 from src.vectorstore import stats, search
 from src.embeddings import embed_query
-from src.llm import list_local_models, generate_rag_answer, generate_chat_answer
+from src.llm import list_local_models, generate_rag_answer, generate_chat_answer, GROQ_API_KEY
 from src.users import _DB_PATH
 from src.chats import (
     get_chat_sessions_for_user,
@@ -118,20 +118,20 @@ with st.container(border=True):
         )
         
     with col_model:
-        if not ollama_models:
-            st.warning("⚠️ No local Ollama models found!")
+        if not GROQ_API_KEY:
+            st.warning("⚠️ Groq API Key not detected! Please add GROQ_API_KEY to your .env file.")
             selected_model = None
         else:
             default_idx = 0
             for idx, m in enumerate(ollama_models):
-                if "qwen" in m.lower():
+                if "llama-3.3" in m.lower() or "llama" in m.lower():
                     default_idx = idx
                     break
             selected_model = st.selectbox(
-                "Local AI Model",
+                "Groq AI Model",
                 options=ollama_models,
                 index=default_idx,
-                help="Select which local model to converse with."
+                help="Select which Groq model to converse with."
             )
             
     with col_clear:
