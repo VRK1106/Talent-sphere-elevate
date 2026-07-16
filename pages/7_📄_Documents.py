@@ -83,7 +83,7 @@ else:
                         except Exception as e:
                             st.error(f"Error loading PDF: {e}")
                     else:
-                        st.info("ℹ️ The original PDF file copy is not available on the server disk.")
+                        st.info("ℹ️ The original PDF file copy is not available in the server's 'documents/' directory. Please copy the PDF file to that folder to enable downloading.")
         else:
             # Admin View: Display stats and chunk browser
             if doc_details:
@@ -136,6 +136,8 @@ else:
                     )
                 except Exception:
                     pass
+            else:
+                st.info("ℹ️ The original PDF file is not available in the server's 'documents/' directory. Please copy the PDF file there to enable downloading.")
                     
             st.write("")
             
