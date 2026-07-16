@@ -11,6 +11,7 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.embeddings import embed_documents  # noqa: E402
+from src.config import DOCUMENTS_DIR  # noqa: E402
 from src.ingest import chunk_pages, extract_pages, file_hash  # noqa: E402
 from src.ui import card, info_banner, load_css, metric_tile, pill_row, section_header, render_sidebar  # noqa: E402
 from src.vectorstore import (  # noqa: E402
@@ -88,6 +89,14 @@ if build and uploaded:
             embeddings = embed_documents([c["text"] for c in chunks])
             added = add_chunks(chunks, embeddings, digest)
 
+            # Save uploaded PDF to DOCUMENTS_DIR
+            try:
+                save_path = Path(DOCUMENTS_DIR) / file.name
+                save_path.parent.mkdir(parents=True, exist_ok=True)
+                save_path.write_bytes(data)
+            except Exception as e:
+                st.warning(f"Could not save PDF copy to disk: {e}")
+
             known_hashes.add(digest)
             files_processed += 1
             chunks_added += added
@@ -142,6 +151,12 @@ else:
             delete_key = f"del_{doc['name']}"
             if st.button("🗑️ Delete", key=delete_key, type="secondary", use_container_width=True):
                 delete_source(doc["name"])
+                try:
+                    pdf_file = Path(DOCUMENTS_DIR) / doc["name"]
+                    if pdf_file.exists():
+                        pdf_file.unlink()
+                except Exception:
+                    pass
                 st.toast(f"Deleted {doc['name']}")
                 st.rerun()
 
@@ -181,6 +196,11 @@ else:
     with c1:
         if st.button("Yes, reset index", type="secondary"):
             reset_collection()
+            try:
+                for pdf_file in Path(DOCUMENTS_DIR).glob("*.pdf"):
+                    pdf_file.unlink()
+            except Exception:
+                pass
             st.session_state.confirm_reset = False
             st.success("Index reset complete.")
             st.rerun()
