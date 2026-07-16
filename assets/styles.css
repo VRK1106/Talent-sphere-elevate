@@ -1068,11 +1068,11 @@ div[data-baseweb="popover"] [role="option"]:hover,
 }
 
 /* Prevent intermediate containers from breaking absolute positioning of logo */
-[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
-  position: static !important;
-}
-[data-testid="stSidebar"] div.element-container:has(.ts-sidebar-header-sticky),
-[data-testid="stSidebar"] div.stMarkdown:has(.ts-sidebar-header-sticky) {
+[data-testid="stSidebar"] div:has(> .ts-sidebar-header-sticky),
+[data-testid="stSidebar"] div:has(> div > .ts-sidebar-header-sticky),
+[data-testid="stSidebar"] div:has(> div > div > .ts-sidebar-header-sticky),
+[data-testid="stSidebar"] div:has(> div > div > div > .ts-sidebar-header-sticky),
+[data-testid="stSidebar"] div:has(> div > div > div > div > .ts-sidebar-header-sticky) {
   position: static !important;
 }
 
@@ -1090,6 +1090,7 @@ div[data-baseweb="popover"] [role="option"]:hover,
   text-align: center !important;
   height: 6rem !important;
 }
+
 
 
 
