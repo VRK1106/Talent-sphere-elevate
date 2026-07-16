@@ -1,0 +1,1115 @@
+/* ============================================================
+   Talent Sphere Elevate — Premium Midnight Glassmorphism UI
+   Milestone 1 upgraded custom stylesheet
+   ============================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap");
+
+:root {
+  /* Neon Gradient Themes */
+  --ts-primary: #60A5FA;
+  /* Light Blue */
+  --ts-primary-hover: #3B82F6;
+  /* Blue */
+  --ts-secondary: #34D399;
+  /* Emerald */
+  --ts-accent: #A78BFA;
+  /* Lavender */
+  --ts-gradient: linear-gradient(135deg, var(--ts-primary) 0%, var(--ts-accent) 50%, var(--ts-secondary) 100%);
+  --ts-gradient-hero: linear-gradient(120deg, #000000 0%, #111827 50%, #030712 100%);
+
+  /* Popover settings */
+  --ts-popover-bg: #0d0d0d;
+  --ts-popover-text: #E5E7EB;
+
+  /* Premium Surfaces */
+  --ts-bg: #000000;
+  /* Pure Black */
+  --ts-surface: rgba(20, 20, 20, 0.7);
+  /* Dark Glass Card */
+  --ts-border: rgba(255, 255, 255, 0.08);
+  --ts-border-hover: rgba(96, 165, 250, 0.35);
+
+  /* Typography */
+  --ts-text: #E5E7EB;
+  /* Gray 200 */
+  --ts-text-secondary: #9CA3AF;
+  /* Gray 400 */
+  --ts-text-muted: #6B7280;
+  /* Gray 500 */
+
+  /* Semantics */
+  --ts-success: #10B981;
+  /* Emerald */
+  --ts-warning: #F59E0B;
+  /* Amber */
+  --ts-danger: #EF4444;
+  /* Rose */
+
+  /* Shadows & Glass */
+  --ts-shadow: 0 4px 30px rgba(0, 0, 0, 0.6);
+  --ts-shadow-hover: 0 10px 40px rgba(96, 165, 250, 0.25);
+  --ts-shadow-glow: 0 0 15px rgba(96, 165, 250, 0.15);
+  --ts-radius: 16px;
+  --ts-radius-pill: 30px;
+}
+
+/* ---------- Base layout ---------- */
+html,
+body,
+[class*="css"],
+.stApp {
+  font-family: "Outfit", "Inter", system-ui, sans-serif;
+  color: var(--ts-text);
+  background-color: var(--ts-bg) !important;
+}
+
+.stApp {
+  position: relative;
+  min-height: 100vh;
+  overflow: visible;
+  background:
+    radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.12) 0%, transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+    var(--ts-bg) !important;
+}
+
+.stApp::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 50px 50px;
+  opacity: 0.8;
+  z-index: 0;
+}
+
+/* Block container width optimization */
+.block-container {
+  max-width: 1160px;
+  padding-top: 1.5rem;
+  padding-bottom: 4rem;
+  position: relative;
+  z-index: 1;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #FFFFFF;
+}
+
+/* ---------- Hero banner ---------- */
+.ts-hero {
+  position: relative;
+  overflow: hidden;
+  background: var(--ts-gradient-hero);
+  border: 1px solid var(--ts-border);
+  color: #fff;
+  border-radius: 24px;
+  padding: 2.5rem 2.8rem;
+  box-shadow: var(--ts-shadow), 0 0 30px rgba(99, 102, 241, 0.1);
+  margin-bottom: 1.8rem;
+}
+
+.ts-hero::before {
+  content: "";
+  position: absolute;
+  top: -40%;
+  right: -10%;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, transparent 70%);
+  filter: blur(15px);
+}
+
+.ts-hero::after {
+  content: "";
+  position: absolute;
+  bottom: -40%;
+  left: -10%;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.2) 0%, transparent 70%);
+  filter: blur(15px);
+}
+
+.ts-hero-title {
+  position: relative;
+  z-index: 1;
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1.1;
+  background: linear-gradient(135deg, #FFFFFF 30%, #E0E7FF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ts-hero-subtitle {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 300;
+  color: var(--ts-text-secondary);
+  line-height: 1.5;
+  max-width: 800px;
+}
+
+/* ---------- Section headers ---------- */
+.ts-section {
+  margin: 1.2rem 0 1.5rem 0;
+  padding-left: 1.1rem;
+  border-left: 4px solid var(--ts-primary);
+}
+
+.ts-section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  background: linear-gradient(135deg, var(--ts-text-heading, #FFFFFF) 60%, var(--ts-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ts-section-subtitle {
+  margin-top: 0.25rem;
+  font-size: 0.95rem;
+  color: var(--ts-text-secondary);
+}
+
+/* ---------- Glassmorphic Cards ---------- */
+.ts-card,
+div[data-testid="stVerticalBlockBorderWrapper"] {
+  position: relative;
+  overflow: hidden;
+  background: var(--ts-surface) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid var(--ts-border) !important;
+  border-radius: var(--ts-radius) !important;
+  padding: 1.4rem 1.6rem !important;
+  box-shadow: var(--ts-shadow) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  margin-bottom: 1.2rem !important;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"] > div {
+  background: transparent !important;
+}
+
+.ts-card::before,
+div[data-testid="stVerticalBlockBorderWrapper"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.02), transparent 60%);
+  pointer-events: none;
+}
+
+.ts-card:hover,
+div[data-testid="stVerticalBlockBorderWrapper"]:hover {
+  border-color: var(--ts-border-hover) !important;
+  box-shadow: var(--ts-shadow-hover), var(--ts-shadow-glow) !important;
+  transform: translateY(-3px) !important;
+}
+
+.ts-card-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--ts-text-heading, #FFFFFF);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ts-card-icon {
+  font-size: 1.3rem;
+}
+
+.ts-card-body {
+  font-size: 0.95rem;
+  color: var(--ts-text-secondary);
+  line-height: 1.6;
+}
+
+/* ---------- Metrics ---------- */
+.ts-metric {
+  background: var(--ts-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--ts-border);
+  border-left: 5px solid var(--ts-primary);
+  border-radius: var(--ts-radius);
+  padding: 1.2rem 1.5rem;
+  box-shadow: var(--ts-shadow);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ts-metric:hover {
+  border-color: var(--ts-border-hover);
+  border-left-color: var(--ts-secondary);
+  box-shadow: var(--ts-shadow-hover);
+  transform: translateY(-2px);
+}
+
+.ts-metric-value {
+  font-size: 2.1rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--ts-text-heading, #FFFFFF) 40%, var(--ts-primary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.1;
+}
+
+.ts-metric-label {
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ts-text-secondary);
+}
+
+/* ---------- Tags & pills ---------- */
+.ts-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.3rem 0 1.3rem 0;
+}
+
+.ts-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: var(--ts-radius-pill);
+  background: rgba(99, 102, 241, 0.12);
+  color: #A5B4FC;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  transition: all 0.2s ease;
+}
+
+.ts-pill:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: var(--ts-primary);
+  color: #FFFFFF;
+}
+
+/* ---------- Info banner ---------- */
+.ts-info-banner {
+  padding: 1.1rem 1.3rem;
+  border-radius: 14px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: linear-gradient(120deg, rgba(99, 102, 241, 0.1), rgba(6, 182, 212, 0.03));
+  margin-bottom: 1.1rem;
+  box-shadow: var(--ts-shadow);
+}
+
+.ts-info-success {
+  border-color: rgba(16, 185, 129, 0.2);
+  background: linear-gradient(120deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.03));
+}
+
+.ts-info-warning {
+  border-color: rgba(245, 158, 11, 0.2);
+  background: linear-gradient(120deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.03));
+}
+
+.ts-info-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #E0E7FF;
+}
+
+.ts-info-body {
+  margin-top: 0.3rem;
+  font-size: 0.92rem;
+  color: var(--ts-text-secondary);
+  line-height: 1.5;
+}
+
+/* ---------- Score badges ---------- */
+.ts-badge {
+  display: inline-block;
+  padding: 0.2rem 0.8rem;
+  border-radius: var(--ts-radius-pill);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.ts-badge-high {
+  background: var(--ts-success);
+}
+
+.ts-badge-mid {
+  background: var(--ts-primary);
+}
+
+.ts-badge-low {
+  background: var(--ts-text-muted);
+}
+
+/* ---------- Search result cards ---------- */
+.ts-result {
+  border-left: 4px solid var(--ts-primary);
+}
+
+.ts-result-head {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.ts-result-source {
+  font-weight: 700;
+  color: var(--ts-secondary);
+}
+
+.ts-result-page {
+  font-size: 0.85rem;
+  color: var(--ts-text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.15rem 0.7rem;
+  border-radius: var(--ts-radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ts-result-text {
+  font-size: 0.98rem;
+  line-height: 1.6;
+  color: var(--ts-text);
+}
+
+/* Highlight style */
+.ts-highlight {
+  background-color: rgba(245, 158, 11, 0.25);
+  border-bottom: 2px solid var(--ts-warning);
+  color: #FFFFFF;
+  padding: 0.1rem 0.25rem;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* ---------- Empty state ---------- */
+.ts-empty {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: var(--ts-surface);
+}
+
+.ts-empty-icon {
+  font-size: 2.8rem;
+}
+
+.ts-empty-title {
+  margin-top: 0.8rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.ts-empty-body {
+  margin-top: 0.4rem;
+  color: var(--ts-text-secondary);
+}
+
+/* ---------- Dynamic UI components (Interactive Catalog) ---------- */
+.ts-catalog-card {
+  border: 1px solid var(--ts-border);
+  background: rgba(17, 24, 39, 0.85);
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  margin-bottom: 0.8rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.ts-catalog-card:hover {
+  border-color: var(--ts-border-hover);
+  box-shadow: var(--ts-shadow-glow);
+}
+
+.ts-catalog-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.ts-catalog-name {
+  font-weight: 600;
+  color: #FFFFFF;
+  font-size: 1.05rem;
+}
+
+.ts-catalog-meta {
+  font-size: 0.85rem;
+  color: var(--ts-text-secondary);
+}
+
+.ts-catalog-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* ---------- Button override ---------- */
+.stButton>button,
+.stDownloadButton>button {
+  background: var(--ts-gradient) !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  border-radius: var(--ts-radius-pill) !important;
+  padding: 0.6rem 1.8rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.stButton>button:hover,
+.stDownloadButton>button:hover {
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45) !important;
+  transform: translateY(-2px) !important;
+  background: linear-gradient(135deg, var(--ts-primary-hover) 0%, var(--ts-accent) 50%, var(--ts-secondary) 100%) !important;
+}
+
+.stButton>button:active {
+  transform: translateY(0) !important;
+}
+
+.stButton>button:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4) !important;
+}
+
+/* Secondary Button Overrides */
+.stButton>button[kind="secondary"] {
+  background: transparent !important;
+  color: var(--ts-text) !important;
+  border: 1.5px solid var(--ts-border) !important;
+  box-shadow: none !important;
+}
+
+.stButton>button[kind="secondary"]:hover {
+  background: rgba(99, 102, 241, 0.05) !important;
+  border-color: var(--ts-primary) !important;
+  color: var(--ts-primary) !important;
+  box-shadow: none !important;
+}
+
+/* Danger Wrapper */
+.ts-danger .stButton>button[kind="secondary"] {
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  color: var(--ts-danger) !important;
+}
+
+.ts-danger .stButton>button[kind="secondary"]:hover {
+  background: rgba(239, 68, 68, 0.1) !important;
+  border-color: var(--ts-danger) !important;
+}
+
+div[data-testid="stTextInputRootElement"],
+div[data-testid="stTextAreaRootElement"],
+div[data-testid="stNumberInputRootElement"],
+div[data-testid="stDateInput"] > div,
+div[data-baseweb="base-input"],
+div[data-baseweb="input"],
+div[data-baseweb="textarea"] {
+  background-color: var(--ts-input-bg, rgba(17, 24, 39, 0.5)) !important;
+  border: 1px solid var(--ts-border) !important;
+  border-radius: var(--ts-radius) !important;
+  transition: all 0.2s ease !important;
+}
+
+div[data-testid="stTextInputRootElement"]:focus-within,
+div[data-testid="stTextAreaRootElement"]:focus-within,
+div[data-testid="stNumberInputRootElement"]:focus-within,
+div[data-testid="stDateInput"] > div:focus-within,
+div[data-baseweb="base-input"]:focus-within,
+div[data-baseweb="input"]:focus-within,
+div[data-baseweb="textarea"]:focus-within {
+  border-color: var(--ts-primary) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
+}
+
+.stTextInput input,
+.stTextArea textarea,
+.stNumberInput input,
+div[data-testid="stDateInput"] input {
+  background-color: transparent !important;
+  border: none !important;
+  color: var(--ts-text) !important;
+}
+
+/* Dropdowns / Selectboxes */
+[data-baseweb="select"] {
+  background-color: var(--ts-input-bg, rgba(17, 24, 39, 0.5)) !important;
+  border: 1px solid var(--ts-border) !important;
+  border-radius: var(--ts-radius) !important;
+}
+
+[data-baseweb="select"]>div {
+  background-color: transparent !important;
+  color: var(--ts-text) !important;
+}
+
+/* Slider styling */
+.stSlider [data-baseweb="slider"] {
+  padding-bottom: 12px;
+}
+
+.stSlider [data-baseweb="slider"] div[role="slider"] {
+  background: var(--ts-primary) !important;
+  border: 2px solid #FFFFFF !important;
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.stSlider [data-baseweb="slider"]>div>div {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* File Uploader styling */
+[data-testid="stFileUploader"] {
+  border: 2px dashed rgba(99, 102, 241, 0.4) !important;
+  border-radius: var(--ts-radius) !important;
+  background: rgba(17, 24, 39, 0.4) !important;
+  padding: 1.5rem !important;
+  transition: all 0.3s ease !important;
+}
+
+[data-testid="stFileUploader"]:hover {
+  border-color: var(--ts-secondary) !important;
+  background: rgba(99, 102, 241, 0.05) !important;
+  box-shadow: var(--ts-shadow-glow) !important;
+}
+
+[data-testid="stFileUploaderDropzone"] {
+  background: transparent !important;
+}
+
+/* File uploader browse button styling */
+[data-testid="stFileUploader"] button {
+  background-color: var(--ts-surface-solid, #1e293b) !important;
+  color: var(--ts-text, #FFFFFF) !important;
+  border: 1px solid var(--ts-border) !important;
+  border-radius: var(--ts-radius-pill, 20px) !important;
+  padding: 0.4rem 1.2rem !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-testid="stFileUploader"] button:hover {
+  background-color: var(--ts-primary) !important;
+  color: #FFFFFF !important;
+  border-color: var(--ts-primary) !important;
+}
+
+/* File uploader instruction text styling */
+[data-testid="stFileUploader"] small,
+[data-testid="stFileUploader"] p,
+[data-testid="stFileUploader"] span {
+  color: var(--ts-text-secondary, #9CA3AF) !important;
+}
+
+/* Progress bar */
+.stProgress>div>div>div>div {
+  background: var(--ts-gradient) !important;
+}
+
+/* Sidebar styling */
+[data-testid="stSidebar"] {
+  background-color: var(--ts-sidebar-bg, #06090F) !important;
+  border-right: 1px solid var(--ts-border) !important;
+}
+
+[data-testid="stSidebar"] .block-container {
+  padding-top: 2rem !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ts-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.4);
+}
+
+/* ============================================================
+   Light/Dark Mode Theme Stability & Visual Enhancements
+   ============================================================ */
+
+/* Force all text, paragraph, widget labels, and markdown elements to follow the light text theme */
+label,
+.stWidgetLabel,
+[data-testid="stWidgetLabel"],
+[data-testid="stWidgetLabel"] p,
+[data-testid="stWidgetLabel"] span,
+[data-testid="stHeader"] p,
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] li,
+[data-testid="stMarkdownContainer"] span,
+[data-testid="stExpander"] summary,
+[data-testid="stExpander"] summary p,
+[data-testid="stExpander"] p,
+.stTextInput label,
+.stSlider label,
+.stSelectbox label,
+.stMultiSelect label {
+  color: var(--ts-text) !important;
+}
+
+/* Ensure captions and small labels adapt to theme colors */
+[data-testid="stCaptionContainer"],
+[data-testid="stCaptionContainer"] p,
+[data-testid="stCaptionContainer"] span {
+  color: var(--ts-text-secondary) !important;
+}
+
+/* Force headings to adapt to theme setting */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+[data-testid="stMarkdownContainer"] h1,
+[data-testid="stMarkdownContainer"] h2,
+[data-testid="stMarkdownContainer"] h3,
+[data-testid="stMarkdownContainer"] h4 {
+  color: var(--ts-text-heading, #FFFFFF) !important;
+}
+
+/* Ensure input content is fully readable and theme-colored */
+.stTextInput input,
+.stTextArea textarea {
+  color: var(--ts-text, #FFFFFF) !important;
+}
+
+/* Placeholder styling */
+::placeholder {
+  color: var(--ts-text-secondary) !important;
+  opacity: 0.6 !important;
+}
+
+/* Streamlit Selectbox and Multiselect popover items stabilization */
+div[data-baseweb="popover"],
+div[data-baseweb="popover"] > div,
+div[data-baseweb="popover"] ul,
+div[data-baseweb="popover"] [role="listbox"],
+div[data-baseweb="popover"] [role="menu"],
+[data-baseweb="menu"] {
+  background-color: var(--ts-popover-bg, #0b0f19) !important;
+  border: 1px solid var(--ts-border) !important;
+  border-radius: 8px !important;
+}
+
+div[data-baseweb="popover"] li,
+div[data-baseweb="popover"] [role="option"],
+[data-baseweb="menu"] li,
+[data-baseweb="menu"] [role="option"] {
+  color: var(--ts-popover-text, #FFFFFF) !important;
+  background-color: transparent !important;
+}
+
+div[data-baseweb="popover"] li:hover,
+div[data-baseweb="popover"] [role="option"]:hover,
+[data-baseweb="menu"] li:hover,
+[data-baseweb="menu"] [role="option"]:hover {
+  background-color: var(--ts-primary) !important;
+  color: #FFFFFF !important;
+}
+
+/* Remove default Streamlit top header spacing and white gap */
+[data-testid="stHeader"] {
+  background-color: transparent !important;
+}
+
+.block-container {
+  padding-top: 1rem !important;
+}
+
+/* ============================================================
+   Login Page — Glassmorphic Authentication Card
+   ============================================================ */
+
+.ts-login-card {
+  background: var(--ts-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--ts-border);
+  border-radius: 24px;
+  padding: 2rem 2.2rem;
+  box-shadow: var(--ts-shadow), 0 0 40px rgba(99, 102, 241, 0.08);
+  margin-bottom: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.ts-login-card::before {
+  content: "";
+  position: absolute;
+  top: -30%;
+  left: -20%;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+  filter: blur(20px);
+  pointer-events: none;
+}
+
+.ts-login-card::after {
+  content: "";
+  position: absolute;
+  bottom: -30%;
+  right: -20%;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.12) 0%, transparent 70%);
+  filter: blur(20px);
+  pointer-events: none;
+}
+
+/* Login card input overrides — slightly lighter glass for readability */
+.ts-login-card div[data-testid="stTextInputRootElement"],
+.ts-login-card div[data-baseweb="input"] {
+  background-color: var(--ts-input-bg, rgba(30, 41, 59, 0.6)) !important;
+  border: 1px solid var(--ts-border) !important;
+  border-radius: 12px !important;
+}
+
+.ts-login-card div[data-testid="stTextInputRootElement"]:focus-within,
+.ts-login-card div[data-baseweb="input"]:focus-within {
+  border-color: var(--ts-primary) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
+}
+
+.ts-login-card .stTextInput input {
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0.7rem 1rem !important;
+  font-size: 0.95rem !important;
+  color: var(--ts-text, #FFFFFF) !important;
+}
+
+.ts-login-card .stTextInput label {
+  font-weight: 600 !important;
+  font-size: 0.85rem !important;
+  letter-spacing: 0.02em !important;
+  color: var(--ts-text) !important;
+}
+
+/* Login primary button glow */
+.ts-login-card .stButton > button[kind="primary"] {
+  background: var(--ts-gradient) !important;
+  border: none !important;
+  border-radius: 12px !important;
+  padding: 0.6rem 1.5rem !important;
+  font-weight: 700 !important;
+  font-size: 0.95rem !important;
+  letter-spacing: 0.02em !important;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35) !important;
+  transition: all 0.3s ease !important;
+}
+
+.ts-login-card .stButton > button[kind="primary"]:hover {
+  box-shadow: 0 6px 28px rgba(99, 102, 241, 0.5) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Welcome / authenticated view navigation cards */
+.ts-login-card .ts-card-icon {
+  font-size: 2.5rem;
+}
+
+/* Custom Sidebar Navigation Styling */
+[data-testid="stSidebarNavItems"] {
+  gap: 8px !important;
+  padding: 10px 0 !important;
+}
+
+[data-testid="stSidebarNavLink"] {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.04) !important;
+  border-radius: 12px !important;
+  padding: 10px 14px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  margin: 4px 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  text-decoration: none !important;
+}
+
+[data-testid="stSidebarNavLink"]:hover {
+  background-color: rgba(99, 102, 241, 0.12) !important;
+  border-color: rgba(99, 102, 241, 0.3) !important;
+  transform: translateX(4px);
+}
+
+/* Active navigation link */
+[data-testid="stSidebarNavLink"][aria-current="page"] {
+  background: var(--ts-gradient) !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
+}
+
+/* Ensure text inside links looks neat and behaves correctly */
+[data-testid="stSidebarNavLink"] span {
+  font-family: "Outfit", "Inter", sans-serif !important;
+  font-size: 0.95rem !important;
+  font-weight: 500 !important;
+  color: var(--ts-text-secondary) !important;
+  transition: color 0.3s ease !important;
+}
+
+[data-testid="stSidebarNavLink"]:hover span {
+  color: #FFFFFF !important;
+}
+
+[data-testid="stSidebarNavLink"][aria-current="page"] span {
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+}
+
+/* Custom layout for icons inside links */
+[data-testid="stSidebarNavLink"] [data-testid="stSidebarNavLinkIcon"] {
+  font-size: 1.15rem !important;
+  margin-right: 0.5rem !important;
+}
+
+/* Premium Profile Card & Health Badges in Sidebar */
+.ts-sidebar-profile {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 5px;
+  backdrop-filter: blur(10px);
+}
+
+.ts-profile-avatar {
+  background: var(--ts-gradient);
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 0.95rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
+}
+
+.ts-profile-name {
+  color: var(--ts-text);
+  font-family: "Outfit", "Inter", sans-serif;
+  font-weight: 600;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ts-profile-details {
+  color: var(--ts-text-secondary);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.ts-profile-badge {
+  background: rgba(96, 165, 250, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  color: #60A5FA;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+}
+
+.ts-progress-bar-bg {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  height: 6px;
+  width: 100%;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.ts-progress-bar-fill {
+  background: var(--ts-gradient);
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ts-sidebar-health {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 5px;
+}
+
+.ts-health-status {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-align: right;
+}
+
+.ts-health-ok {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #10B981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.15);
+}
+
+.ts-health-err {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #EF4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.15);
+}
+
+/* Metric tile hover animation scale-ups */
+.ts-metric-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.ts-metric-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  border-color: rgba(99, 102, 241, 0.25) !important;
+  box-shadow: 0 10px 25px rgba(99, 102, 241, 0.08) !important;
+}
+
+/* Tab bar modern navigation tweaks */
+.stTabs [data-baseweb="tab-list"] {
+  gap: 8px !important;
+  background-color: rgba(255, 255, 255, 0.01) !important;
+  padding: 6px !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(255, 255, 255, 0.03) !important;
+}
+
+.stTabs [data-baseweb="tab"] {
+  border-radius: 10px !important;
+  padding: 8px 16px !important;
+  font-family: "Outfit", "Inter", sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 0.9rem !important;
+  transition: all 0.3s ease !important;
+  color: var(--ts-text-secondary) !important;
+  border: none !important;
+  background-color: transparent !important;
+}
+
+.stTabs [data-baseweb="tab"][aria-selected="true"] {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+  color: #FFFFFF !important;
+}
+
+/* Sidebar layout improvements & sticky logo */
+[data-testid="stSidebar"] {
+  background-color: var(--ts-popover-bg, #0b0f19) !important;
+  border-right: 1px solid var(--ts-border) !important;
+}
+
+.ts-sidebar-header-sticky {
+  position: sticky;
+  top: -2rem;
+  margin-top: -2rem;
+  background-color: var(--ts-popover-bg, #0b0f19) !important;
+  z-index: 999;
+  padding-top: 2rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--ts-border);
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+/* Custom nested card components for clean multi-theme display */
+.ts-nested-card {
+  background-color: var(--ts-inner-bg, rgba(255, 255, 255, 0.03)) !important;
+  border: 1px solid var(--ts-border, rgba(255, 255, 255, 0.08)) !important;
+  border-radius: 12px !important;
+  padding: 1rem 1.2rem !important;
+  margin-bottom: 0.8rem !important;
+}
+
+.ts-badge-outline {
+  font-size: 0.78rem !important;
+  background: var(--ts-badge-bg, rgba(99, 102, 241, 0.12)) !important;
+  border: 1px solid var(--ts-badge-border, rgba(99, 102, 241, 0.2)) !important;
+  color: var(--ts-primary, #60A5FA) !important;
+  padding: 0.18rem 0.7rem !important;
+  border-radius: 14px !important;
+  display: inline-block !important;
+  font-weight: 600 !important;
+}
+
+.ts-code-highlight {
+  font-family: monospace !important;
+  background: var(--ts-badge-bg, rgba(99, 102, 241, 0.12)) !important;
+  color: var(--ts-primary, #60A5FA) !important;
+  padding: 0.12rem 0.4rem !important;
+  border-radius: 4px !important;
+  font-weight: 500 !important;
+}
+
+/* Sync defaults for variable configurations */
+:root {
+  --ts-inner-bg: rgba(255, 255, 255, 0.03);
+  --ts-badge-bg: rgba(99, 102, 241, 0.12);
+  --ts-badge-border: rgba(99, 102, 241, 0.2);
+  --ts-text-heading: #FFFFFF;
+  --ts-input-bg: rgba(17, 24, 39, 0.5);
+  --ts-popover-bg: #0b0f19;
+  --ts-popover-text: #FFFFFF;
+}
