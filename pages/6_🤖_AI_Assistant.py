@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.ui import load_css, section_header, render_sidebar
 from src.vectorstore import stats, search
 from src.embeddings import embed_query
-from src.llm import list_local_models, generate_rag_answer, generate_chat_answer, GROQ_API_KEY
+from src.llm import list_local_models, generate_rag_answer, generate_chat_answer, GROQ_API_KEY, generate_rag_answer_stream, generate_chat_answer_stream
 from src.users import _DB_PATH
 from src.chats import (
     get_chat_sessions_for_user,
@@ -48,6 +48,21 @@ user_sessions = get_chat_sessions_for_user(emp_id)
 # Initialize active session in session state if not set
 if "active_chat_session_id" not in st.session_state:
     st.session_state.active_chat_session_id = None
+
+# Check and handle interrupted generation (e.g. from user clicking Stop Response)
+if st.session_state.get("is_generating", False):
+    if st.session_state.get("partial_response"):
+        # Save whatever was generated so far
+        add_chat_message(
+            st.session_state.active_chat_session_id,
+            "assistant",
+            st.session_state.partial_response + " ⏹️ *[Response stopped by user]*",
+            st.session_state.get("generating_sources", [])
+        )
+    st.session_state.is_generating = False
+    st.session_state.partial_response = ""
+    st.session_state.generating_sources = []
+    st.rerun()
 
 # Ensure active session exists, else select first or auto-create
 if not st.session_state.active_chat_session_id:
@@ -161,42 +176,65 @@ if query := st.chat_input("Ask a question to your AI Coach...", disabled=(select
 
     # 2. Process and save assistant response
     with st.chat_message("assistant", avatar="🤖"):
-        with st.spinner("AI is thinking..."):
-            sources = []
-            if chat_mode == "RAG (Document Guided)":
-                try:
-                    # Embed and retrieve chunks
-                    query_vec = embed_query(query.strip())
-                    results = search(query_vec, top_k=4, threshold=0.1)
-                    
-                    if not results:
-                        response = "No matching document context was found to guide an answer. Please upload documents first or check search configurations."
-                    else:
-                        response = generate_rag_answer(query.strip(), results, selected_model)
-                        sources = results
-                except Exception as e:
-                    response = f"An error occurred during retrieval/generation: {e}"
-            else:
-                # General conversation mode
-                system_prompt = (
-                    "You are a helpful, encouraging learning coach for 'Talent Sphere Elevate', an advanced corporate training platform. "
-                    "Provide clear, professional explanation, code example, or training advice depending on the trainee's question."
-                )
-                response = generate_chat_answer(query.strip(), selected_model, system_prompt)
+        # Setup placeholders
+        text_placeholder = st.empty()
+        button_placeholder = st.empty()
+        
+        # Render a Stop Response button that reruns on click
+        # Note: if clicked, it reruns from the top, where is_generating is True.
+        # So it triggers the interrupt handler block we added at the top.
+        button_placeholder.button("⏹️ Stop Response", key="stop_active_gen")
+        
+        # Initialize streaming generator
+        sources = []
+        if chat_mode == "RAG (Document Guided)":
+            try:
+                # Embed and retrieve chunks
+                query_vec = embed_query(query.strip())
+                results = search(query_vec, top_k=4, threshold=0.1)
                 
-            st.write(response)
+                if not results:
+                    response_stream = ["No matching document context was found to guide an answer. Please upload documents first or check search configurations."]
+                else:
+                    response_stream = generate_rag_answer_stream(query.strip(), results, selected_model)
+                    sources = results
+            except Exception as e:
+                response_stream = [f"An error occurred during retrieval/generation: {e}"]
+        else:
+            # General conversation mode
+            system_prompt = (
+                "You are a helpful, encouraging learning coach for 'Talent Sphere Elevate', an advanced corporate training platform. "
+                "Provide clear, professional explanation, code example, or training advice depending on the trainee's question."
+            )
+            response_stream = generate_chat_answer_stream(query.strip(), selected_model, system_prompt)
+
+        # Set session state flags for interrupt tracking
+        st.session_state.is_generating = True
+        st.session_state.partial_response = ""
+        st.session_state.generating_sources = [{"source": s["source"], "page": s["page"], "text": s["text"], "score": s["score"]} for s in sources]
+
+        # Iterate and write to placeholder
+        for chunk in response_stream:
+            st.session_state.partial_response += chunk
+            text_placeholder.markdown(st.session_state.partial_response)
             
-            # Show sources inside the bubble immediately on generation
-            if sources:
-                with st.expander("📚 Sources Cited"):
-                    for idx, src in enumerate(sources, 1):
-                        st.markdown(f"**[{idx}] {html.escape(src['source'])} (Page {src['page']})**")
-                        st.caption(f"Similarity: {src['score']:.2%}")
-                        st.markdown(f"> {html.escape(src['text'])}")
-                        
+        # Clean up generation state once completed successfully
+        st.session_state.is_generating = False
+        button_placeholder.empty()  # Remove the stop button
+        
+        # Show sources inside the bubble immediately on generation
+        if sources:
+            with st.expander("📚 Sources Cited"):
+                for idx, src in enumerate(sources, 1):
+                    st.markdown(f"**[{idx}] {html.escape(src['source'])} (Page {src['page']})**")
+                    st.caption(f"Similarity: {src['score']:.2%}")
+                    st.markdown(f"> {html.escape(src['text'])}")
+                    
     # Save Assistant message
     serialized_sources = [{"source": s["source"], "page": s["page"], "text": s["text"], "score": s["score"]} for s in sources]
-    add_chat_message(st.session_state.active_chat_session_id, "assistant", response, serialized_sources)
+    add_chat_message(st.session_state.active_chat_session_id, "assistant", st.session_state.partial_response, serialized_sources)
+    st.session_state.partial_response = ""
+    st.session_state.generating_sources = []
     st.rerun()
 
 # Render standard sidebar branding & stats with Chat History nested under AI Assistant
