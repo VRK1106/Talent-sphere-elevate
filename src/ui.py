@@ -729,14 +729,11 @@ def render_sidebar(index: dict[str, Any], show_chat_history: bool = False) -> No
 
         st.divider()
 
-        if show_chat_history:
+        if st.session_state.get("authenticated", False):
             # Custom navigation block with nested Chat History
             st.markdown(
                 """
                 <style>
-                [data-testid="stSidebarNav"] {
-                    display: none !important;
-                }
                 .chat-history-sidebar-box {
                     padding-left: 1.2rem;
                     border-left: 2px solid var(--ts-border);
@@ -758,83 +755,84 @@ def render_sidebar(index: dict[str, Any], show_chat_history: bool = False) -> No
             st.markdown("<div style='font-size: 0.72rem; color: var(--ts-text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-top: 0.8rem; margin-bottom: 0.4rem;'>AI Workspace</div>", unsafe_allow_html=True)
             st.page_link("pages/6_🤖_AI_Assistant.py", label="AI Assistant", icon="🤖")
 
-            # RENDER NESTED CHAT HISTORY HERE
-            from src.chats import (
-                get_chat_sessions_for_user,
-                create_chat_session,
-                delete_chat_session,
-                rename_chat_session
-            )
-            import datetime
-            user_sessions = get_chat_sessions_for_user(emp_id)
+            # RENDER NESTED CHAT HISTORY HERE IF REQUESTED
+            if show_chat_history:
+                from src.chats import (
+                    get_chat_sessions_for_user,
+                    create_chat_session,
+                    delete_chat_session,
+                    rename_chat_session
+                )
+                import datetime
+                user_sessions = get_chat_sessions_for_user(emp_id)
 
-            st.markdown('<div class="chat-history-sidebar-box">', unsafe_allow_html=True)
-            
-            # New chat button
-            if st.button("➕ New Chat Session", key="sidebar_new_chat_btn", use_container_width=True):
-                import uuid
-                new_id = str(uuid.uuid4())
-                chat_title = f"Chat {datetime.datetime.now().strftime('%b %d, %H:%M')}"
-                create_chat_session(new_id, emp_id, chat_title)
-                st.session_state.active_chat_session_id = new_id
-                if "renaming_session_id" in st.session_state:
-                    st.session_state.renaming_session_id = None
-                st.rerun()
+                st.markdown('<div class="chat-history-sidebar-box">', unsafe_allow_html=True)
                 
-            st.write("")
-            
-            # Inline rename form
-            if st.session_state.get("renaming_session_id"):
-                rename_id = st.session_state.renaming_session_id
-                current_title = ""
-                for s in user_sessions:
-                    if s["session_id"] == rename_id:
-                        current_title = s["title"]
-                        break
+                # New chat button
+                if st.button("➕ New Chat Session", key="sidebar_new_chat_btn", use_container_width=True):
+                    import uuid
+                    new_id = str(uuid.uuid4())
+                    chat_title = f"Chat {datetime.datetime.now().strftime('%b %d, %H:%M')}"
+                    create_chat_session(new_id, emp_id, chat_title)
+                    st.session_state.active_chat_session_id = new_id
+                    if "renaming_session_id" in st.session_state:
+                        st.session_state.renaming_session_id = None
+                    st.rerun()
+                    
+                st.write("")
                 
-                st.markdown("<div style='font-size: 0.8rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 0.2rem;'>✏️ Rename Session</div>", unsafe_allow_html=True)
-                new_title_val = st.text_input("New Title", value=current_title, key="sidebar_rename_title_input", label_visibility="collapsed")
-                c_save, c_cancel = st.columns(2)
-                with c_save:
-                    if st.button("Save", key="sidebar_save_rename_btn", type="primary", use_container_width=True):
-                        if new_title_val.strip():
-                            rename_chat_session(rename_id, new_title_val.strip())
+                # Inline rename form
+                if st.session_state.get("renaming_session_id"):
+                    rename_id = st.session_state.renaming_session_id
+                    current_title = ""
+                    for s in user_sessions:
+                        if s["session_id"] == rename_id:
+                            current_title = s["title"]
+                            break
+                    
+                    st.markdown("<div style='font-size: 0.8rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 0.2rem;'>✏️ Rename Session</div>", unsafe_allow_html=True)
+                    new_title_val = st.text_input("New Title", value=current_title, key="sidebar_rename_title_input", label_visibility="collapsed")
+                    c_save, c_cancel = st.columns(2)
+                    with c_save:
+                        if st.button("Save", key="sidebar_save_rename_btn", type="primary", use_container_width=True):
+                            if new_title_val.strip():
+                                rename_chat_session(rename_id, new_title_val.strip())
+                                st.session_state.renaming_session_id = None
+                                st.rerun()
+                    with c_cancel:
+                        if st.button("Cancel", key="sidebar_cancel_rename_btn", type="secondary", use_container_width=True):
                             st.session_state.renaming_session_id = None
                             st.rerun()
-                with c_cancel:
-                    if st.button("Cancel", key="sidebar_cancel_rename_btn", type="secondary", use_container_width=True):
-                        st.session_state.renaming_session_id = None
-                        st.rerun()
-                st.divider()
-            
-            # List of chat sessions
-            if not user_sessions:
-                st.caption("No chat history found.")
-            else:
-                for s in user_sessions:
-                    col_sel, col_ren, col_del = st.columns([3.8, 1.1, 1.1])
-                    with col_sel:
-                        is_active = (s["session_id"] == st.session_state.active_chat_session_id)
-                        lbl = f"⭐ {s['title'][:10]}" if is_active else f"💬 {s['title'][:10]}"
-                        if len(s['title']) > 10:
-                            lbl += "..."
-                        if st.button(lbl, key=f"sidebar_sel_chat_{s['session_id']}", use_container_width=True, type="secondary"):
-                            st.session_state.active_chat_session_id = s["session_id"]
-                            st.rerun()
-                    with col_ren:
-                        if st.button("✏️", key=f"sidebar_ren_chat_{s['session_id']}", help="Rename chat session", use_container_width=True):
-                            st.session_state.renaming_session_id = s["session_id"]
-                            st.rerun()
-                    with col_del:
-                        if st.button("🗑️", key=f"sidebar_del_chat_{s['session_id']}", help="Delete chat session", use_container_width=True):
-                            delete_chat_session(s["session_id"])
-                            if st.session_state.active_chat_session_id == s["session_id"]:
-                                st.session_state.active_chat_session_id = None
-                            if st.session_state.get("renaming_session_id") == s["session_id"]:
-                                st.session_state.renaming_session_id = None
-                            st.rerun()
-                            
-            st.markdown('</div>', unsafe_allow_html=True)
+                    st.divider()
+                
+                # List of chat sessions
+                if not user_sessions:
+                    st.caption("No chat history found.")
+                else:
+                    for s in user_sessions:
+                        col_sel, col_ren, col_del = st.columns([3.8, 1.1, 1.1])
+                        with col_sel:
+                            is_active = (s["session_id"] == st.session_state.active_chat_session_id)
+                            lbl = f"⭐ {s['title'][:10]}" if is_active else f"💬 {s['title'][:10]}"
+                            if len(s['title']) > 10:
+                                lbl += "..."
+                            if st.button(lbl, key=f"sidebar_sel_chat_{s['session_id']}", use_container_width=True, type="secondary"):
+                                st.session_state.active_chat_session_id = s["session_id"]
+                                st.rerun()
+                        with col_ren:
+                            if st.button("✏️", key=f"sidebar_ren_chat_{s['session_id']}", help="Rename chat session", use_container_width=True):
+                                st.session_state.renaming_session_id = s["session_id"]
+                                st.rerun()
+                        with col_del:
+                            if st.button("🗑️", key=f"sidebar_del_chat_{s['session_id']}", help="Delete chat session", use_container_width=True):
+                                delete_chat_session(s["session_id"])
+                                if st.session_state.active_chat_session_id == s["session_id"]:
+                                    st.session_state.active_chat_session_id = None
+                                if st.session_state.get("renaming_session_id") == s["session_id"]:
+                                    st.session_state.renaming_session_id = None
+                                st.rerun()
+                                
+                st.markdown('</div>', unsafe_allow_html=True)
 
             st.page_link("pages/2_🔍_Search.py", label="Knowledge Search", icon="🔍")
 
