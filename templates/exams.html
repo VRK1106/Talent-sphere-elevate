@@ -605,6 +605,7 @@
                 </div>
                 
                 {% for q in taking_assignment.questions %}
+                {% set question_index = loop.index0 %}
                 <div class="question-card">
                     <div style="font-weight: 600; color: var(--ts-text); margin-bottom: 0.8rem; font-size: 1rem;">
                         Q{{ loop.index }}: {{ q.question }} <span style="font-weight: normal; font-size: 0.8rem; color: var(--ts-text-secondary);">({{ q.marks }} marks)</span>
@@ -614,7 +615,7 @@
                         <div style="display: flex; flex-direction: column;">
                             {% for opt in q.options %}
                             <label class="mcq-option-label">
-                                <input type="radio" name="answer_{{ loop.parent.index0 }}" value="{{ opt }}" required style="accent-color: var(--ts-primary);">
+                                <input type="radio" name="answer_{{ question_index }}" value="{{ opt }}" required style="accent-color: var(--ts-primary);">
                                 <span>{{ opt }}</span>
                             </label>
                             {% endfor %}
