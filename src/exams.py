@@ -60,6 +60,29 @@ def init_exams_db() -> None:
         )
         """
     )
+
+    # Migrations for new settings columns
+    cursor.execute("PRAGMA table_info(exams)")
+    exams_cols = [row[1] for row in cursor.fetchall()]
+    if "settings" not in exams_cols:
+        cursor.execute("ALTER TABLE exams ADD COLUMN settings TEXT")
+
+    cursor.execute("PRAGMA table_info(assignments)")
+    assignments_cols = [row[1] for row in cursor.fetchall()]
+    if "settings" not in assignments_cols:
+        cursor.execute("ALTER TABLE assignments ADD COLUMN settings TEXT")
+
+    # 4. Create exam_templates table
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS exam_templates (
+            template_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            config TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
     
     conn.commit()
     conn.close()
@@ -374,3 +397,47 @@ def delete_announcement(announcement_id: int) -> bool:
         return True
     except Exception:
         return False
+
+
+def add_exam_template(name: str, config: dict) -> bool:
+    """Add or replace an exam template configuration."""
+    init_exams_db()
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT OR REPLACE INTO exam_templates (name, config)
+            VALUES (?, ?)
+            """,
+            (name.strip(), json.dumps(config)),
+        )
+        conn.commit()
+        conn.close()
+        return True
+    except Exception:
+        return False
+
+
+def get_exam_templates() -> list[dict[str, Any]]:
+    """Fetch all saved exam templates."""
+    init_exams_db()
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT template_id, name, config, created_at FROM exam_templates ORDER BY template_id DESC")
+        rows = cursor.fetchall()
+        conn.close()
+        
+        result = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["config"] = json.loads(d["config"])
+            except Exception:
+                d["config"] = {}
+            result.append(d)
+        return result
+    except Exception:
+        return []

@@ -207,7 +207,8 @@
 
     <!-- Active Input / Form -->
     <div class="chat-input-area">
-        <div class="chat-input-row">
+        <div id="wizardContainer" style="display: none; width: 100%;"></div>
+        <div class="chat-input-row" id="chatInputRow">
             <textarea id="queryInput" placeholder="Ask a question to your AI Coach..." class="chat-input-field" 
                       onkeydown="handleKeyPress(event)" {% if not groq_api_key %}disabled{% endif %}></textarea>
             <button id="sendBtn" class="btn-ts btn-ts-primary" style="width: auto; padding: 0 1.5rem; height: 44px;" 
@@ -251,6 +252,30 @@
         const queryField = document.getElementById('queryInput');
         const query = queryField.value.trim();
         if (!query || isGenerating) return;
+
+        // Auto mode toggle to RAG and expand wizard in input section if query is about exam creation
+        const queryLower = query.toLowerCase();
+        const isExamRequest = (queryLower.includes("create") || queryLower.includes("make") || queryLower.includes("generate") || queryLower.includes("setup") || queryLower.includes("new")) && (queryLower.includes("exam") || queryLower.includes("test") || queryLower.includes("assessment") || queryLower.includes("quiz"));
+        if (isExamRequest) {
+            const modeGeneral = document.getElementById('modeGeneral');
+            if (modeGeneral && modeGeneral.checked) {
+                document.getElementById('modeRag').checked = true;
+            }
+            
+            // Clear query field
+            queryField.value = '';
+            
+            // Expand the wizard inside the chat input area container
+            const wizContainer = document.getElementById('wizardContainer');
+            wizContainer.style.display = 'block';
+            wizContainer.innerHTML = getExamWizardHtml();
+            initExamWizard();
+            
+            // Hide standard chat input row
+            document.getElementById('chatInputRow').style.display = 'none';
+            scrollToBottom();
+            return; // Early return to prevent normal message sending
+        }
 
         // Clear query field
         queryField.value = '';
@@ -317,11 +342,20 @@
             const activeTextEl = document.getElementById('activeResponseText');
             activeTextEl.innerHTML = ''; // Clear thinking
 
+            let skipReload = false;
+
             while (true) {
                 const { value, done } = await reader.read();
                 if (done) break;
                 
                 const chunk = decoder.decode(value, { stream: true });
+                
+                if (chunk.includes('[EXAM_WIZARD_START]')) {
+                    skipReload = true;
+                    activeTextEl.innerHTML = getExamWizardHtml();
+                    initExamWizard();
+                    break;
+                }
                 
                 // Check if chunk contains sources metadata block at the end
                 if (chunk.includes('[SOURCES_JSON_START]')) {
@@ -350,7 +384,9 @@
 
             finishGeneration();
             // Refresh conversation in sidebar
-            window.location.reload();
+            if (!skipReload) {
+                window.location.reload();
+            }
 
         } catch (err) {
             if (err.name === 'AbortError') {
@@ -437,5 +473,1246 @@
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
     }
+
+    // --- Interactive Exam Creator Wizard JS ---
+    let wizardDocs = [];
+    let wizardTrainees = [];
+    let wizardQuestions = [];
+    let wizardSections = [
+        { name: 'Section A - MCQ', type: 'mcq', count: 2, marks: 10, negative: false, negative_value: 0, partial: false }
+    ];
+
+    function getExamWizardHtml() {
+        return `
+    <div class="ts-card exam-wizard-card" style="border: 1px solid var(--ts-primary); background: var(--ts-popover-bg); margin-top: 10px; border-radius: 12px; padding: 1.5rem; text-align: left; max-width: 100%; box-shadow: var(--ts-shadow); max-height: 520px; overflow-y: auto;">
+        <div style="font-size: 1.1rem; font-weight: 700; color: var(--ts-primary); margin-bottom: 0.8rem; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">📝 <span>Interactive Exam Wizard</span></div>
+            <button type="button" onclick="closeExamWizard()" style="background: none; border: none; font-size: 1.25rem; color: var(--ts-text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0.2rem;" title="Close Wizard">✕</button>
+        </div>
+        
+        <!-- Step indicator -->
+        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--ts-text-secondary); margin-bottom: 1.2rem; border-bottom: 1px solid var(--ts-border); padding-bottom: 0.5rem;">
+            <span id="wizardStepLabel">Step 1 of 9: Title & Instructions</span>
+            <span id="wizardStepNum">11%</span>
+        </div>
+
+        <!-- Step 1: Title & Instructions -->
+        <div id="wizardStep1" class="wizard-step-content">
+            <div style="margin-bottom: 0.8rem;">
+                <label style="font-size: 0.8rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.3rem;">Exam Title</label>
+                <input type="text" id="wizTitle" placeholder="e.g. Steel Heat Treatment Assessment" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+            </div>
+            <div style="margin-bottom: 0.8rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.3rem;">Exam Category</label>
+                    <select id="wizCategory" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                        <option value="Midterm">Midterm</option>
+                        <option value="Practice">Practice</option>
+                        <option value="Mock Interview">Mock Interview</option>
+                        <option value="Quiz">Quiz</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.3rem;">Language</label>
+                    <select id="wizLanguage" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                        <option value="English">English</option>
+                        <option value="Spanish">Spanish</option>
+                        <option value="French">French</option>
+                        <option value="German">German</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-bottom: 1.2rem;">
+                <label style="font-size: 0.8rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.3rem;">Instructions / Guidelines</label>
+                <textarea id="wizInstructions" placeholder="e.g. Read each question carefully. Tab switching is strictly monitored..." rows="3" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text); outline: none; font-family: sans-serif; resize: vertical;"></textarea>
+            </div>
+            <button type="button" onclick="wizardNext(1)" class="btn-ts btn-ts-primary" style="width: 100%; justify-content: center;">Next: Choose Documents ➡️</button>
+        </div>
+
+        <!-- Step 2: Source Selection & Weighting -->
+        <div id="wizardStep2" class="wizard-step-content" style="display: none;">
+            <div style="margin-bottom: 0.8rem;">
+                <label style="font-size: 0.8rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.3rem;">Select Document Sources</label>
+                <div id="wizDocsList" style="max-height: 120px; overflow-y: auto; border: 1px solid var(--ts-border); border-radius: 6px; padding: 0.5rem; background: var(--ts-input-bg); display: flex; flex-direction: column; gap: 0.4rem;">
+                    <span style="font-size: 0.8rem; color: var(--ts-text-secondary);">Loading documents...</span>
+                </div>
+            </div>
+            <div style="margin-bottom: 0.8rem;">
+                <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--ts-text); cursor: pointer;">
+                    <input type="checkbox" id="wizAutoWeight" checked onchange="toggleWeightInputs()"> Auto-weight by document chunk depth
+                </label>
+            </div>
+            <div id="weightsContainer" style="display: none; margin-bottom: 0.8rem; border: 1px solid var(--ts-border); padding: 0.5rem; border-radius: 6px;">
+                <label style="font-size: 0.75rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.3rem;">Assign weights (%) - must sum to 100</label>
+                <div id="wizDocWeightsList" style="display: flex; flex-direction: column; gap: 0.4rem;"></div>
+            </div>
+            <div style="margin-bottom: 0.8rem;">
+                <label style="font-size: 0.8rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.3rem;">Exclude Questions from Previous Exams</label>
+                <div id="wizExcludeExamsList" style="max-height: 100px; overflow-y: auto; border: 1px solid var(--ts-border); border-radius: 6px; padding: 0.5rem; background: var(--ts-input-bg); display: flex; flex-direction: column; gap: 0.4rem;">
+                    <span style="font-size: 0.8rem; color: var(--ts-text-secondary);">Loading previous exams...</span>
+                </div>
+            </div>
+            <div style="margin-bottom: 0.8rem;">
+                <label style="font-size: 0.8rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.3rem;">Difficulty Distribution</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem;">
+                    <div>
+                        <span style="font-size: 0.72rem; color: var(--ts-text-secondary);">Easy %</span>
+                        <input type="number" id="wizDiffEasy" value="40" min="0" max="100" style="width: 100%; padding: 0.3rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                    </div>
+                    <div>
+                        <span style="font-size: 0.72rem; color: var(--ts-text-secondary);">Medium %</span>
+                        <input type="number" id="wizDiffMedium" value="40" min="0" max="100" style="width: 100%; padding: 0.3rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                    </div>
+                    <div>
+                        <span style="font-size: 0.72rem; color: var(--ts-text-secondary);">Hard %</span>
+                        <input type="number" id="wizDiffHard" value="20" min="0" max="100" style="width: 100%; padding: 0.3rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                    </div>
+                </div>
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label style="font-size: 0.8rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.3rem;">Bloom's Taxonomy Cognitive Target</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; font-size: 0.78rem;">
+                    <label style="cursor: pointer;"><input type="checkbox" name="wiz_bloom" value="Recall" checked> Recall</label>
+                    <label style="cursor: pointer;"><input type="checkbox" name="wiz_bloom" value="Application" checked> Application</label>
+                    <label style="cursor: pointer;"><input type="checkbox" name="wiz_bloom" value="Analysis"> Analysis</label>
+                    <label style="cursor: pointer;"><input type="checkbox" name="wiz_bloom" value="Evaluation"> Evaluation</label>
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" onclick="wizardPrev(2)" class="btn-ts btn-ts-secondary" style="flex: 1; justify-content: center;">⬅️ Back</button>
+                <button type="button" onclick="wizardNext(2)" class="btn-ts btn-ts-primary" style="flex: 1; justify-content: center;">Next: Structure ➡️</button>
+            </div>
+        </div>
+
+        <!-- Step 3: Structure & Sections -->
+        <div id="wizardStep3" class="wizard-step-content" style="display: none;">
+            <div style="margin-bottom: 0.8rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                <div>
+                    <label style="font-size: 0.75rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.3rem;">Total Duration (mins)</label>
+                    <input type="number" id="wizDuration" value="30" min="1" style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                </div>
+                <div>
+                    <label style="font-size: 0.75rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.3rem;">Section-wise Limits?</label>
+                    <label style="display: flex; align-items: center; gap: 0.3rem; margin-top: 0.4rem; font-size: 0.75rem; color: var(--ts-text); cursor: pointer;"><input type="checkbox" id="wizSectionLimits"> Enable sub-timers</label>
+                </div>
+            </div>
+            <div style="margin-bottom: 0.8rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--ts-text-secondary);">Sections</label>
+                    <button type="button" onclick="addWizardSection()" class="btn-ts btn-ts-secondary" style="padding: 0.2rem 0.5rem; font-size: 0.72rem;">➕ Add Section</button>
+                </div>
+                <div id="wizSectionsList" style="max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; border: 1px solid var(--ts-border); padding: 0.4rem; border-radius: 6px; background: rgba(255,255,255,0.01);">
+                    <!-- Sections will be listed here dynamically -->
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" onclick="wizardPrev(3)" class="btn-ts btn-ts-secondary" style="flex: 1; justify-content: center;">⬅️ Back</button>
+                <button type="button" onclick="wizardNext(3)" class="btn-ts btn-ts-primary" style="flex: 2; justify-content: center;">⚙️ Generate Questions ➡️</button>
+            </div>
+        </div>
+
+        <!-- Step 4: Question Generation & Review -->
+        <div id="wizardStep4" class="wizard-step-content" style="display: none;">
+            <div id="studentPreviewContainer" style="display: none; border: 1px dashed var(--ts-primary); border-radius: 8px; padding: 0.8rem; margin-bottom: 0.8rem; background: rgba(255,255,255,0.02);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--ts-primary);">👁️ Student Preview Mode</span>
+                    <button type="button" onclick="toggleStudentPreview()" class="btn-ts" style="padding: 0.1rem 0.4rem; font-size: 0.7rem;">Exit Preview</button>
+                </div>
+                <div id="studentPreviewContent" style="max-height: 150px; overflow-y: auto; font-size: 0.78rem; color: var(--ts-text-secondary);"></div>
+            </div>
+            <div style="margin-bottom: 0.8rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--ts-text-secondary);">Generated Questions</label>
+                    <button type="button" onclick="toggleStudentPreview()" class="btn-ts btn-ts-secondary" style="padding: 0.2rem 0.5rem; font-size: 0.72rem;">👁️ Student Preview</button>
+                </div>
+                <div id="wizQuestionsList" style="max-height: 220px; overflow-y: auto; border: 1px solid var(--ts-border); border-radius: 6px; padding: 0.5rem; background: var(--ts-input-bg); display: flex; flex-direction: column; gap: 0.6rem;"></div>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" onclick="wizardPrev(4)" class="btn-ts btn-ts-secondary" style="flex: 1; justify-content: center;">⬅️ Back</button>
+                <button type="button" onclick="wizardNext(4)" class="btn-ts btn-ts-primary" style="flex: 1; justify-content: center;">Next: Security ➡️</button>
+            </div>
+        </div>
+
+        <!-- Step 5: Security & Integrity Settings -->
+        <div id="wizardStep5" class="wizard-step-content" style="display: none;">
+            <div style="margin-bottom: 0.6rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                <label style="font-size: 0.78rem; cursor: pointer;"><input type="checkbox" id="wizShuffleQ" checked> Shuffle Question Order</label>
+                <label style="font-size: 0.78rem; cursor: pointer;"><input type="checkbox" id="wizShuffleOpt" checked> Shuffle Option Order</label>
+            </div>
+            <div style="margin-bottom: 0.6rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                <div>
+                    <label style="font-size: 0.75rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.2rem;">Proctoring Level</label>
+                    <select id="wizProctoring" onchange="toggleProctoringNotice()" style="width: 100%; padding: 0.4rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                        <option value="None">None</option>
+                        <option value="Webcam">Webcam recording</option>
+                        <option value="Webcam+Lockdown">Webcam + lockdown browser</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size: 0.75rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.2rem;">Access Restriction</label>
+                    <select id="wizAccessRestrict" onchange="toggleAccessRestrictValue()" style="width: 100%; padding: 0.4rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                        <option value="None">None</option>
+                        <option value="AccessCode">Access Code</option>
+                        <option value="IPAllowlist">IP Allowlist</option>
+                    </select>
+                </div>
+            </div>
+            <div id="proctoringNoticeContainer" style="display: none; margin-bottom: 0.6rem;">
+                <label style="font-size: 0.75rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.2rem;">Student Consent/Notice Text</label>
+                <input type="text" id="wizConsentText" value="I consent to webcam proctoring monitoring for this exam." style="width: 100%; padding: 0.4rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+            </div>
+            <div id="accessRestrictValueContainer" style="display: none; margin-bottom: 0.6rem;">
+                <label style="font-size: 0.75rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.2rem;">Code / IPs (comma separated)</label>
+                <input type="text" id="wizAccessRestrictValue" placeholder="e.g. SECRET123 or 192.168.1.1" style="width: 100%; padding: 0.4rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+            </div>
+            <div style="margin-bottom: 0.6rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                <div>
+                    <label style="font-size: 0.75rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.2rem;">Late Submission Policy</label>
+                    <select id="wizLateSubmission" onchange="toggleLateGrace()" style="width: 100%; padding: 0.4rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                        <option value="not_allowed">Not allowed</option>
+                        <option value="grace_period">Grace period (specify)</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size: 0.75rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.2rem;">Retake Policy</label>
+                    <select id="wizRetake" onchange="toggleRetakeAttempts()" style="width: 100%; padding: 0.4rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                        <option value="not_allowed">Not allowed</option>
+                        <option value="allowed">Allowed (specify attempts)</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem;">
+                <div id="lateGraceContainer" style="display: none;">
+                    <span style="font-size: 0.72rem; color: var(--ts-text-secondary);">Grace period (mins)</span>
+                    <input type="number" id="wizGracePeriod" value="5" min="1" style="width: 100%; padding: 0.3rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                </div>
+                <div id="retakeAttemptsContainer" style="display: none;">
+                    <span style="font-size: 0.72rem; color: var(--ts-text-secondary);">Max attempts</span>
+                    <input type="number" id="wizMaxAttempts" value="2" min="1" style="width: 100%; padding: 0.3rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" onclick="wizardPrev(5)" class="btn-ts btn-ts-secondary" style="flex: 1; justify-content: center;">⬅️ Back</button>
+                <button type="button" onclick="wizardNext(5)" class="btn-ts btn-ts-primary" style="flex: 1; justify-content: center;">Next: Assignment ➡️</button>
+            </div>
+        </div>
+
+        <!-- Step 6: Assignment & Scheduling -->
+        <div id="wizardStep6" class="wizard-step-content" style="display: none;">
+            <div style="margin-bottom: 0.6rem;">
+                <label style="font-size: 0.75rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.2rem;">Assign To</label>
+                <select id="wizAssignee" style="width: 100%; padding: 0.4rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                    <option value="all">All Trainees</option>
+                </select>
+            </div>
+            <div style="margin-bottom: 0.6rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                <div>
+                    <label style="font-size: 0.75rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.2rem;">Start Date & Time</label>
+                    <input type="datetime-local" id="wizStartDate" style="width: 100%; padding: 0.4rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text); font-size: 0.78rem;">
+                </div>
+                <div>
+                    <label style="font-size: 0.75rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.2rem;">End Date & Time</label>
+                    <input type="datetime-local" id="wizDueDate" style="width: 100%; padding: 0.4rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text); font-size: 0.78rem;">
+                </div>
+            </div>
+            <div style="margin-bottom: 0.6rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                <div>
+                    <label style="font-size: 0.75rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.2rem;">Timezone</label>
+                    <select id="wizTimezone" style="width: 100%; padding: 0.4rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text); font-size: 0.78rem;">
+                        <option value="UTC">UTC</option>
+                        <option value="IST">IST (UTC+5:30)</option>
+                        <option value="EST">EST (UTC-5)</option>
+                        <option value="PST">PST (UTC-8)</option>
+                        <option value="GMT">GMT</option>
+                    </select>
+                </div>
+                <div style="display: flex; flex-direction: column; justify-content: flex-end;">
+                    <label style="font-size: 0.78rem; display: flex; align-items: center; gap: 0.3rem; margin-bottom: 0.4rem; cursor: pointer;">
+                        <input type="checkbox" id="wizNotify" checked onchange="toggleNotifyMins()"> Notify trainees before start
+                    </label>
+                    <div id="notifyMinsContainer">
+                        <span style="font-size: 0.72rem; color: var(--ts-text-secondary);">Minutes before</span>
+                        <input type="number" id="wizNotifyMins" value="15" min="1" style="width: 100%; padding: 0.3rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                <button type="button" onclick="wizardPrev(6)" class="btn-ts btn-ts-secondary" style="flex: 1; justify-content: center;">⬅️ Back</button>
+                <button type="button" onclick="wizardNext(6)" class="btn-ts btn-ts-primary" style="flex: 1; justify-content: center;">Next: Post-Exam ➡️</button>
+            </div>
+        </div>
+
+        <!-- Step 7: Post-Exam Settings -->
+        <div id="wizardStep7" class="wizard-step-content" style="display: none;">
+            <div style="margin-bottom: 0.6rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                <div>
+                    <label style="font-size: 0.75rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.2rem;">Result Release</label>
+                    <select id="wizResultRelease" style="width: 100%; padding: 0.4rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                        <option value="immediate">Immediate</option>
+                        <option value="after_deadline">After deadline</option>
+                        <option value="manual">Manual release</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size: 0.75rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.2rem;">Show Correct Answers</label>
+                    <select id="wizShowAnswers" style="width: 100%; padding: 0.4rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                        <option value="after_release">After result release only</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-bottom: 0.6rem;">
+                <label style="font-size: 0.75rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.2rem;">Grading Mode</label>
+                <select id="wizGradingMode" onchange="renderSubjectiveRubricsList()" style="width: 100%; padding: 0.4rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                    <option value="auto">Auto (Objective types)</option>
+                    <option value="manual">Manual (Subjective)</option>
+                    <option value="hybrid">Hybrid</option>
+                </select>
+            </div>
+            <div id="subjectiveRubricsContainer" style="display: none; margin-bottom: 1rem;">
+                <label style="font-size: 0.75rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.3rem;">Subjective Grading Rubrics</label>
+                <div id="wizSubjectiveList" style="max-height: 120px; overflow-y: auto; border: 1px solid var(--ts-border); border-radius: 6px; padding: 0.4rem; background: var(--ts-input-bg); display: flex; flex-direction: column; gap: 0.5rem;">
+                    <!-- List of subjective questions where user can enter rubric text -->
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" onclick="wizardPrev(7)" class="btn-ts btn-ts-secondary" style="flex: 1; justify-content: center;">⬅️ Back</button>
+                <button type="button" onclick="wizardNext(7)" class="btn-ts btn-ts-primary" style="flex: 1; justify-content: center;">Next: Save Template ➡️</button>
+            </div>
+        </div>
+
+        <!-- Step 8: Save as Template (Optional) -->
+        <div id="wizardStep8" class="wizard-step-content" style="display: none;">
+            <div style="margin-bottom: 1rem;">
+                <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--ts-text); margin-bottom: 0.6rem; cursor: pointer;">
+                    <input type="checkbox" id="wizSaveTemplate" onchange="toggleTemplateNameInput()"> Save configuration as a reusable template
+                </label>
+                <div id="templateNameContainer" style="display: none;">
+                    <label style="font-size: 0.75rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.3rem;">Template Name</label>
+                    <input type="text" id="wizTemplateName" placeholder="e.g. General Coding Exam Config" style="width: 100%; padding: 0.4rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" onclick="wizardPrev(8)" class="btn-ts btn-ts-secondary" style="flex: 1; justify-content: center;">⬅️ Back</button>
+                <button type="button" onclick="wizardNext(8)" class="btn-ts btn-ts-primary" style="flex: 1; justify-content: center;">Next: Final Review ➡️</button>
+            </div>
+        </div>
+
+        <!-- Step 9: Final Review & Create -->
+        <div id="wizardStep9" class="wizard-step-content" style="display: none;">
+            <div id="wizReviewSummary" style="font-size: 0.78rem; line-height: 1.45; color: var(--ts-text-secondary); margin-bottom: 1.2rem; border: 1px solid var(--ts-border); padding: 0.8rem; border-radius: 6px; background: rgba(255,255,255,0.02); max-height: 250px; overflow-y: auto;">
+                <!-- Summary will be populated dynamically -->
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" onclick="wizardPrev(9)" class="btn-ts btn-ts-secondary" style="flex: 1; justify-content: center;">⬅️ Back</button>
+                <button type="button" id="wizSubmitBtn" onclick="submitExamWizard()" class="btn-ts btn-ts-primary" style="flex: 2; justify-content: center; background-color: var(--ts-accent); border-color: var(--ts-accent);">🚀 Create & Assign</button>
+            </div>
+        </div>
+    </div>
+    `;
+    }
+
+    async function initExamWizard() {
+        const chatContainer = document.querySelector('.chat-container');
+        if (chatContainer) {
+            chatContainer.style.height = 'auto';
+            chatContainer.style.minHeight = '650px';
+            chatContainer.style.overflow = 'visible';
+        }
+        wizardSections = [
+            { name: 'Section A - MCQ', type: 'mcq', count: 2, marks: 10, negative: false, negative_value: 0, partial: false }
+        ];
+        wizardQuestions = [];
+        
+        try {
+            const resDocs = await fetch('/assistant/wizard/docs');
+            const dataDocs = await resDocs.json();
+            const listDiv = document.getElementById('wizDocsList');
+            if (dataDocs.documents && dataDocs.documents.length > 0) {
+                listDiv.innerHTML = '';
+                dataDocs.documents.forEach((doc) => {
+                    const label = document.createElement('label');
+                    label.style.display = 'flex';
+                    label.style.alignItems = 'center';
+                    label.style.gap = '0.5rem';
+                    label.style.fontSize = '0.78rem';
+                    label.style.color = 'var(--ts-text)';
+                    label.style.cursor = 'pointer';
+                    label.innerHTML = `<input type="checkbox" name="wiz_doc" value="${escapeHtml(doc)}" onchange="updateWeightsList()" style="accent-color: var(--ts-primary);"> ${escapeHtml(doc)}`;
+                    listDiv.appendChild(label);
+                });
+            } else {
+                listDiv.innerHTML = '<span style="font-size: 0.8rem; color: #ef4444;">No documents found in database. Please upload documents first.</span>';
+            }
+        } catch(e) {
+            console.error("Failed to load documents for wizard", e);
+        }
+
+        try {
+            const resTrainees = await fetch('/assistant/wizard/trainees');
+            const dataTrainees = await resTrainees.json();
+            const selectEl = document.getElementById('wizAssignee');
+            selectEl.innerHTML = '<option value="all">All Trainees</option>';
+            if (dataTrainees.trainees && dataTrainees.trainees.length > 0) {
+                dataTrainees.trainees.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.employee_id;
+                    opt.textContent = `${t.name} (${t.domain.toUpperCase()})`;
+                    selectEl.appendChild(opt);
+                });
+            }
+        } catch(e) {
+            console.error("Failed to load trainees for wizard", e);
+        }
+
+        try {
+            const resPrev = await fetch('/assistant/wizard/previous_exams');
+            const dataPrev = await resPrev.json();
+            const excludeDiv = document.getElementById('wizExcludeExamsList');
+            if (dataPrev.exams && dataPrev.exams.length > 0) {
+                excludeDiv.innerHTML = '';
+                dataPrev.exams.forEach(ex => {
+                    const label = document.createElement('label');
+                    label.style.display = 'flex';
+                    label.style.alignItems = 'center';
+                    label.style.gap = '0.5rem';
+                    label.style.fontSize = '0.78rem';
+                    label.style.color = 'var(--ts-text)';
+                    label.style.cursor = 'pointer';
+                    label.innerHTML = `<input type="checkbox" name="wiz_exclude" value="${ex.exam_id}" style="accent-color: var(--ts-primary);"> ${escapeHtml(ex.title)}`;
+                    excludeDiv.appendChild(label);
+                });
+            } else {
+                excludeDiv.innerHTML = '<span style="font-size: 0.75rem; color: var(--ts-text-secondary);">No previous exams found.</span>';
+            }
+        } catch(e) {
+            console.error("Failed to load previous exams", e);
+        }
+
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomStr = tomorrow.toISOString().substring(0, 16);
+        document.getElementById('wizStartDate').value = new Date().toISOString().substring(0, 16);
+        document.getElementById('wizDueDate').value = tomStr;
+
+        renderSectionsList();
+    }
+
+    function toggleWeightInputs() {
+        const autoWeight = document.getElementById('wizAutoWeight').checked;
+        document.getElementById('weightsContainer').style.display = autoWeight ? 'none' : 'block';
+        updateWeightsList();
+    }
+
+    function updateWeightsList() {
+        const listDiv = document.getElementById('wizDocWeightsList');
+        listDiv.innerHTML = '';
+        const checkedDocs = Array.from(document.querySelectorAll('input[name="wiz_doc"]:checked')).map(el => el.value);
+        
+        if (checkedDocs.length === 0) {
+            listDiv.innerHTML = '<span style="font-size: 0.75rem; color: var(--ts-text-secondary);">No documents selected.</span>';
+            return;
+        }
+        
+        const baseW = Math.floor(100 / checkedDocs.length);
+        checkedDocs.forEach((doc) => {
+            const row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.justifyContent = 'space-between';
+            row.style.alignItems = 'center';
+            row.style.fontSize = '0.75rem';
+            row.style.marginBottom = '0.2rem';
+            
+            row.innerHTML = `
+                <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 60%;">${escapeHtml(doc)}</span>
+                <input type="number" id="wizWeight_${doc}" value="${baseW}" min="0" max="100" class="wiz-doc-weight" style="width: 60px; padding: 0.2rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+            `;
+            listDiv.appendChild(row);
+        });
+    }
+
+    function addWizardSection() {
+        const id = wizardSections.length + 1;
+        const sectName = 'Section ' + String.fromCharCode(65 + wizardSections.length);
+        wizardSections.push({
+            id,
+            name: sectName,
+            type: 'mcq',
+            count: 2,
+            marks: 10,
+            negative: false,
+            negative_value: 0,
+            partial: false
+        });
+        renderSectionsList();
+    }
+
+    function removeWizardSection(idx) {
+        if (wizardSections.length <= 1) {
+            alert('An exam must have at least one section.');
+            return;
+        }
+        wizardSections.splice(idx, 1);
+        renderSectionsList();
+    }
+
+    function updateSectionField(idx, field, val) {
+        wizardSections[idx][field] = val;
+        if (field === 'negative') {
+            renderSectionsList();
+        }
+    }
+
+    function renderSectionsList() {
+        const sList = document.getElementById('wizSectionsList');
+        if (!sList) return;
+        sList.innerHTML = '';
+        wizardSections.forEach((sect, idx) => {
+            const div = document.createElement('div');
+            div.style.border = '1px solid var(--ts-border)';
+            div.style.borderRadius = '6px';
+            div.style.padding = '0.5rem';
+            div.style.background = 'rgba(255,255,255,0.02)';
+            div.style.display = 'flex';
+            div.style.flexDirection = 'column';
+            div.style.gap = '0.3rem';
+            
+            div.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <input type="text" value="${escapeHtml(sect.name)}" onchange="updateSectionField(${idx}, 'name', this.value)" style="font-size: 0.78rem; font-weight: 700; background: transparent; border: none; color: var(--ts-primary); border-bottom: 1px dashed var(--ts-border); width: 70%; outline: none;">
+                    <button type="button" onclick="removeWizardSection(${idx})" style="background: none; border: none; cursor: pointer; font-size: 0.78rem; color: #ef4444;">❌</button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; margin-top: 0.2rem;">
+                    <div>
+                        <span style="font-size: 0.68rem; color: var(--ts-text-secondary);">Type</span>
+                        <select onchange="updateSectionField(${idx}, 'type', this.value)" style="width: 100%; font-size: 0.72rem; padding: 0.2rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                            <option value="mcq" ${sect.type === 'mcq' ? 'selected' : ''}>MCQ</option>
+                            <option value="multi-select" ${sect.type === 'multi-select' ? 'selected' : ''}>Multi-Select</option>
+                            <option value="short_answer" ${sect.type === 'short_answer' ? 'selected' : ''}>Short Answer</option>
+                            <option value="numerical" ${sect.type === 'numerical' ? 'selected' : ''}>Numerical</option>
+                            <option value="coding" ${sect.type === 'coding' ? 'selected' : ''}>Coding</option>
+                            <option value="subjective" ${sect.type === 'subjective' ? 'selected' : ''}>Subjective</option>
+                        </select>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem;">
+                        <div>
+                            <span style="font-size: 0.68rem; color: var(--ts-text-secondary);">Count</span>
+                            <input type="number" value="${sect.count}" min="1" onchange="updateSectionField(${idx}, 'count', parseInt(this.value))" style="width: 100%; font-size: 0.72rem; padding: 0.2rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                        </div>
+                        <div>
+                            <span style="font-size: 0.68rem; color: var(--ts-text-secondary);">Marks</span>
+                            <input type="number" value="${sect.marks}" min="1" onchange="updateSectionField(${idx}, 'marks', parseInt(this.value))" style="width: 100%; font-size: 0.72rem; padding: 0.2rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.2rem; font-size: 0.68rem;">
+                    <label style="display: flex; align-items: center; gap: 0.2rem; cursor: pointer;">
+                        <input type="checkbox" ${sect.negative ? 'checked' : ''} onchange="updateSectionField(${idx}, 'negative', this.checked)"> Negative marking
+                    </label>
+                    ${sect.negative ? `<input type="number" step="0.25" placeholder="Penalty" value="${sect.negative_value}" onchange="updateSectionField(${idx}, 'negative_value', parseFloat(this.value))" style="width: 50px; font-size: 0.68rem; padding: 0.1rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">` : ''}
+                    <label style="display: flex; align-items: center; gap: 0.2rem; cursor: pointer;">
+                        <input type="checkbox" ${sect.partial ? 'checked' : ''} onchange="updateSectionField(${idx}, 'partial', this.checked)"> Partial credit
+                    </label>
+                </div>
+            `;
+            sList.appendChild(div);
+        });
+    }
+
+    async function fetchQuestionsFromAI() {
+        const listDiv = document.getElementById('wizQuestionsList');
+        listDiv.innerHTML = '<div style="font-size: 0.85rem; color: var(--ts-primary); text-align: center; padding: 1rem;">⚙️ Generating questions from selected documents via AI...<br><span style="font-size: 0.75rem; color: var(--ts-text-secondary);">This may take a moment. Please do not close this window.</span></div>';
+        
+        const docs = Array.from(document.querySelectorAll('input[name="wiz_doc"]:checked')).map(el => el.value);
+        const weights = {};
+        docs.forEach(doc => {
+            const input = document.getElementById('wizWeight_' + doc);
+            weights[doc] = input ? parseInt(input.value) : 100 / docs.length;
+        });
+        
+        const difficulty = {
+            easy: parseInt(document.getElementById('wizDiffEasy').value) || 40,
+            medium: parseInt(document.getElementById('wizDiffMedium').value) || 40,
+            hard: parseInt(document.getElementById('wizDiffHard').value) || 20
+        };
+        
+        const blooms = Array.from(document.querySelectorAll('input[name="wiz_bloom"]:checked')).map(el => el.value);
+        const exclude_exams = Array.from(document.querySelectorAll('input[name="wiz_exclude"]:checked')).map(el => el.value);
+        const auto_weight = document.getElementById('wizAutoWeight').checked;
+        
+        const modelSelect = document.getElementById('chatModel');
+        const model = modelSelect ? modelSelect.value : 'llama-3.3-70b-versatile';
+        
+        try {
+            const res = await fetch('/assistant/wizard/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    docs,
+                    weights,
+                    sections: wizardSections,
+                    difficulty,
+                    blooms,
+                    exclude_exams,
+                    auto_weight,
+                    model
+                })
+            });
+            const data = await res.json();
+            if (data.error) {
+                listDiv.innerHTML = `<div style="font-size: 0.85rem; color: #ef4444; padding: 1rem;">Error: ${escapeHtml(data.error)}</div>`;
+                return;
+            }
+            
+            wizardQuestions = data.questions || [];
+            renderQuestionsList();
+        } catch(e) {
+            listDiv.innerHTML = `<div style="font-size: 0.85rem; color: #ef4444; padding: 1rem;">Failed to connect to generator endpoint: ${e.message}</div>`;
+        }
+    }
+
+    function renderQuestionsList() {
+        const listDiv = document.getElementById('wizQuestionsList');
+        listDiv.innerHTML = '';
+        if (wizardQuestions.length === 0) {
+            listDiv.innerHTML = '<span style="font-size: 0.8rem; color: var(--ts-text-secondary);">No questions generated.</span>';
+            return;
+        }
+        
+        wizardQuestions.forEach((q, idx) => {
+            const card = document.createElement('div');
+            card.style.border = q.duplicate_flag ? '2px solid #ef4444' : '1px solid var(--ts-border)';
+            card.style.borderRadius = '6px';
+            card.style.padding = '0.6rem';
+            card.style.background = q.duplicate_flag ? 'rgba(239, 68, 68, 0.05)' : 'rgba(255,255,255,0.01)';
+            card.style.marginBottom = '0.5rem';
+            
+            let dupWarning = q.duplicate_flag ? `<div style="font-size: 0.68rem; color: #ef4444; font-weight: 700; margin-bottom: 0.3rem;">⚠️ Near-duplicate question detected! Review or regenerate.</div>` : '';
+            
+            let optionsHtml = '';
+            if (q.type === 'mcq' && q.options) {
+                optionsHtml = `<div style="font-size: 0.72rem; color: var(--ts-text-secondary); margin-top: 0.3rem; display: flex; flex-direction: column; gap: 0.2rem;">`;
+                q.options.forEach((opt, oIdx) => {
+                    optionsHtml += `
+                        <div style="display: flex; align-items: center; gap: 0.3rem;">
+                            <span>${String.fromCharCode(65 + oIdx)}.</span>
+                            <input type="text" value="${escapeHtml(opt)}" onchange="updateQuestionOption(${idx}, ${oIdx}, this.value)" style="font-size: 0.72rem; flex: 1; padding: 0.1rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                        </div>`;
+                });
+                optionsHtml += `</div>`;
+            }
+            
+            card.innerHTML = `
+                ${dupWarning}
+                <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                    <div style="display: flex; gap: 0.4rem; align-items: flex-start;">
+                        <span style="font-size: 0.78rem; font-weight: 700; color: var(--ts-primary);">Q${idx+1}</span>
+                        <textarea rows="2" onchange="updateQuestionText(${idx}, this.value)" style="flex: 1; font-size: 0.78rem; padding: 0.3rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text); font-family: sans-serif; resize: vertical;">${escapeHtml(q.question)}</textarea>
+                    </div>
+                    ${optionsHtml}
+                    <div style="display: flex; gap: 0.4rem; align-items: center;">
+                        <span style="font-size: 0.68rem; color: var(--ts-text-secondary);">Correct/Explanation:</span>
+                        <input type="text" value="${escapeHtml(q.correct_answer || '')}" onchange="updateQuestionCorrect(${idx}, this.value)" style="flex: 1; font-size: 0.7rem; padding: 0.2rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.2rem;">
+                        <div style="font-size: 0.65rem; color: var(--ts-primary);">
+                            Section: <b>${escapeHtml(q.section || 'General')}</b> &middot; Type: <b>${escapeHtml(q.type.toUpperCase())}</b> &middot; Marks: <b>${q.marks}</b>
+                        </div>
+                        <div style="display: flex; gap: 0.3rem;">
+                            <button type="button" onclick="moveQuestion(${idx}, -1)" class="btn-ts" style="padding: 0.1rem 0.3rem; font-size: 0.65rem;" title="Move Up">↑</button>
+                            <button type="button" onclick="moveQuestion(${idx}, 1)" class="btn-ts" style="padding: 0.1rem 0.3rem; font-size: 0.65rem;" title="Move Down">↓</button>
+                            <button type="button" onclick="regenerateQuestion(${idx})" class="btn-ts" style="padding: 0.1rem 0.3rem; font-size: 0.65rem;" title="Regenerate single question">🔄</button>
+                            <button type="button" onclick="removeWizardQuestion(${idx})" style="background: none; border: none; cursor: pointer; font-size: 0.8rem; color: #ef4444;" title="Remove Question">❌</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            listDiv.appendChild(card);
+        });
+    }
+
+    async function regenerateQuestion(idx) {
+        const originalQ = wizardQuestions[idx];
+        const sectionName = originalQ.section || 'General';
+        const sectionConfig = wizardSections.find(s => s.name === sectionName) || { type: originalQ.type, marks: originalQ.marks };
+        
+        const docs = Array.from(document.querySelectorAll('input[name="wiz_doc"]:checked')).map(el => el.value);
+        const weights = {};
+        docs.forEach(doc => {
+            const input = document.getElementById('wizWeight_' + doc);
+            weights[doc] = input ? parseInt(input.value) : 100 / docs.length;
+        });
+        
+        const difficulty = {
+            easy: parseInt(document.getElementById('wizDiffEasy').value) || 40,
+            medium: parseInt(document.getElementById('wizDiffMedium').value) || 40,
+            hard: parseInt(document.getElementById('wizDiffHard').value) || 20
+        };
+        
+        const blooms = Array.from(document.querySelectorAll('input[name="wiz_bloom"]:checked')).map(el => el.value);
+        const exclude_exams = Array.from(document.querySelectorAll('input[name="wiz_exclude"]:checked')).map(el => el.value);
+        const auto_weight = document.getElementById('wizAutoWeight').checked;
+        
+        const modelSelect = document.getElementById('chatModel');
+        const model = modelSelect ? modelSelect.value : 'llama-3.3-70b-versatile';
+        
+        const singleSection = {
+            name: sectionName,
+            type: sectionConfig.type,
+            count: 1,
+            marks: sectionConfig.marks
+        };
+        
+        try {
+            const res = await fetch('/assistant/wizard/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    docs,
+                    weights,
+                    sections: [singleSection],
+                    difficulty,
+                    blooms,
+                    exclude_exams,
+                    auto_weight,
+                    model
+                })
+            });
+            const data = await res.json();
+            if (data.error) {
+                alert('Failed to regenerate question: ' + data.error);
+                return;
+            }
+            if (data.questions && data.questions.length > 0) {
+                wizardQuestions[idx] = data.questions[0];
+                renderQuestionsList();
+            } else {
+                alert('AI returned no questions. Try again.');
+            }
+        } catch(e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
+    function toggleStudentPreview() {
+        const container = document.getElementById('studentPreviewContainer');
+        if (container.style.display === 'none') {
+            container.style.display = 'block';
+            const previewContent = document.getElementById('studentPreviewContent');
+            previewContent.innerHTML = '';
+            wizardQuestions.forEach((q, idx) => {
+                let optionsHtml = '';
+                if (q.type === 'mcq' && q.options) {
+                    optionsHtml = `<div style="margin-left: 1rem; margin-top: 0.2rem; display: flex; flex-direction: column; gap: 0.15rem;">`;
+                    q.options.forEach((opt, oIdx) => {
+                        optionsHtml += `<label style="font-size:0.75rem;"><input type="radio" name="preview_q_${idx}" disabled> ${String.fromCharCode(65 + oIdx)}. ${escapeHtml(opt)}</label>`;
+                    });
+                    optionsHtml += `</div>`;
+                } else {
+                    optionsHtml = `<textarea rows="2" disabled style="width: 100%; font-size: 0.72rem; margin-top: 0.3rem;" placeholder="Student response space..."></textarea>`;
+                }
+                const item = document.createElement('div');
+                item.style.marginBottom = '0.8rem';
+                item.innerHTML = `
+                    <div><b>Q${idx+1}.</b> ${escapeHtml(q.question)} <span style="font-size: 0.65rem; color: var(--ts-primary);">(${q.marks} Marks)</span></div>
+                    ${optionsHtml}
+                `;
+                previewContent.appendChild(item);
+            });
+        } else {
+            container.style.display = 'none';
+        }
+    }
+
+    function moveQuestion(idx, dir) {
+        const targetIdx = idx + dir;
+        if (targetIdx < 0 || targetIdx >= wizardQuestions.length) return;
+        
+        const temp = wizardQuestions[idx];
+        wizardQuestions[idx] = wizardQuestions[targetIdx];
+        wizardQuestions[targetIdx] = temp;
+        renderQuestionsList();
+    }
+
+    window.removeWizardQuestion = function(idx) {
+        wizardQuestions.splice(idx, 1);
+        renderQuestionsList();
+    };
+
+    function updateQuestionText(idx, val) {
+        wizardQuestions[idx].question = val;
+    }
+    function updateQuestionCorrect(idx, val) {
+        wizardQuestions[idx].correct_answer = val;
+    }
+    function updateQuestionOption(idx, oIdx, val) {
+        if (wizardQuestions[idx].options) {
+            wizardQuestions[idx].options[oIdx] = val;
+        }
+    }
+    function updateQuestionRubric(idx, val) {
+        wizardQuestions[idx].rubric = val;
+    }
+
+    function toggleProctoringNotice() {
+        const val = document.getElementById('wizProctoring').value;
+        document.getElementById('proctoringNoticeContainer').style.display = val === 'None' ? 'none' : 'block';
+    }
+    function toggleAccessRestrictValue() {
+        const val = document.getElementById('wizAccessRestrict').value;
+        document.getElementById('accessRestrictValueContainer').style.display = val === 'None' ? 'none' : 'block';
+    }
+    function toggleLateGrace() {
+        const val = document.getElementById('wizLateSubmission').value;
+        document.getElementById('lateGraceContainer').style.display = val === 'grace_period' ? 'block' : 'none';
+    }
+    function toggleRetakeAttempts() {
+        const val = document.getElementById('wizRetake').value;
+        document.getElementById('retakeAttemptsContainer').style.display = val === 'allowed' ? 'block' : 'none';
+    }
+    function toggleNotifyMins() {
+        const val = document.getElementById('wizNotify').checked;
+        document.getElementById('notifyMinsContainer').style.display = val ? 'block' : 'none';
+    }
+    function toggleTemplateNameInput() {
+        const checked = document.getElementById('wizSaveTemplate').checked;
+        document.getElementById('templateNameContainer').style.display = checked ? 'block' : 'none';
+    }
+
+    function renderSubjectiveRubricsList() {
+        const rubricsList = document.getElementById('wizSubjectiveList');
+        if (!rubricsList) return;
+        rubricsList.innerHTML = '';
+        
+        let subCount = 0;
+        wizardQuestions.forEach((q, idx) => {
+            if (q.type !== 'mcq' && q.type !== 'multi-select') {
+                subCount++;
+                const div = document.createElement('div');
+                div.style.borderBottom = '1px dashed var(--ts-border)';
+                div.style.paddingBottom = '0.4rem';
+                div.style.marginBottom = '0.4rem';
+                div.innerHTML = `
+                    <div style="font-size: 0.75rem; color: var(--ts-text);">Q${idx+1}. ${escapeHtml(q.question)}</div>
+                    <div style="margin-top: 0.2rem;">
+                        <span style="font-size: 0.68rem; color: var(--ts-text-secondary);">Grading Rubric / Criteria</span>
+                        <input type="text" placeholder="e.g. Max marks if time complexity is O(N). Deduct 2 marks if syntax is wrong." value="${escapeHtml(q.rubric || '')}" onchange="updateQuestionRubric(${idx}, this.value)" style="width: 100%; font-size: 0.7rem; padding: 0.2rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text);">
+                    </div>
+                `;
+                rubricsList.appendChild(div);
+            }
+        });
+        
+        const container = document.getElementById('subjectiveRubricsContainer');
+        const gradingVal = document.getElementById('wizGradingMode').value;
+        if (subCount > 0 && (gradingVal === 'manual' || gradingVal === 'hybrid')) {
+            container.style.display = 'block';
+        } else {
+            container.style.display = 'none';
+        }
+    }
+
+    function wizardNext(step) {
+        if (step === 1) {
+            const title = document.getElementById('wizTitle').value.trim();
+            const inst = document.getElementById('wizInstructions').value.trim();
+            if (!title) {
+                alert('Please enter an exam title.');
+                return;
+            }
+            if (!inst) {
+                alert('Please enter instructions.');
+                return;
+            }
+            showStep(2);
+        } else if (step === 2) {
+            const checkedDocs = Array.from(document.querySelectorAll('input[name="wiz_doc"]:checked')).map(el => el.value);
+            if (checkedDocs.length === 0) {
+                alert('Please select at least one document.');
+                return;
+            }
+            const autoWeight = document.getElementById('wizAutoWeight').checked;
+            if (!autoWeight) {
+                let totalW = 0;
+                let valid = true;
+                checkedDocs.forEach(doc => {
+                    const input = document.getElementById('wizWeight_' + doc);
+                    const val = parseInt(input ? input.value : 0);
+                    if (isNaN(val) || val < 0) {
+                        valid = false;
+                    }
+                    totalW += val;
+                });
+                if (!valid) {
+                    alert('Please enter valid non-negative weights.');
+                    return;
+                }
+                if (totalW !== 100) {
+                    alert('Weights must sum to exactly 100%. Current sum: ' + totalW + '%');
+                    return;
+                }
+            }
+            const easy = parseInt(document.getElementById('wizDiffEasy').value) || 0;
+            const med = parseInt(document.getElementById('wizDiffMedium').value) || 0;
+            const hard = parseInt(document.getElementById('wizDiffHard').value) || 0;
+            if (easy + med + hard !== 100) {
+                alert('Difficulty percentages must sum to exactly 100%. Current sum: ' + (easy + med + hard) + '%');
+                return;
+            }
+            showStep(3);
+        } else if (step === 3) {
+            const duration = parseInt(document.getElementById('wizDuration').value);
+            if (isNaN(duration) || duration < 1) {
+                alert('Please enter a valid total duration.');
+                return;
+            }
+            if (wizardSections.length === 0) {
+                alert('Please configure at least one section.');
+                return;
+            }
+            let valid = true;
+            wizardSections.forEach(s => {
+                if (!s.name.trim() || isNaN(s.count) || s.count < 1 || isNaN(s.marks) || s.marks < 1) {
+                    valid = false;
+                }
+            });
+            if (!valid) {
+                alert('Please check sections configuration (name, question count, and marks are required).');
+                return;
+            }
+            showStep(4);
+            fetchQuestionsFromAI();
+        } else if (step === 4) {
+            if (wizardQuestions.length === 0) {
+                alert('No questions generated yet. Please wait or regenerate.');
+                return;
+            }
+            let hasUnresolvedDups = false;
+            wizardQuestions.forEach(q => {
+                if (q.duplicate_flag) {
+                    hasUnresolvedDups = true;
+                }
+            });
+            if (hasUnresolvedDups) {
+                if (!confirm('Warning: You have questions marked as duplicate. Are you sure you want to proceed?')) {
+                    return;
+                }
+            }
+            showStep(5);
+        } else if (step === 5) {
+            const proctor = document.getElementById('wizProctoring').value;
+            const consent = document.getElementById('wizConsentText').value.trim();
+            if (proctor !== 'None' && !consent) {
+                alert('Proctoring consent notice text is required.');
+                return;
+            }
+            showStep(6);
+        } else if (step === 6) {
+            const assignee = document.getElementById('wizAssignee').value;
+            const startDate = document.getElementById('wizStartDate').value;
+            const endDate = document.getElementById('wizDueDate').value;
+            if (!assignee) {
+                alert('Please select an assignee.');
+                return;
+            }
+            if (startDate && endDate) {
+                if (new Date(endDate) <= new Date(startDate)) {
+                    alert('End date/time must be after start date/time.');
+                    return;
+                }
+            }
+            showStep(7);
+            renderSubjectiveRubricsList();
+        } else if (step === 7) {
+            const grading = document.getElementById('wizGradingMode').value;
+            if (grading === 'auto') {
+                let missingRubric = false;
+                wizardQuestions.forEach(q => {
+                    if (q.type !== 'mcq' && q.type !== 'multi-select') {
+                        if (!q.rubric || !q.rubric.trim()) {
+                            missingRubric = true;
+                        }
+                    }
+                });
+                if (missingRubric) {
+                    alert('Grading rubrics are required for subjective questions if Auto-grading is selected.');
+                    return;
+                }
+            }
+            showStep(8);
+        } else if (step === 8) {
+            const saveTemp = document.getElementById('wizSaveTemplate').checked;
+            const tempName = document.getElementById('wizTemplateName').value.trim();
+            if (saveTemp && !tempName) {
+                alert('Template name is required if saving as a template.');
+                return;
+            }
+            showStep(9);
+            renderSummary();
+        }
+    }
+
+    function wizardPrev(step) {
+        showStep(step - 1);
+    }
+
+    function showStep(stepNum) {
+        for (let i = 1; i <= 9; i++) {
+            const stepDiv = document.getElementById('wizardStep' + i);
+            if (stepDiv) stepDiv.style.display = 'none';
+        }
+        document.getElementById('wizardStep' + stepNum).style.display = 'block';
+
+        const stepLabels = [
+            "Step 1 of 9: Title & Instructions",
+            "Step 2 of 9: Source & Weighting",
+            "Step 3 of 9: Structure & Sections",
+            "Step 4 of 9: AI Generation & Review",
+            "Step 5 of 9: Security Settings",
+            "Step 6 of 9: Assignment & Dates",
+            "Step 7 of 9: Post-Exam & Rubric",
+            "Step 8 of 9: Save as Template",
+            "Step 9 of 9: Final Review Summary"
+        ];
+        document.getElementById('wizardStepLabel').textContent = stepLabels[stepNum - 1];
+        document.getElementById('wizardStepNum').textContent = Math.round((stepNum / 9) * 100) + '%';
+    }
+
+    function renderSummary() {
+        const summaryDiv = document.getElementById('wizReviewSummary');
+        const title = document.getElementById('wizTitle').value.trim();
+        const instructions = document.getElementById('wizInstructions').value.trim() || 'None';
+        const category = document.getElementById('wizCategory').value;
+        const lang = document.getElementById('wizLanguage').value;
+        
+        const duration = parseInt(document.getElementById('wizDuration').value) || 30;
+        const sectLimits = document.getElementById('wizSectionLimits').checked ? 'Enabled' : 'Disabled';
+        
+        const assignee = document.getElementById('wizAssignee');
+        const assigneeLabel = assignee.options[assignee.selectedIndex] ? assignee.options[assignee.selectedIndex].text : 'All';
+        const start_date = document.getElementById('wizStartDate').value || 'Not scheduled';
+        const end_date = document.getElementById('wizDueDate').value || 'Not scheduled';
+        const tz = document.getElementById('wizTimezone').value;
+        
+        const proctor = document.getElementById('wizProctoring').value;
+        const late = document.getElementById('wizLateSubmission').value;
+        const retakes = document.getElementById('wizRetake').value;
+        
+        const grading = document.getElementById('wizGradingMode').value;
+        const result = document.getElementById('wizResultRelease').value;
+        
+        const docs = Array.from(document.querySelectorAll('input[name="wiz_doc"]:checked')).map(el => el.value);
+        
+        let sectionsSummary = '';
+        wizardSections.forEach(s => {
+            sectionsSummary += `<li><b>${escapeHtml(s.name)}</b>: ${s.count} Qs (${s.marks} marks each, type: ${s.type})</li>`;
+        });
+        
+        let totalMarks = wizardQuestions.reduce((acc, q) => acc + (parseInt(q.marks) || 0), 0);
+        
+        summaryDiv.innerHTML = `
+            <div style="font-weight: 700; color: var(--ts-primary); font-size: 0.95rem; margin-bottom: 0.4rem; display: flex; justify-content: space-between;">
+                <span>${escapeHtml(title)} [${escapeHtml(category)} - ${escapeHtml(lang)}]</span>
+                <button type="button" onclick="showStep(1)" style="font-size:0.65rem;" class="btn-ts">Edit</button>
+            </div>
+            <div style="margin-bottom: 0.5rem;"><b>Instructions:</b> ${escapeHtml(instructions)}</div>
+            
+            <div style="margin-bottom: 0.5rem; border-top: 1px solid var(--ts-border); padding-top: 0.4rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: var(--ts-primary); font-size: 0.8rem;">
+                    <span>Sources & Weighting</span>
+                    <button type="button" onclick="showStep(2)" style="font-size:0.65rem;" class="btn-ts">Edit</button>
+                </div>
+                <div>Docs: ${escapeHtml(docs.join(', '))}</div>
+            </div>
+
+            <div style="margin-bottom: 0.5rem; border-top: 1px solid var(--ts-border); padding-top: 0.4rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: var(--ts-primary); font-size: 0.8rem;">
+                    <span>Structure & Sections</span>
+                    <button type="button" onclick="showStep(3)" style="font-size:0.65rem;" class="btn-ts">Edit</button>
+                </div>
+                <div>Duration: ${duration} mins &middot; Sub-timers: ${sectLimits}</div>
+                <div>Total Questions: ${wizardQuestions.length} &middot; Total Marks: ${totalMarks}</div>
+                <ul style="margin-left: 1rem; font-size: 0.72rem;">${sectionsSummary}</ul>
+            </div>
+            
+            <div style="margin-bottom: 0.5rem; border-top: 1px solid var(--ts-border); padding-top: 0.4rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: var(--ts-primary); font-size: 0.8rem;">
+                    <span>Security & Integrity</span>
+                    <button type="button" onclick="showStep(5)" style="font-size:0.65rem;" class="btn-ts">Edit</button>
+                </div>
+                <div>Proctoring: ${proctor} &middot; Late submission: ${late} &middot; Retakes: ${retakes}</div>
+            </div>
+
+            <div style="margin-bottom: 0.5rem; border-top: 1px solid var(--ts-border); padding-top: 0.4rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: var(--ts-primary); font-size: 0.8rem;">
+                    <span>Scheduling</span>
+                    <button type="button" onclick="showStep(6)" style="font-size:0.65rem;" class="btn-ts">Edit</button>
+                </div>
+                <div>Assignee: ${escapeHtml(assigneeLabel)}</div>
+                <div>Schedule: ${escapeHtml(start_date)} to ${escapeHtml(end_date)} [${tz}]</div>
+            </div>
+
+            <div style="margin-bottom: 0.5rem; border-top: 1px solid var(--ts-border); padding-top: 0.4rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: var(--ts-primary); font-size: 0.8rem;">
+                    <span>Post-Exam Settings</span>
+                    <button type="button" onclick="showStep(7)" style="font-size:0.65rem;" class="btn-ts">Edit</button>
+                </div>
+                <div>Grading: ${grading} &middot; Result release: ${result}</div>
+            </div>
+        `;
+    }
+
+    async function submitExamWizard() {
+        const btn = document.getElementById('wizSubmitBtn');
+        btn.disabled = true;
+        btn.textContent = 'Saving & Assigning...';
+        
+        const title = document.getElementById('wizTitle').value.trim();
+        const instructions = document.getElementById('wizInstructions').value.trim();
+        const duration = parseInt(document.getElementById('wizDuration').value) || 30;
+        const totalMarks = wizardQuestions.reduce((acc, q) => acc + (parseInt(q.marks) || 0), 0);
+        
+        const docs = Array.from(document.querySelectorAll('input[name="wiz_doc"]:checked')).map(el => el.value);
+        const weights = {};
+        docs.forEach(doc => {
+            const input = document.getElementById('wizWeight_' + doc);
+            weights[doc] = input ? parseInt(input.value) : 100 / docs.length;
+        });
+        
+        const difficulty = {
+            easy: parseInt(document.getElementById('wizDiffEasy').value) || 40,
+            medium: parseInt(document.getElementById('wizDiffMedium').value) || 40,
+            hard: parseInt(document.getElementById('wizDiffHard').value) || 20
+        };
+        
+        const blooms = Array.from(document.querySelectorAll('input[name="wiz_bloom"]:checked')).map(el => el.value);
+        const exclude_exams = Array.from(document.querySelectorAll('input[name="wiz_exclude"]:checked')).map(el => el.value);
+        const auto_weight = document.getElementById('wizAutoWeight').checked;
+        
+        const scheduling = {
+            assignee_id: document.getElementById('wizAssignee').value,
+            start_date: document.getElementById('wizStartDate').value,
+            end_date: document.getElementById('wizDueDate').value,
+            timezone: document.getElementById('wizTimezone').value,
+            notification: document.getElementById('wizNotify').checked,
+            notification_mins: parseInt(document.getElementById('wizNotifyMins').value) || 15
+        };
+        
+        const security = {
+            shuffleQuestions: document.getElementById('wizShuffleQ').checked,
+            shuffleOptions: document.getElementById('wizShuffleOpt').checked,
+            proctoring: document.getElementById('wizProctoring').value,
+            consentText: document.getElementById('wizConsentText').value,
+            accessRestriction: document.getElementById('wizAccessRestrict').value,
+            accessRestrictionValue: document.getElementById('wizAccessRestrictValue').value,
+            lateSubmission: document.getElementById('wizLateSubmission').value,
+            gracePeriod: parseInt(document.getElementById('wizGracePeriod').value) || 0,
+            retakePolicy: document.getElementById('wizRetake').value,
+            maxAttempts: parseInt(document.getElementById('wizMaxAttempts').value) || 1
+        };
+        
+        const postExam = {
+            resultRelease: document.getElementById('wizResultRelease').value,
+            showAnswers: document.getElementById('wizShowAnswers').value,
+            grading: document.getElementById('wizGradingMode').value
+        };
+        
+        const settings = {
+            duration,
+            category: document.getElementById('wizCategory').value,
+            language: document.getElementById('wizLanguage').value,
+            source_files: { docs, weights, auto_weight },
+            difficulty_distribution: difficulty,
+            blooms_taxonomy: blooms,
+            exclude_exams,
+            sections: wizardSections,
+            scheduling,
+            security,
+            post_exam: postExam
+        };
+        
+        const save_as_template = document.getElementById('wizSaveTemplate').checked;
+        const template_name = document.getElementById('wizTemplateName').value.trim();
+        
+        try {
+            const res = await fetch('/assistant/wizard/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title,
+                    description: instructions,
+                    total_marks: totalMarks,
+                    questions: wizardQuestions,
+                    settings,
+                    save_as_template,
+                    template_name
+                })
+            });
+            const data = await res.json();
+            if (data.error) {
+                alert('Failed to save exam: ' + data.error);
+                btn.disabled = false;
+                btn.textContent = '🚀 Create & Assign';
+                return;
+            }
+            
+            const card = document.querySelector('.exam-wizard-card');
+            card.innerHTML = `
+                <div style="text-align: center; padding: 2rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🎉</div>
+                    <div style="font-size: 1.2rem; font-weight: 700; color: var(--ts-primary); margin-bottom: 0.5rem;">Exam Created & Assigned!</div>
+                    <div style="font-size: 0.88rem; color: var(--ts-text-secondary); margin-bottom: 1.5rem;">
+                        The assessment <b>"${escapeHtml(title)}"</b> has been successfully stored and assigned to the selected trainees.
+                    </div>
+                    <button type="button" onclick="window.location.reload()" class="btn-ts btn-ts-primary" style="width: auto; padding: 0.6rem 2rem; margin: 0 auto; display: block;">
+                        🔄 Refresh Chat & Exit
+                    </button>
+                </div>
+            `;
+        } catch(e) {
+            alert('Failed to connect to saving endpoint: ' + e.message);
+            btn.disabled = false;
+            btn.textContent = '🚀 Create & Assign';
+        }
+    }
+
+    function closeExamWizard() {
+        const chatContainer = document.querySelector('.chat-container');
+        if (chatContainer) {
+            chatContainer.style.height = '';
+            chatContainer.style.minHeight = '';
+            chatContainer.style.overflow = '';
+        }
+        document.getElementById('wizardContainer').style.display = 'none';
+        document.getElementById('wizardContainer').innerHTML = '';
+        document.getElementById('chatInputRow').style.display = 'flex';
+    }
+
+    // Expose functions globally to onclick handlers
+    window.wizardNext = wizardNext;
+    window.wizardPrev = wizardPrev;
+    window.submitExamWizard = submitExamWizard;
+    window.closeExamWizard = closeExamWizard;
+    window.addWizardSection = addWizardSection;
+    window.removeWizardSection = removeWizardSection;
+    window.updateSectionField = updateSectionField;
+    window.toggleWeightInputs = toggleWeightInputs;
+    window.updateWeightsList = updateWeightsList;
+    window.toggleStudentPreview = toggleStudentPreview;
+    window.moveQuestion = moveQuestion;
+    window.regenerateQuestion = regenerateQuestion;
+    window.updateQuestionOption = updateQuestionOption;
+    window.updateQuestionText = updateQuestionText;
+    window.updateQuestionCorrect = updateQuestionCorrect;
+    window.updateQuestionRubric = updateQuestionRubric;
+    window.toggleProctoringNotice = toggleProctoringNotice;
+    window.toggleAccessRestrictValue = toggleAccessRestrictValue;
+    window.toggleLateGrace = toggleLateGrace;
+    window.toggleRetakeAttempts = toggleRetakeAttempts;
+    window.toggleNotifyMins = toggleNotifyMins;
+    window.toggleTemplateNameInput = toggleTemplateNameInput;
+    window.renderSubjectiveRubricsList = renderSubjectiveRubricsList;
+    window.showStep = showStep;
 </script>
 {% endblock %}

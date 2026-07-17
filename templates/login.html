@@ -276,6 +276,43 @@
     .card{ opacity:1; transform:none; }
   }
 </style>
+
+<script>
+    // Tab-specific Session Management for login
+    (function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        let tabId = urlParams.get('tab_id');
+        let storedTabId = sessionStorage.getItem('ts_tab_id');
+        
+        if (!storedTabId) {
+            storedTabId = 'tab_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+            sessionStorage.setItem('ts_tab_id', storedTabId);
+        }
+        
+        if (tabId !== storedTabId) {
+            urlParams.set('tab_id', storedTabId);
+            window.location.search = urlParams.toString();
+        }
+    })();
+
+    // Intercept form submissions to inject the tab ID
+    document.addEventListener("DOMContentLoaded", () => {
+        document.addEventListener("submit", function(e) {
+            const form = e.target;
+            const tabId = sessionStorage.getItem('ts_tab_id');
+            if (tabId) {
+                let input = form.querySelector('input[name="tab_id"]');
+                if (!input) {
+                    input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'tab_id';
+                    form.appendChild(input);
+                }
+                input.value = tabId;
+            }
+        });
+    });
+</script>
 </head>
 <body>
 

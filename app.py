@@ -1267,6 +1267,12 @@ def exams_take():
         session['taking_assignment_id'] = assignment_id
     return redirect(url_for('exams'))
 
+@app.route('/exams/cancel')
+@login_required
+def exams_cancel():
+    session.pop('taking_assignment_id', None)
+    return redirect(url_for('exams'))
+
 @app.route('/exams/submit', methods=['POST'])
 @login_required
 def exams_submit():
@@ -1393,6 +1399,19 @@ active_generations = {} # employee_id -> { "session_id", "query", "partial_respo
 
 @app.before_request
 def before_request_cleanup():
+    # Exam Proctoring Redirect Lock:
+    # If the student is actively taking an assignment, they are locked to /exams, /exams/submit, /exams/cancel, /logout, or static/assets files
+    if session.get('authenticated') and session.get('taking_assignment_id'):
+        path = request.path
+        allowed_paths = ['/exams', '/logout', '/static', '/assets']
+        is_allowed = False
+        for p in allowed_paths:
+            if path.startswith(p):
+                is_allowed = True
+                break
+        if not is_allowed:
+            return redirect(url_for('exams'))
+
     # Only clean up for authenticated users and non-static/non-assistant routes
     if session.get('authenticated'):
         path = request.path
@@ -1476,6 +1495,16 @@ def chat_stream():
         if not new_title.strip():
             new_title = "Conversation"
         rename_chat_session(active_session_id, new_title)
+
+    query_lower = query.lower()
+    is_exam_request = ("create" in query_lower or "make" in query_lower or "generate" in query_lower or "setup" in query_lower or "new" in query_lower) and ("exam" in query_lower or "test" in query_lower or "assessment" in query_lower or "quiz" in query_lower)
+    
+    if is_exam_request:
+        def wizard_event_generator():
+            yield "[EXAM_WIZARD_START]"
+            add_chat_message(active_session_id, "assistant", "Interactive Exam Creator Wizard opened.", [])
+        return Response(stream_with_context(wizard_event_generator()), mimetype='text/event-stream')
+
         
     sources = []
     if mode == "RAG (Document Guided)":
@@ -1620,5 +1649,269 @@ def assistant_session_delete():
             session.pop('active_chat_session_id', None)
     return redirect(url_for('assistant'))
 
+@app.route('/assistant/wizard/docs')
+@login_required
+def assistant_wizard_docs():
+    try:
+        from src.vectorstore import get_collection
+        coll = get_collection()
+        res = coll.get(include=["metadatas"])
+        metadatas = res.get("metadatas") or []
+        docs = sorted(list(set(m["source"] for m in metadatas if m and "source" in m)))
+        return jsonify({"documents": docs})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/assistant/wizard/trainees')
+@login_required
+def assistant_wizard_trainees():
+    try:
+        import sqlite3
+        conn = sqlite3.connect(str(_DB_PATH))
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT employee_id, full_name, domain FROM users WHERE role = 'trainee'")
+        trainees = [{"employee_id": r["employee_id"], "name": r["full_name"], "domain": r["domain"]} for r in cursor.fetchall()]
+        conn.close()
+        return jsonify({"trainees": trainees})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/assistant/wizard/previous_exams')
+@login_required
+def assistant_wizard_previous_exams():
+    try:
+        from src.exams import get_all_exams
+        return jsonify({"exams": get_all_exams()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/assistant/wizard/templates')
+@login_required
+def assistant_wizard_get_templates():
+    try:
+        from src.exams import get_exam_templates
+        return jsonify({"templates": get_exam_templates()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/assistant/wizard/generate', methods=['POST'])
+@login_required
+def assistant_wizard_generate():
+    data = request.get_json() or {}
+    docs = data.get('docs', [])
+    weights_input = data.get('weights', {})
+    sections = data.get('sections', [])
+    difficulty = data.get('difficulty', {"easy": 40, "medium": 40, "hard": 20})
+    blooms = data.get('blooms', [])
+    exclude_exam_ids = data.get('exclude_exams', [])
+    model = data.get('model', 'llama-3.3-70b-versatile')
+    auto_weight = data.get('auto_weight', False)
+    
+    if not GROQ_API_KEY:
+        return jsonify({"error": "Groq API key not configured"}), 400
+    if not docs:
+        return jsonify({"error": "No documents selected"}), 400
+    if not sections:
+        return jsonify({"error": "No sections configured"}), 400
+        
+    try:
+        from src.vectorstore import get_collection
+        coll = get_collection()
+        
+        if auto_weight:
+            doc_chunks_count = {}
+            for doc in docs:
+                res = coll.get(where={"source": doc}, include=[])
+                doc_chunks_count[doc] = len(res.get("ids") or [])
+            total_chunks = sum(doc_chunks_count.values()) or 1
+            weights = {doc: (doc_chunks_count[doc] / total_chunks) for doc in docs}
+        else:
+            total_w = sum(float(weights_input.get(d, 0)) for d in docs) or 1
+            weights = {d: (float(weights_input.get(d, 0)) / total_w) for d in docs}
+            
+        excluded_question_texts = []
+        from src.exams import get_exam_by_id
+        for ex_id in exclude_exam_ids:
+            try:
+                ex = get_exam_by_id(int(ex_id))
+                if ex and ex.get("questions"):
+                    for q in ex["questions"]:
+                        if q.get("question"):
+                            excluded_question_texts.append(q["question"])
+            except Exception:
+                pass
+                
+        all_questions = []
+        
+        for section in sections:
+            sect_name = section.get('name', 'General Section')
+            sect_type = section.get('type', 'mcq')
+            sect_qty = int(section.get('count', 2))
+            sect_marks = int(section.get('marks', 10))
+            
+            doc_list = list(docs)
+            base_counts = {doc: int(sect_qty * weights.get(doc, 0)) for doc in doc_list}
+            remainder = sect_qty - sum(base_counts.values())
+            
+            sorted_docs_by_fraction = sorted(
+                doc_list,
+                key=lambda doc: (sect_qty * weights.get(doc, 0)) - base_counts[doc],
+                reverse=True
+            )
+            for i in range(remainder):
+                base_counts[sorted_docs_by_fraction[i]] += 1
+                
+            for doc in doc_list:
+                count_to_generate = base_counts[doc]
+                if count_to_generate <= 0:
+                    continue
+                    
+                res = coll.get(where={"source": doc}, include=["documents"])
+                chunks = res.get("documents") or []
+                if not chunks:
+                    continue
+                context_text = "\n\n".join(chunks[:3])
+                
+                blooms_str = ", ".join(blooms) if blooms else "None specific"
+                diff_str = f"Easy ({difficulty.get('easy', 40)}%), Medium ({difficulty.get('medium', 40)}%), Hard ({difficulty.get('hard', 20)}%)"
+                
+                prompt = (
+                    f"Generate exactly {count_to_generate} test questions for Section '{sect_name}' based on the document excerpt below.\n\n"
+                    f"Constraints:\n"
+                    f"- Section Type: {sect_type.upper()}\n"
+                    f"- Marks per question: {sect_marks}\n"
+                    f"- Difficulty distribution expectation: {diff_str}\n"
+                    f"- Bloom's Taxonomy cognitive target: {blooms_str}\n"
+                )
+                
+                if excluded_question_texts:
+                    prompt += f"- Do NOT generate questions similar to these existing questions: {json.dumps(excluded_question_texts[:10])}\n"
+                    
+                prompt += (
+                    f"\nFormat of each question object in JSON:\n"
+                    f"[{{\n"
+                    f"  \"question\": \"Question text here\",\n"
+                    f"  \"type\": \"{sect_type}\",\n"
+                    f"  \"marks\": {sect_marks},\n"
+                    f"  \"options\": [\"Option A\", \"Option B\", \"Option C\", \"Option D\"],\n"
+                    f"  \"correct_answer\": \"Correct answer text / model answer / rubric grading guide\"\n"
+                    f"}}]\n\n"
+                    f"You MUST return ONLY a valid JSON array of question objects (do not wrap in markdown or prefix text).\n\n"
+                    f"--- DOCUMENT EXCERPT ---\n{context_text}"
+                )
+                
+                from src.llm import generate_chat_answer
+                response = generate_chat_answer(
+                    prompt=prompt,
+                    model_name=model,
+                    system_instruction="You are a professional educational assessor. You output ONLY valid JSON arrays without markdown block wrapping or prefix text."
+                )
+                
+                cleaned_resp = clean_json_response(response)
+                try:
+                    questions_list = json.loads(cleaned_resp)
+                    if isinstance(questions_list, list):
+                        for q in questions_list:
+                            q["section"] = sect_name
+                            all_questions.append(q)
+                except Exception as e:
+                    print(f"Error parsing JSON from response: {e}. Raw response: {response}")
+                    
+        import difflib
+        def similarity_ratio(a, b):
+            return difflib.SequenceMatcher(None, a.lower().strip(), b.lower().strip()).ratio()
+            
+        for i, q1 in enumerate(all_questions):
+            q1["duplicate_flag"] = False
+            for j, q2 in enumerate(all_questions):
+                if i != j and similarity_ratio(q1["question"], q2["question"]) > 0.75:
+                    q1["duplicate_flag"] = True
+                    break
+            if not q1["duplicate_flag"]:
+                for prev_q_text in excluded_question_texts:
+                    if similarity_ratio(q1["question"], prev_q_text) > 0.75:
+                        q1["duplicate_flag"] = True
+                        break
+                        
+        return jsonify({"questions": all_questions})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/assistant/wizard/save', methods=['POST'])
+@login_required
+def assistant_wizard_save():
+    if session.get('user_role') != 'admin':
+        return jsonify({"error": "Admin role required"}), 403
+        
+    data = request.get_json() or {}
+    title = data.get('title', '').strip()
+    description = data.get('description', '').strip()
+    total_marks = data.get('total_marks', 0)
+    questions = data.get('questions', [])
+    settings = data.get('settings', {})
+    save_as_template = data.get('save_as_template', False)
+    template_name = data.get('template_name', '').strip()
+    
+    scheduling = settings.get('scheduling', {})
+    assignee_id = scheduling.get('assignee_id')
+    due_date = scheduling.get('end_date')
+    
+    if not title or not questions or not assignee_id:
+        return jsonify({"error": "Required fields missing"}), 400
+        
+    try:
+        from src.exams import add_exam, assign_exam, add_exam_template
+        import sqlite3
+        
+        duration = settings.get('duration', 30)
+        full_desc = f"[Duration: {duration} minutes]\n\n{description}"
+        
+        init_exams_db()
+        conn = sqlite3.connect(str(_DB_PATH))
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            """
+            INSERT INTO exams (title, description, total_marks, questions, settings)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (title, full_desc, total_marks, json.dumps(questions), json.dumps(settings)),
+        )
+        exam_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        trainees_to_assign = []
+        if assignee_id == 'all':
+            conn = sqlite3.connect(str(_DB_PATH))
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT employee_id FROM users WHERE role = 'trainee'")
+            trainees_to_assign = [r["employee_id"] for r in cursor.fetchall()]
+            conn.close()
+        else:
+            trainees_to_assign = [assignee_id]
+            
+        for t_id in trainees_to_assign:
+            conn = sqlite3.connect(str(_DB_PATH))
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO assignments (exam_id, trainee_id, due_date, settings)
+                VALUES (?, ?, ?, ?)
+                """,
+                (exam_id, t_id, due_date, json.dumps(settings)),
+            )
+            conn.commit()
+            conn.close()
+            
+        if save_as_template and template_name:
+            add_exam_template(template_name, settings)
+            
+        return jsonify({"status": "success", "exam_id": exam_id})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
