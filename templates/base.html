@@ -370,6 +370,7 @@
             <span id="theme-btn-text">☀️ Switch to Light</span>
         </button>
 
+        {% if session.get('user_role') == 'admin' %}
         <hr class="ts-divider-line">
 
         <!-- Platform Health Indicators -->
@@ -403,6 +404,7 @@
         <div style='font-size: 0.72rem; color: var(--ts-text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.6rem;'>Vector Catalog Stats</div>
         <div style="font-size: 0.8rem; color: var(--ts-text-secondary); margin-bottom: 0.25rem;">📚 Documents Indexed: <b style="color: var(--ts-text)">{{ stats.sources }}</b></div>
         <div style="font-size: 0.8rem; color: var(--ts-text-secondary); margin-bottom: 0.6rem;">🧩 Total Vector Chunks: <b style="color: var(--ts-text)">{{ stats.total_chunks }}</b></div>
+        {% endif %}
 
         <hr class="ts-divider-line">
         <!-- Logout -->
