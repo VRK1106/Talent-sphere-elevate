@@ -575,6 +575,28 @@
 
     <!-- taking exam flow -->
     {% if taking_assignment %}
+        <!-- Fullscreen Activation Prompt Overlay -->
+        <div id="fullscreenPromptOverlay" style="position: fixed; inset: 0; background: var(--ts-bg, #0b0f19); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+            <div class="ts-card" style="width: 90%; max-width: 550px; padding: 2.5rem; border-radius: 16px; text-align: center; border: 1px solid var(--ts-border); box-shadow: var(--ts-shadow); background: var(--ts-popover-bg, #0d0d0d);">
+                <div style="font-size: 4rem; margin-bottom: 1rem;">🔒</div>
+                <div style="font-size: 1.5rem; font-weight: 800; color: var(--ts-primary); margin-bottom: 0.8rem; letter-spacing: 0.03em;">SECURE EXAM SYSTEM</div>
+                <div style="font-size: 0.95rem; color: var(--ts-text); margin-bottom: 2rem; line-height: 1.6; text-align: left;">
+                    To attend this exam, you must enter secure fullscreen mode. 
+                    <br><br>
+                    During the assessment:
+                    <ul style="margin: 0.5rem 0; padding-left: 1.2rem; color: var(--ts-text-secondary);">
+                        <li>You cannot switch tabs or minimize the browser window.</li>
+                        <li>Screenshots and copy-pasting are disabled.</li>
+                        <li>Exiting fullscreen mode counts as a proctoring infraction.</li>
+                    </ul>
+                    Any violation will register a warning or automatically flag the test as <b>malpractice</b> and submit a score of 0.
+                </div>
+                <button type="button" onclick="startExamFullscreen()" class="btn-ts btn-ts-primary" style="width: auto; padding: 0.8rem 3rem; font-weight: 600; font-size: 1rem; border-radius: var(--ts-radius);">
+                    🔒 Enter Fullscreen & Begin Exam
+                </button>
+            </div>
+        </div>
+
         <div class="ts-card" style="padding: 1.8rem; border-radius: 12px; margin-top: 1.5rem; margin-bottom: 3rem; border-color: var(--ts-primary);">
             <div style="font-size: 1.25rem; font-weight: 700; color: var(--ts-primary); margin-bottom: 0.3rem;">{{ taking_assignment.title }}</div>
             <div style="font-size: 0.9rem; color: var(--ts-text-secondary); margin-bottom: 1.5rem; border-bottom: 1px solid var(--ts-border); padding-bottom: 0.8rem;">
@@ -793,6 +815,36 @@
             modal.style.setProperty('display', 'none', 'important');
         }
         modalActive = false;
+        
+        // Re-force fullscreen when they click resume
+        const docEl = document.documentElement;
+        if (docEl.requestFullscreen) {
+            docEl.requestFullscreen();
+        } else if (docEl.mozRequestFullScreen) {
+            docEl.mozRequestFullScreen();
+        } else if (docEl.webkitRequestFullscreen) {
+            docEl.webkitRequestFullscreen();
+        } else if (docEl.msRequestFullscreen) {
+            docEl.msRequestFullscreen();
+        }
+    }
+
+    function startExamFullscreen() {
+        const docEl = document.documentElement;
+        if (docEl.requestFullscreen) {
+            docEl.requestFullscreen();
+        } else if (docEl.mozRequestFullScreen) {
+            docEl.mozRequestFullScreen();
+        } else if (docEl.webkitRequestFullscreen) {
+            docEl.webkitRequestFullscreen();
+        } else if (docEl.msRequestFullscreen) {
+            docEl.msRequestFullscreen();
+        }
+        
+        const overlay = document.getElementById('fullscreenPromptOverlay');
+        if (overlay) {
+            overlay.style.setProperty('display', 'none', 'important');
+        }
     }
 
     function flagMalpracticeAndSubmit() {
@@ -903,6 +955,24 @@
                 takeForm.addEventListener('contextmenu', function(e) {
                     e.preventDefault();
                 });
+
+                // Listen to fullscreen changes
+                const handleFullscreenChange = function() {
+                    if (IS_TAKING_EXAM) {
+                        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+                        const promptOverlay = document.getElementById('fullscreenPromptOverlay');
+                        const isPromptVisible = promptOverlay && promptOverlay.style.display !== 'none';
+                        
+                        if (!isFullscreen && !isPromptVisible) {
+                            triggerInfraction('fullscreen-exit');
+                        }
+                    }
+                };
+                
+                document.addEventListener('fullscreenchange', handleFullscreenChange);
+                document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+                document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+                document.addEventListener('MSFullscreenChange', handleFullscreenChange);
             }
         }
         

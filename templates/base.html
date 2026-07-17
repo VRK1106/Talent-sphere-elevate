@@ -239,7 +239,7 @@
 <body>
 
     <!-- 1. Custom Sidebar -->
-    {% if session.get('authenticated') %}
+    {% if session.get('authenticated') and not session.get('taking_assignment_id') %}
     <div class="sidebar-container">
         <!-- Logo Branding Header -->
         <div class="ts-sidebar-header-sticky">
@@ -413,7 +413,7 @@
     {% endif %}
 
     <!-- 2. Main Page Content Block -->
-    <div class="main-content" {% if not session.get('authenticated') %}style="width: 100%; max-width: 100%;"{% endif %}>
+    <div class="main-content" {% if not session.get('authenticated') or session.get('taking_assignment_id') %}style="width: 100%; max-width: 100%; padding: 2rem;"{% endif %}>
         <div class="main-container">
             {% block content %}{% endblock %}
         </div>
