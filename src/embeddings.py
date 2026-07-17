@@ -2,7 +2,7 @@
 
 Design notes (these materially affect retrieval quality):
 
-* The model is loaded once per session via ``@st.cache_resource``.
+* The model is loaded once per session via a global singleton.
 * Device auto-selects CUDA when available, else CPU.
 * Embeddings are always L2-normalized (``normalize_embeddings=True``) to pair
   correctly with the cosine-distance Chroma collection.
@@ -11,33 +11,28 @@ Design notes (these materially affect retrieval quality):
 
 from __future__ import annotations
 
-import streamlit as st
 from sentence_transformers import SentenceTransformer
-
 from src.config import EMBEDDING_MODEL, QUERY_INSTRUCTION
 
 _BATCH_SIZE = 32
+_model_instance = None
 
 
 def _auto_device() -> str:
     """Return ``"cuda"`` when a GPU is available, otherwise ``"cpu"``."""
     try:
         import torch
-
         return "cuda" if torch.cuda.is_available() else "cpu"
-    except Exception:  # noqa: BLE001 - torch missing/broken -> safe CPU fallback
+    except Exception:
         return "cpu"
 
 
-@st.cache_resource(show_spinner=False)
 def get_model() -> SentenceTransformer:
-    """Load and cache the sentence-transformer model (once per session).
-
-    The first load downloads ~1.3GB, so we wrap it in a spinner that
-    communicates progress to the user.
-    """
-    with st.spinner("Loading embedding model (first run downloads ~1.3GB)…"):
-        return SentenceTransformer(EMBEDDING_MODEL, device=_auto_device())
+    """Load and cache the sentence-transformer model (once per process singleton)."""
+    global _model_instance
+    if _model_instance is None:
+        _model_instance = SentenceTransformer(EMBEDDING_MODEL, device=_auto_device())
+    return _model_instance
 
 
 def embed_documents(texts: list[str]) -> list[list[float]]:

@@ -87,7 +87,8 @@ def generate_rag_answer(query: str, chunks: list[dict[str, Any]], model_name: st
         "You are an expert AI assistant for 'Talent Sphere Elevate', a smart document retrieval and QA platform. "
         "Your task is to answer the user's query truthfully using ONLY the provided document context below. "
         "If the answer cannot be found in the context, state that you do not know based on the provided documents. "
-        "Do not make up facts.\n\n"
+        "Do not make up facts. "
+        "Do NOT include any code blocks, programming snippets, or code examples in your response unless the user explicitly asks for code or programming implementation.\n\n"
         "Cite your sources using bracketed numbers corresponding to the context passages (e.g. [1], [2]) where appropriate."
     )
 
@@ -187,7 +188,8 @@ def generate_rag_answer_stream(query: str, chunks: list[dict[str, Any]], model_n
         "You are an expert AI assistant for 'Talent Sphere Elevate', a smart document retrieval and QA platform. "
         "Your task is to answer the user's query truthfully using ONLY the provided document context below. "
         "If the answer cannot be found in the context, state that you do not know based on the provided documents. "
-        "Do not make up facts.\n\n"
+        "Do not make up facts. "
+        "Do NOT include any code blocks, programming snippets, or code examples in your response unless the user explicitly asks for code or programming implementation.\n\n"
         "Cite your sources using bracketed numbers corresponding to the context passages (e.g. [1], [2]) where appropriate."
     )
 
@@ -215,7 +217,7 @@ def generate_rag_answer_stream(query: str, chunks: list[dict[str, Any]], model_n
             method="POST",
         )
 
-        with urllib.request.urlopen(req, timeout=10.0) as resp:
+        with urllib.request.urlopen(req, timeout=180.0) as resp:
             for line in resp:
                 line_str = line.decode("utf-8").strip()
                 if line_str.startswith("data: "):
@@ -268,7 +270,7 @@ def generate_chat_answer_stream(prompt: str, model_name: str, system_instruction
             method="POST",
         )
 
-        with urllib.request.urlopen(req, timeout=10.0) as resp:
+        with urllib.request.urlopen(req, timeout=180.0) as resp:
             for line in resp:
                 line_str = line.decode("utf-8").strip()
                 if line_str.startswith("data: "):

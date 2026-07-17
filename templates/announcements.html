@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Announcements - Talent Sphere Elevate{% endblock %}
+
+{% block content %}
+<div class="ts-hero">
+    <div class="ts-hero-title">📢 Announcements</div>
+    <div class="ts-hero-subtitle">
+        {% if session.get('user_role') == 'admin' %}
+            Publish system-wide notifications, training notices, or timeline changes to all trainees.
+        {% else %}
+            Read latest broadcast updates and timeline announcements from the administrators.
+        {% endif %}
+    </div>
+</div>
+
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem;">
+            {% for message in messages %}
+                <div style="background-color: rgba(52, 211, 153, 0.1); border: 1px solid rgba(52, 211, 153, 0.2); color: #34d399; padding: 0.75rem; border-radius: 8px; font-size: 0.88rem;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+{% if session.get('user_role') == 'admin' %}
+    <!-- =======================================================================
+         ADMIN VIEW: PUBLISH ANNOUNCEMENT FORM
+         ======================================================================= -->
+    <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; margin-top: 1.5rem;">
+        <div style='font-size: 1.1rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 1rem;'>Publish Announcement</div>
+        
+        <form action="/announcements/create" method="POST" style="display: flex; flex-direction: column; gap: 1.2rem;">
+            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Title</label>
+                <input type="text" name="title" placeholder="e.g. Schedule Update: RAG Workshop" required
+                       style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Content</label>
+                <textarea name="content" placeholder="Enter description or notice text here..." rows="4" required
+                          style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none; font-family: sans-serif;"></textarea>
+            </div>
+            
+            <button type="submit" class="btn-ts btn-ts-primary" style="width: auto; padding: 0.75rem 2rem;">
+                📢 Publish Now
+            </button>
+        </form>
+    </div>
+
+    <!-- Active board notices for Admin -->
+    <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-text); margin-bottom: 1rem;'>Active Board Notices</div>
+    {% if not announcements %}
+        <div class="ts-info-banner" style="padding: 1rem; border-radius: 8px; margin-bottom: 3rem;">
+            <div class="ts-info-body">No active announcements found on the board.</div>
+        </div>
+    {% else %}
+        <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 3rem;">
+            {% for a in announcements %}
+            <div class="ts-card" style="padding: 1.2rem; border-radius: 12px; display: flex; justify-content: space-between; align-items: flex-start;">
+                <div style="flex-grow: 1;">
+                    <div style="font-size: 1.05rem; font-weight: 600; color: var(--ts-text); margin-bottom: 0.2rem;">📢 {{ a.title }}</div>
+                    <div style="font-size: 0.78rem; color: var(--ts-text-muted); margin-bottom: 0.75rem;">
+                        Published: <b>{{ a.created_at }}</b>
+                    </div>
+                    <div style="font-size: 0.92rem; color: var(--ts-text-secondary); line-height: 1.5; white-space: pre-line;">{{ a.content }}</div>
+                </div>
+                <div style="width: auto; margin-left: 1.5rem;">
+                    <form action="/announcements/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this announcement?')">
+                        <input type="hidden" name="announcement_id" value="{{ a.announcement_id }}">
+                        <button type="submit" class="btn-ts btn-ts-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; color: #f87171; border-color: rgba(248, 113, 113, 0.2);">
+                            🗑️ Delete
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+{% else %}
+    <!-- =======================================================================
+         TRAINEE VIEW: READ-ONLY BOARD
+         ======================================================================= -->
+    {% if not announcements %}
+        <div class="ts-info-banner" style="padding: 1rem; border-radius: 8px; margin-top: 1.5rem; margin-bottom: 3rem;">
+            <div class="ts-info-body">No announcements posted yet. Check back later!</div>
+        </div>
+    {% else %}
+        <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem; margin-bottom: 3rem;">
+            {% for a in announcements %}
+            <div class="ts-card" style="padding: 1.2rem; border-radius: 12px;">
+                <div style="font-size: 1.1rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 0.2rem;">📢 {{ a.title }}</div>
+                <div style="font-size: 0.78rem; color: var(--ts-text-muted); margin-bottom: 0.8rem;">
+                    Published: <b>{{ a.created_at }}</b>
+                </div>
+                <div style="font-size: 0.95rem; color: var(--ts-text); line-height: 1.6; white-space: pre-line;">{{ a.content }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+{% endif %}
+{% endblock %}

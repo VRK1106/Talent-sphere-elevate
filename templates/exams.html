@@ -1,0 +1,965 @@
+{% extends "base.html" %}
+{% block title %}Exams & Assessments - Talent Sphere Elevate{% endblock %}
+
+{% block head %}
+<style>
+    .tabs-container {
+        display: flex;
+        border-bottom: 1px solid var(--ts-border);
+        margin-bottom: 1.5rem;
+        gap: 1rem;
+    }
+    .tab-link {
+        background: none;
+        border: none;
+        color: var(--ts-text-secondary);
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s ease;
+    }
+    .tab-link:hover {
+        color: var(--ts-primary);
+    }
+    .tab-link.active {
+        color: var(--ts-primary);
+        border-bottom-color: var(--ts-primary);
+    }
+    .tab-content {
+        display: none;
+        animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    .question-card {
+        border: 1px solid var(--ts-border);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background: rgba(255, 255, 255, 0.01);
+    }
+    
+    .mcq-option-label {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.6rem 0.8rem;
+        border: 1px solid var(--ts-border);
+        border-radius: 6px;
+        margin-bottom: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: rgba(255, 255, 255, 0.01);
+        font-size: 0.9rem;
+    }
+    .mcq-option-label:hover {
+        border-color: var(--ts-primary);
+        background: rgba(99, 102, 241, 0.05);
+    }
+    .mcq-option-label input[type="radio"]:checked + span {
+        font-weight: 600;
+        color: var(--ts-primary);
+    }
+    
+    /* Loading overlay */
+    .loading-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(11, 15, 25, 0.85);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        gap: 1.5rem;
+        backdrop-filter: blur(8px);
+    }
+    .spinner {
+        width: 60px;
+        height: 60px;
+        border: 5px solid rgba(255, 255, 255, 0.1);
+        border-top-color: var(--ts-primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% if session.get('user_role') == 'admin' %}
+    <!-- =======================================================================
+         ADMIN VIEW: EXAM MANAGEMENT
+         ======================================================================= -->
+    <div class="ts-hero">
+        <div class="ts-hero-title">📝 Exam Management</div>
+        <div class="ts-hero-subtitle">
+            Create assessments, assign them to trainees, and review AI-graded results.
+        </div>
+    </div>
+
+    <!-- Alert flashes -->
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                {% for message in messages %}
+                    <div style="background-color: rgba(96, 165, 250, 0.08); border: 1px solid rgba(96, 165, 250, 0.15); color: var(--ts-primary); padding: 0.75rem; border-radius: 8px; font-size: 0.88rem;">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="tabs-container" style="margin-top: 1.5rem;">
+        <button class="tab-link {% if active_tab == 'create' %}active{% endif %}" onclick="openTab(event, 'create-exam')">Create Exam</button>
+        <button class="tab-link {% if active_tab == 'assign' %}active{% endif %}" onclick="openTab(event, 'assign-exam')">Assign</button>
+        <button class="tab-link {% if active_tab == 'results' %}active{% endif %}" onclick="openTab(event, 'review-results')">Results</button>
+    </div>
+
+    <!-- Tab 1: Create Exam -->
+    <div id="create-exam" class="tab-content" style="{% if active_tab == 'create' %}display: block;{% endif %}">
+        <form action="/exams/create/save" method="POST" id="saveExamForm">
+            <!-- 1. Exam Basic Info -->
+            <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 1rem;'>1. Exam Basic Info</div>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                        <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Exam Title</label>
+                        <input type="text" name="title" value="{{ exam_title_draft }}" placeholder="e.g. GS1 Supply Chain Visibility" required
+                               style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                        <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Exam Description</label>
+                        <textarea name="description" placeholder="e.g. Test understanding of supply chain tracking..." rows="2"
+                                  style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none; font-family: sans-serif;">{{ exam_desc_draft }}</textarea>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.4rem; width: 150px;">
+                        <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Total Marks</label>
+                        <input type="number" name="total_marks" min="1" max="100" value="{{ exam_marks_draft or 50 }}"
+                               style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <!-- 2. AI-Assisted Question Generator -->
+        <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
+            <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 0.5rem;'>2. AI-Assisted Question Generator</div>
+            <div style='font-size: 0.88rem; color: var(--ts-text-secondary); margin-bottom: 1rem;'>Select an uploaded PDF and let Groq generate professional questions.</div>
+            
+            {% if not stats.source_names %}
+                <div style="padding: 0.5rem; color: var(--ts-text-muted); font-size: 0.9rem;">
+                    No documents are currently ingested. Upload files in Document Ingestion to enable AI Question Generation.
+                </div>
+            {% else %}
+                <form action="/exams/create/generate_ai" method="POST" id="aiGeneratorForm">
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                            <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Select Target PDF</label>
+                            <select name="ai_doc" style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                                {% for s in stats.source_names %}
+                                    <option value="{{ s }}">{{ s }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                            <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Questions to Generate</label>
+                            <input type="number" name="ai_count" min="2" max="10" value="5"
+                                   style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                        </div>
+                    </div>
+
+                    {% if not groq_api_key %}
+                        <div style="background-color: rgba(96, 165, 250, 0.08); padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; color: var(--ts-text-secondary); margin-bottom: 1rem;">
+                            Groq API Key not detected. Please add GROQ_API_KEY to your .env file to enable AI Question Generation.
+                        </div>
+                    {% else %}
+                        <div style="display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1.5rem;">
+                            <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Groq Model for Generation</label>
+                            <select name="ai_model" style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                                {% for m in ollama_models %}
+                                    <option value="{{ m }}">{{ m }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn-ts btn-ts-primary" style="width: auto; padding: 0.75rem 2rem;">
+                            🤖 Generate with Groq
+                        </button>
+                    {% endif %}
+                </form>
+            {% endif %}
+        </div>
+
+        <!-- 3. Manual Question Builder -->
+        <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
+            <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 1rem;'>3. Manual Question Builder</div>
+            
+            <form action="/exams/create/add_manual" method="POST" id="addManualForm" style="display: flex; flex-direction: column; gap: 1.2rem;">
+                <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Question Text</label>
+                    <input type="text" name="mq_text" placeholder="What is the visibility protocol?" required
+                           style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                        <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Question Type</label>
+                        <select name="mq_type" id="manualType" onchange="toggleManualOptions(this.value)"
+                                style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                            <option value="mcq">MCQ</option>
+                            <option value="text">Free-Text</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                        <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Question Marks</label>
+                        <input type="number" name="mq_marks" min="1" max="50" value="10"
+                               style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 0.4rem;" id="manualOptionsGroup">
+                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">MCQ Options (comma separated)</label>
+                    <input type="text" name="mq_opts" id="manualOptionsInput" placeholder="Option A, Option B, Option C, Option D" required
+                           style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Correct Answer / Scoring Rubric</label>
+                    <input type="text" name="mq_ans" placeholder="Correct MCQ option or key phrases for grading text answers" required
+                           style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                </div>
+
+                <button type="submit" class="btn-ts btn-ts-secondary" style="width: auto; padding: 0.75rem 2rem;">
+                    ➕ Add Question
+                </button>
+            </form>
+        </div>
+
+        <!-- 4. Exam Questions Preview -->
+        <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; margin-bottom: 3rem;">
+            <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 1rem;'>4. Exam Questions Preview</div>
+            
+            {% if not exam_questions %}
+                <div style="padding: 1rem; color: var(--ts-text-muted); font-size: 0.9rem;">
+                    No questions added to the exam yet. Build or generate some questions above.
+                </div>
+            {% else %}
+                {% set total_q_marks = exam_questions|sum(attribute='marks') %}
+                <div style="font-size: 0.95rem; margin-bottom: 1.5rem; color: var(--ts-text-secondary);">
+                    Total Questions: <b>{{ exam_questions|length }}</b> &nbsp;·&nbsp; Combined Marks: <b>{{ total_q_marks }}</b>
+                </div>
+
+                {% for q in exam_questions %}
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--ts-border); padding-bottom: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <div style="font-weight: 600; color: var(--ts-text); margin-bottom: 0.3rem;">
+                            Q{{ loop.index }}: {{ q.question }} <span style="font-weight: normal; font-size: 0.8rem; color: var(--ts-text-secondary);">({{ q.type|upper }} · {{ q.marks }} marks)</span>
+                        </div>
+                        <div style="font-size: 0.88rem; color: var(--ts-text-secondary); margin-bottom: 0.25rem;">
+                            Rubric/Correct Answer: <i>{{ q.correct_answer }}</i>
+                        </div>
+                        {% if q.options %}
+                            <div style="font-size: 0.85rem; color: var(--ts-text-muted);">Options: {{ q.options|join(', ') }}</div>
+                        {% endif %}
+                    </div>
+                    <form action="/exams/create/remove_question" method="POST">
+                        <input type="hidden" name="index" value="{{ loop.index0 }}">
+                        <button type="submit" class="btn-ts btn-ts-secondary" style="padding: 0.35rem 0.6rem; font-size: 0.8rem; color: #f87171; border-color: rgba(248, 113, 113, 0.2);">
+                            🗑️ Remove
+                        </button>
+                    </form>
+                </div>
+                {% endfor %}
+
+                <div style="display: flex; gap: 0.8rem; margin-top: 1.5rem;">
+                    <!-- Save Button Form Submitter -->
+                    <button type="button" class="btn-ts btn-ts-primary" onclick="document.getElementById('saveExamForm').submit()" style="width: auto; padding: 0.75rem 2.5rem;">
+                        💾 Save Exam
+                    </button>
+                    <form action="/exams/create/clear" method="POST">
+                        <button type="submit" class="btn-ts btn-ts-secondary" style="width: auto; padding: 0.75rem 1.5rem;">
+                            🧹 Clear All
+                        </button>
+                    </form>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Tab 2: Assign Exam -->
+    <div id="assign-exam" class="tab-content" style="{% if active_tab == 'assign' %}display: block;{% endif %}">
+        {% if not exams %}
+            <div class="ts-info-banner" style="padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                <div class="ts-info-body">No exams exist in the database. Go to 'Create exam' to build one first!</div>
+            </div>
+        {% else %}
+            <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
+                <form action="/exams/assign" method="POST" style="display: flex; flex-direction: column; gap: 1.2rem;">
+                    <!-- 1. Exam Selector -->
+                    <div class="form-group">
+                        <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Select Exam</label>
+                        <select name="exam_id" onchange="window.location.href='/exams?active_tab=assign&selected_exam_id=' + this.value"
+                                style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                            {% for e in exams %}
+                                <option value="{{ e.exam_id }}" {% if e.exam_id == selected_exam_id %}selected{% endif %}>
+                                    {{ e.title }} · {{ e.questions|length }} questions · {{ e.total_marks }} marks
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- 2. Due Date -->
+                    <div class="form-group" style="width: 250px;">
+                        <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Due Date (optional)</label>
+                        <input type="date" name="due_date" 
+                               style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                    </div>
+
+                    <!-- 3. Trainee selector -->
+                    {% set trainees = get_all_trainees() %}
+                    {% if not trainees %}
+                        <div style="background-color: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; color: #ef4444;">
+                            No trainee users are currently registered in the database.
+                        </div>
+                    {% else %}
+                        <div class="form-group">
+                            <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Assign to Trainees</label>
+                            <select name="trainee_ids" multiple size="5"
+                                    style="padding: 0.5rem; border-radius: 6px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                                {% for u in trainees %}
+                                    <option value="{{ u.employee_id }}">{{ u.full_name }} ({{ u.employee_id }})</option>
+                                {% endfor %}
+                            </select>
+                            <span style="font-size: 0.72rem; color: var(--ts-text-secondary);">Hold Ctrl (or Cmd) to select specific trainees. Leave empty to select all trainees.</span>
+                        </div>
+
+                        <button type="submit" class="btn-ts btn-ts-primary" style="width: auto; padding: 0.75rem 2rem;">
+                            ▶ Assign Exam
+                        </button>
+                    {% endif %}
+                </form>
+            </div>
+
+            <!-- Current assignments list for selected exam -->
+            <div style='font-size: 1.20rem; font-weight: 700; color: var(--ts-text); margin-bottom: 0.8rem;'>Current Assignments</div>
+            
+            {% set active_exam = exams|selectattr('exam_id', 'equalto', selected_exam_id)|first %}
+            {% set assignments = get_assignments_for_exam(selected_exam_id) %}
+            
+            {% if not assignments %}
+                <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; color: var(--ts-text-muted); font-size: 0.9rem;">
+                    Nobody is assigned to this exam yet.
+                </div>
+            {% else %}
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                    {% for a in assignments %}
+                    <div class="ts-nested-card" style="margin-bottom: 0; padding: 1.2rem; display: flex; flex-direction: column; justify-content: space-between; gap: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+                            <div>
+                                <div style="font-weight: 700; color: var(--ts-text-heading); font-size: 1rem;">{{ a.full_name }}</div>
+                                <div style="font-size: 0.78rem; color: var(--ts-text-secondary); margin-top: 0.15rem;">ID: {{ a.trainee_id }} &nbsp;·&nbsp; {{ a.email }}</div>
+                            </div>
+                            
+                            <form action="/exams/assignment/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this assignment?')">
+                                <input type="hidden" name="assignment_id" value="{{ a.assignment_id }}">
+                                <input type="hidden" name="selected_exam_id" value="{{ selected_exam_id }}">
+                                <button type="submit" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #ef4444; border-radius: 6px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease; font-size: 0.85rem;" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'" title="Remove assignment">🗑️</button>
+                            </form>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--ts-border); padding-top: 0.8rem; font-size: 0.82rem;">
+                            <div>
+                                <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ts-text-muted); display: block; margin-bottom: 0.2rem;">Status</span>
+                                {% if a.ai_feedback and 'MALPRACTICE' in a.ai_feedback %}
+                                <span class="ts-badge" style="font-size: 0.75rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--ts-danger); padding: 0.25rem 0.5rem; border-radius: 4px; font-weight: 700;">
+                                    MALPRACTICE
+                                </span>
+                                {% else %}
+                                <span class="ts-badge-outline" style="font-size: 0.75rem; background: {% if a.status == 'completed' %}rgba(52, 211, 153, 0.12){% else %}rgba(245, 158, 11, 0.12){% endif %}; border-color: {% if a.status == 'completed' %}rgba(52, 211, 153, 0.25){% else %}rgba(245, 158, 11, 0.25){% endif %}; color: {% if a.status == 'completed' %}var(--ts-secondary){% else %}var(--ts-warning){% endif %};">
+                                    {{ a.status|upper }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            
+                            <div style="text-align: right;">
+                                <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ts-text-muted); display: block; margin-bottom: 0.2rem;">Score</span>
+                                <span style="font-size: 0.95rem; font-weight: 700; color: {% if a.score is not none %}var(--ts-primary){% else %}var(--ts-text-secondary){% endif %};">
+                                    {{ a.score if a.score is not none else '—' }} <span style="font-size: 0.8rem; font-weight: normal; color: var(--ts-text-muted)">/ {{ active_exam.total_marks }}</span>
+                                </span>
+                            </div>
+                        </div>
+                        
+                        {% if a.due_date %}
+                        <div style="font-size: 0.78rem; color: var(--ts-text-secondary); display: flex; align-items: center; gap: 0.3rem;">
+                            📅 <span>Due: <b>{{ a.due_date }}</b></span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <!-- Delete exam button -->
+            <form action="/exams/delete" method="POST" onsubmit="return confirm('Are you sure you want to permanently delete this exam? This will delete all assignments as well.')" style="margin-bottom: 3rem;">
+                <input type="hidden" name="exam_id" value="{{ selected_exam_id }}">
+                <button type="submit" class="btn-ts" style="width: auto; color: #ef4444; border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05); padding: 0.75rem 2rem;">
+                    🗑️ Delete this exam
+                </button>
+            </form>
+        {% endif %}
+    </div>
+
+    <!-- Tab 3: Review Results -->
+    <div id="review-results" class="tab-content" style="{% if active_tab == 'results' %}display: block;{% endif %}">
+        {% set all_submissions = get_all_completed_submissions() %}
+        {% if not all_submissions %}
+            <div class="ts-info-banner" style="padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                <div class="ts-info-body">No completed assessments found in the system.</div>
+            </div>
+        {% else %}
+            <!-- Review Details Frame -->
+            {% if review_detail %}
+                <div class="ts-card" style="padding: 2rem; border-radius: 16px; margin-bottom: 2rem; border: 1.5px solid var(--ts-primary) !important; box-shadow: 0 10px 30px rgba(99, 102, 241, 0.15) !important;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; gap: 1rem; flex-wrap: wrap;">
+                        <div>
+                            <div style="font-size: 1.35rem; font-weight: 800; color: var(--ts-text-heading);">📝 AI Grade Assessment Details</div>
+                            <div style="font-size: 0.88rem; color: var(--ts-text-secondary); margin-top: 0.25rem;">
+                                Exam: <span style="color: var(--ts-primary); font-weight: 600;">{{ review_detail.title }}</span> &nbsp;·&nbsp; Trainee: <b>{{ review_detail.full_name }}</b>
+                            </div>
+                        </div>
+                        <a href="/exams?active_tab=results" class="btn-ts btn-ts-secondary" style="width: auto; padding: 0.5rem 1.2rem; font-size: 0.85rem; text-decoration: none;">Close Review</a>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; margin-bottom: 2rem; flex-wrap: wrap;">
+                        <!-- Score Display Card -->
+                        <div class="ts-nested-card" style="margin-bottom: 0; padding: 1.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border-color: rgba(99, 102, 241, 0.25);">
+                            <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ts-text-muted); font-weight: 700; margin-bottom: 0.5rem;">Final Score</span>
+                            <div style="font-size: 3rem; font-weight: 800; line-height: 1; background: linear-gradient(135deg, var(--ts-primary) 0%, var(--ts-accent) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                                {{ review_detail.score }}
+                            </div>
+                            <div style="font-size: 0.88rem; color: var(--ts-text-muted); margin-top: 0.4rem;">
+                                out of {{ review_detail.total_marks }} marks
+                            </div>
+                        </div>
+                        
+                        <!-- AI Comments Card -->
+                        <div class="ts-nested-card" style="margin-bottom: 0; padding: 1.5rem; background: linear-gradient(120deg, rgba(99, 102, 241, 0.05), rgba(6, 182, 212, 0.01)) !important; border-color: rgba(99, 102, 241, 0.2);">
+                            <div style="font-weight: 700; color: var(--ts-primary); font-size: 0.95rem; display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem;">
+                                🤖 <span>AI Coach Feedback Summary</span>
+                            </div>
+                            <div style="font-size: 0.92rem; color: var(--ts-text-secondary); line-height: 1.6; font-style: italic;">
+                                "{{ review_detail.ai_feedback_overall }}"
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--ts-text-heading); margin-bottom: 1rem; border-bottom: 1px solid var(--ts-border); padding-bottom: 0.5rem;">Question Level Breakdown</div>
+                    <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                        {% for q in review_detail.questions %}
+                        <div class="ts-nested-card" style="margin-bottom: 0; padding: 1.2rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 0.75rem;">
+                                <div style="font-weight: 700; color: var(--ts-text-heading); font-size: 1.02rem;">
+                                    Q{{ loop.index }}: {{ q.question }}
+                                </div>
+                                <span class="ts-badge-outline" style="font-size: 0.75rem; white-space: nowrap;">
+                                    {{ q.marks }} Marks
+                                </span>
+                            </div>
+                            
+                            <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; font-size: 0.9rem;">
+                                <div style="padding: 0.6rem 0.8rem; background: rgba(0,0,0,0.15); border-radius: 6px; border-left: 3px solid var(--ts-primary);">
+                                    <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--ts-text-muted); display: block; margin-bottom: 0.15rem;">Trainee Answer</span>
+                                    <span style="font-weight: 500; color: var(--ts-text);">"{{ review_detail.answers_submitted[loop.index0|string] if review_detail.answers_submitted[loop.index0|string] else '—' }}"</span>
+                                </div>
+                                
+                                <div style="padding: 0.6rem 0.8rem; background: rgba(255,255,255,0.01); border-radius: 6px; border-left: 3px solid var(--ts-text-secondary); border: 1px solid var(--ts-border);">
+                                    <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--ts-text-muted); display: block; margin-bottom: 0.15rem;">Expected Rubric / Answer</span>
+                                    <span style="font-style: italic; color: var(--ts-text-secondary);">"{{ q.correct_answer }}"</span>
+                                </div>
+                            </div>
+                            
+                            {% set q_grade = review_detail.ai_feedback_questions|selectattr('index', 'equalto', loop.index0)|first %}
+                            {% if q_grade %}
+                                <div style="border-top: 1px dashed var(--ts-border); padding-top: 0.8rem; margin-top: 0.8rem; background: rgba(99, 102, 241, 0.02); border-radius: 8px; padding: 0.8rem;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                                        <span style="font-size: 0.85rem; font-weight: 700; color: var(--ts-primary);">🤖 AI Evaluation</span>
+                                        <span style="font-size: 0.85rem; font-weight: 700; color: var(--ts-secondary);">
+                                            Score: {{ q_grade.score }} / {{ q.marks }}
+                                        </span>
+                                    </div>
+                                    <div style="font-size: 0.88rem; color: var(--ts-text-secondary); line-height: 1.5;">
+                                        {{ q_grade.feedback }}
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Table of Submissions -->
+            <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; margin-bottom: 3rem;">
+                <table class="ts-table">
+                    <thead>
+                        <tr>
+                            <th>Trainee Name</th>
+                            <th>Exam Title</th>
+                            <th>Score</th>
+                            <th>Submitted Date</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for res in all_submissions %}
+                        <tr>
+                            <td style="font-weight: 600;">{{ res.full_name }}</td>
+                            <td>{{ res.title }}</td>
+                            <td style="font-weight: 600; color: {% if res.ai_feedback and 'MALPRACTICE' in res.ai_feedback %}var(--ts-danger){% else %}var(--ts-primary){% endif %};">
+                                {% if res.ai_feedback and 'MALPRACTICE' in res.ai_feedback %}
+                                    0.0 / {{ res.total_marks }} <span style="font-size: 0.7rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: var(--ts-danger); padding: 2px 6px; border-radius: 4px; margin-left: 0.4rem; font-weight: 700;">MALPRACTICE</span>
+                                {% else %}
+                                    {{ res.score }} / {{ res.total_marks }}
+                                {% endif %}
+                            </td>
+                            <td style="font-size: 0.8rem; color: var(--ts-text-muted);">{{ res.completed_at }}</td>
+                            <td style="text-align: right;">
+                                <a href="/exams?active_tab=results&review_assignment_id={{ res.assignment_id }}" class="btn-ts btn-ts-secondary" style="width: auto; padding: 0.35rem 0.8rem; font-size: 0.8rem; text-decoration: none; display: inline-flex;">
+                                    Review AI Grade
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </div>
+
+{% else %}
+    <!-- =======================================================================
+         TRAINEE VIEW: MY ASSESSMENTS
+         ======================================================================= -->
+    <div class="ts-hero">
+        <div class="ts-hero-title">📝 My Assessments</div>
+        <div class="ts-hero-subtitle">
+            View your assigned exams, complete tests, and review AI-graded comments.
+        </div>
+    </div>
+
+    <!-- Alert flashes -->
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem;">
+                {% for message in messages %}
+                    <div style="background-color: rgba(52, 211, 153, 0.1); border: 1px solid rgba(52, 211, 153, 0.2); color: #34d399; padding: 0.75rem; border-radius: 8px; font-size: 0.88rem;">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- taking exam flow -->
+    {% if taking_assignment %}
+        <div class="ts-card" style="padding: 1.8rem; border-radius: 12px; margin-top: 1.5rem; margin-bottom: 3rem; border-color: var(--ts-primary);">
+            <div style="font-size: 1.25rem; font-weight: 700; color: var(--ts-primary); margin-bottom: 0.3rem;">{{ taking_assignment.title }}</div>
+            <div style="font-size: 0.9rem; color: var(--ts-text-secondary); margin-bottom: 1.5rem; border-bottom: 1px solid var(--ts-border); padding-bottom: 0.8rem;">
+                {{ taking_assignment.description }} &nbsp;·&nbsp; Total Marks: <b>{{ taking_assignment.total_marks }}</b>
+            </div>
+
+            <form action="/exams/submit" method="POST" id="takeExamForm">
+                <input type="hidden" name="assignment_id" value="{{ taking_assignment.assignment_id }}">
+                <input type="hidden" name="malpractice" id="malpracticeInput" value="false">
+                
+                <!-- Proctor warning modal -->
+                <div id="proctorWarningModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
+                    <div class="ts-card" style="width: 90%; max-width: 500px; padding: 2.2rem; border-radius: 16px; border: 2.5px solid var(--ts-danger); text-align: center; background: var(--ts-card-bg); box-shadow: 0 20px 50px rgba(239, 68, 68, 0.25);">
+                        <div style="font-size: 3.5rem; margin-bottom: 1rem;">⚠️</div>
+                        <div style="font-size: 1.40rem; font-weight: 800; color: var(--ts-danger); margin-bottom: 0.8rem;">PROCTORING VIOLATION</div>
+                        <div style="font-size: 0.98rem; color: var(--ts-text); margin-bottom: 1.8rem; line-height: 1.6;">
+                            A tab switch, window focus loss, or screenshot attempt was detected. 
+                            This exam is monitored in real-time.
+                            <br><br>
+                            <strong style="color: var(--ts-warning); display: block; padding: 0.5rem; border-radius: 6px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2);">
+                                Warning: 1 infraction registered. The next infraction will cause the exam to immediately close and be submitted as MALPRACTICE with a score of 0.
+                            </strong>
+                        </div>
+                        <button type="button" onclick="dismissWarningModal()" class="btn-ts btn-ts-primary" style="width: auto; padding: 0.65rem 2.8rem; margin: 0 auto; display: block; border-color: var(--ts-danger); background-color: var(--ts-danger);">
+                            I Understand & Resume Exam
+                        </button>
+                    </div>
+                </div>
+                
+                {% for q in taking_assignment.questions %}
+                <div class="question-card">
+                    <div style="font-weight: 600; color: var(--ts-text); margin-bottom: 0.8rem; font-size: 1rem;">
+                        Q{{ loop.index }}: {{ q.question }} <span style="font-weight: normal; font-size: 0.8rem; color: var(--ts-text-secondary);">({{ q.marks }} marks)</span>
+                    </div>
+                    
+                    {% if q.type == 'mcq' %}
+                        <div style="display: flex; flex-direction: column;">
+                            {% for opt in q.options %}
+                            <label class="mcq-option-label">
+                                <input type="radio" name="answer_{{ loop.parent.index0 }}" value="{{ opt }}" required style="accent-color: var(--ts-primary);">
+                                <span>{{ opt }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <textarea name="answer_{{ loop.index0 }}" placeholder="Type answer here..." rows="4" required
+                                  style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none; font-family: sans-serif; box-sizing: border-box;"></textarea>
+                    {% endif %}
+                </div>
+                {% endfor %}
+
+                <div style="display: flex; gap: 0.8rem; margin-top: 1.5rem;">
+                    <button type="submit" class="btn-ts btn-ts-primary" style="width: auto; padding: 0.75rem 2.5rem;">
+                        🚀 Submit Assessment
+                    </button>
+                    <a href="/exams" class="btn-ts btn-ts-secondary" style="width: auto; padding: 0.75rem 1.5rem; text-decoration: none; display: flex; align-items: center;">
+                        ❌ Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    {% else %}
+        
+        <!-- Review details report -->
+        {% if review_detail %}
+            <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; margin-top: 1.5rem; margin-bottom: 2rem; border-color: var(--ts-primary);">
+                <div style="font-size: 1.25rem; font-weight: 700; color: var(--ts-primary); margin-bottom: 0.4rem; display: flex; justify-content: space-between; align-items: center;">
+                    <span>AI Grading Report: {{ review_detail.title }}</span>
+                    <a href="/exams" class="btn-ts btn-ts-secondary" style="width: auto; padding: 0.4rem 1rem; font-size: 0.8rem; text-decoration: none;">Close Report</a>
+                </div>
+                <div style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem;">
+                    Final Score: <span style="color: var(--ts-primary); font-size: 1.15rem; font-weight: 700;">{{ review_detail.score }}</span> / {{ review_detail.total_marks }}
+                </div>
+
+                <div style="font-size: 0.9rem; margin-bottom: 1.5rem;">
+                    <b>AI Comments</b>: {{ review_detail.ai_feedback_overall }}
+                </div>
+
+                <div style="font-weight: 600; margin-bottom: 0.8rem;">Question Level Breakdown:</div>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    {% for q in review_detail.questions %}
+                    <div style="border: 1px solid var(--ts-border); border-radius: 6px; padding: 0.8rem; background: rgba(255,255,255,0.01);">
+                        <div style="font-weight: 600; margin-bottom: 0.4rem;">Q{{ loop.index }}: {{ q.question }} <span style="font-weight: normal; font-size: 0.8rem; color: var(--ts-text-secondary);">({{ q.marks }} marks)</span></div>
+                        <div style="font-size: 0.88rem; margin-bottom: 0.2rem; color: var(--ts-text);">Your Answer: <i style="color: var(--ts-primary);">"{{ review_detail.answers_submitted[loop.index0|string] if review_detail.answers_submitted[loop.index0|string] else '—' }}"</i></div>
+                        <div style="font-size: 0.88rem; margin-bottom: 0.4rem; color: var(--ts-text-secondary);">Correct Answer/Rubric: <i>"{{ q.correct_answer }}"</i></div>
+                        
+                        {% set q_grade = review_detail.ai_feedback_questions|selectattr('index', 'equalto', loop.index0)|first %}
+                        {% if q_grade %}
+                            <div style="font-size: 0.85rem; border-top: 1px dashed var(--ts-border); padding-top: 0.4rem; margin-top: 0.4rem; color: var(--ts-text-secondary);">
+                                Score: <b style="color: var(--ts-primary);">{{ q_grade.score }}</b> / {{ q.marks }}
+                                <br>
+                                AI Feedback: {{ q_grade.feedback }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Lists of assigned and completed -->
+        <div style="margin-top: 1.5rem;">
+            <div style='font-size: 1.25rem; font-weight: 700; color: var(--ts-primary); margin-bottom: 0.8rem;'>Assigned Exams</div>
+            {% set assigned_list = get_trainee_assigned_exams(session.get('user_info', {}).get('employee_id')) %}
+            {% if not assigned_list %}
+                <div class="ts-info-banner" style="padding: 1rem; border-radius: 8px; margin-bottom: 2rem;">
+                    <div class="ts-info-body">You have no pending exam assignments. Nice work!</div>
+                </div>
+            {% else %}
+                <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem;">
+                    {% for a in assigned_list %}
+                    <div class="ts-card" style="padding: 1.2rem; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-size: 1.1rem; font-weight: 600; color: var(--ts-text);">📝 {{ a.title }}</div>
+                            <div style="font-size: 0.85rem; color: var(--ts-text-secondary); margin-top: 0.2rem;">
+                                Due Date: <b>{{ a.due_date if a.due_date else 'Flexible' }}</b> &nbsp;·&nbsp; Total Marks: <b>{{ a.total_marks }}</b>
+                            </div>
+                            <div style="font-size: 0.88rem; color: var(--ts-text-secondary); margin-top: 0.4rem;">{{ a.description }}</div>
+                        </div>
+                        <div style="width: auto;">
+                            <form action="/exams/take" method="POST">
+                                <input type="hidden" name="assignment_id" value="{{ a.assignment_id }}">
+                                <button type="submit" class="btn-ts btn-ts-primary" style="padding: 0.5rem 1.5rem;">
+                                    ▶ Take Exam
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            <div style='font-size: 1.25rem; font-weight: 700; color: var(--ts-primary); margin-bottom: 0.8rem;'>Completed Exams</div>
+            {% set completed_list = get_trainee_completed_exams(session.get('user_info', {}).get('employee_id')) %}
+            {% if not completed_list %}
+                <div style="color: var(--ts-text-muted); font-size: 0.9rem; margin-bottom: 2rem;">No completed exams yet.</div>
+            {% else %}
+                <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; margin-bottom: 3rem;">
+                    <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+                        {% for a in completed_list %}
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--ts-border); padding-bottom: 0.8rem; margin-bottom: 0.4rem; {% if loop.last %}border-bottom: none; margin-bottom: 0; padding-bottom: 0;{% endif %}">
+                            <div>
+                                <span style="font-weight: 600; color: var(--ts-text);">📝 {{ a.title }}</span>
+                                <div style="font-size: 0.85rem; color: var(--ts-text-secondary); margin-top: 0.2rem;">
+                                    Submitted: <b>{{ a.completed_at }}</b> &nbsp;·&nbsp;
+                                    Score: <span style="font-weight: 700; color: {% if a.ai_feedback and 'MALPRACTICE' in a.ai_feedback %}var(--ts-danger){% else %}var(--ts-primary){% endif %};">
+                                        {% if a.ai_feedback and 'MALPRACTICE' in a.ai_feedback %}
+                                            0.0 (MALPRACTICE)
+                                        {% else %}
+                                            {{ a.score }}
+                                        {% endif %}
+                                    </span> / {{ a.total_marks }}
+                                </div>
+                            </div>
+                            <div style="width: auto;">
+                                <a href="/exams?trainee_review_id={{ a.assignment_id }}" class="btn-ts btn-ts-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; text-decoration: none; display: inline-flex;">
+                                    Review Grade
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+
+{% endif %}
+
+<!-- AI Grading Loading Overlay -->
+<div class="loading-overlay" id="gradingOverlay">
+    <div class="spinner"></div>
+    <div style="font-size: 1.2rem; font-weight: 700; color: #ffffff;">AI is grading your answers, please wait...</div>
+    <div style="font-size: 0.9rem; color: #9ca3af;">Verifying MCQ options, reading free-text answers, comparing against expected rubrics, and saving evaluation.</div>
+</div>
+
+<!-- AI Generation Loading Overlay -->
+<div class="loading-overlay" id="generatingOverlay">
+    <div class="spinner"></div>
+    <div style="font-size: 1.2rem; font-weight: 700; color: #ffffff;">Groq is reading document chunks and drafting questions...</div>
+    <div style="font-size: 0.9rem; color: #9ca3af;">Extracting document context, prompting educational models, and parsing output.</div>
+</div>
+
+<script>
+    const IS_TAKING_EXAM = {% if taking_assignment %}true{% else %}false{% endif %};
+    let infractionCount = 0;
+    let modalActive = false;
+
+    function triggerInfraction(type) {
+        if (!IS_TAKING_EXAM) return;
+        
+        // Ignore if grading/submission is already running
+        const gradingOverlay = document.getElementById('gradingOverlay');
+        if (gradingOverlay && gradingOverlay.style.display === 'flex') {
+            return;
+        }
+        
+        if (modalActive) return;
+        
+        infractionCount++;
+        if (infractionCount === 1) {
+            modalActive = true;
+            const modal = document.getElementById('proctorWarningModal');
+            if (modal) {
+                modal.style.setProperty('display', 'flex', 'important');
+            }
+        } else if (infractionCount >= 2) {
+            flagMalpracticeAndSubmit();
+        }
+    }
+
+    function dismissWarningModal() {
+        const modal = document.getElementById('proctorWarningModal');
+        if (modal) {
+            modal.style.setProperty('display', 'none', 'important');
+        }
+        modalActive = false;
+    }
+
+    function flagMalpracticeAndSubmit() {
+        const gradingOverlay = document.getElementById('gradingOverlay');
+        if (gradingOverlay) {
+            const headingDiv = gradingOverlay.querySelector('div:nth-child(2)');
+            if (headingDiv) headingDiv.innerText = "🚨 MALPRACTICE VIOLATION DETECTED";
+            const descDiv = gradingOverlay.querySelector('div:nth-child(3)');
+            if (descDiv) descDiv.innerText = "Flagging exam as malpractice and auto-submitting. Redirecting shortly...";
+            gradingOverlay.style.setProperty('display', 'flex', 'important');
+        }
+        
+        const malpracticeInput = document.getElementById('malpracticeInput');
+        if (malpracticeInput) {
+            malpracticeInput.value = 'true';
+        }
+        
+        const form = document.getElementById('takeExamForm');
+        if (form) {
+            const requiredElements = form.querySelectorAll('[required]');
+            requiredElements.forEach(el => el.removeAttribute('required'));
+            form.submit();
+        }
+    }
+
+    function openTab(evt, tabId) {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        tablinks = document.getElementsByClassName("tab-link");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].classList.remove("active");
+        }
+        document.getElementById(tabId).style.display = "block";
+        evt.currentTarget.classList.add("active");
+        
+        // Save tab in URL param if wanted (optional, handled by routing mostly)
+    }
+    
+    function toggleManualOptions(type) {
+        const group = document.getElementById('manualOptionsGroup');
+        const input = document.getElementById('manualOptionsInput');
+        if (type === 'mcq') {
+            group.style.display = 'flex';
+            input.required = true;
+        } else {
+            group.style.display = 'none';
+            input.required = false;
+        }
+    }
+    
+    // Setup listeners for overlays
+    document.addEventListener("DOMContentLoaded", function() {
+        const takeForm = document.getElementById('takeExamForm');
+        if (takeForm) {
+            takeForm.addEventListener('submit', function() {
+                const malpracticeInput = document.getElementById('malpracticeInput');
+                if (malpracticeInput && malpracticeInput.value === 'true') {
+                    return;
+                }
+                document.getElementById('gradingOverlay').style.display = 'flex';
+            });
+            
+            if (IS_TAKING_EXAM) {
+                document.addEventListener('visibilitychange', function() {
+                    if (document.hidden) {
+                        triggerInfraction('visibility');
+                    }
+                });
+
+                window.addEventListener('blur', function() {
+                    setTimeout(function() {
+                        if (!document.hasFocus() && IS_TAKING_EXAM) {
+                            triggerInfraction('blur');
+                        }
+                    }, 300);
+                });
+
+                window.addEventListener('keyup', function(e) {
+                    if (e.key === 'PrintScreen' || e.keyCode === 44) {
+                        try {
+                            navigator.clipboard.writeText('EXAM CONTENT PROTECTED');
+                        } catch (err) {}
+                        triggerInfraction('screenshot');
+                    }
+                });
+                
+                window.addEventListener('keydown', function(e) {
+                    if (e.key === 'PrintScreen' || e.keyCode === 44) {
+                        e.preventDefault();
+                        try {
+                            navigator.clipboard.writeText('EXAM CONTENT PROTECTED');
+                        } catch (err) {}
+                        triggerInfraction('screenshot');
+                    }
+                });
+
+                takeForm.addEventListener('copy', function(e) {
+                    e.preventDefault();
+                    alert('Copying is disabled during proctored exams.');
+                });
+                takeForm.addEventListener('paste', function(e) {
+                    e.preventDefault();
+                    alert('Pasting is disabled during proctored exams.');
+                });
+                takeForm.addEventListener('contextmenu', function(e) {
+                    e.preventDefault();
+                });
+            }
+        }
+        
+        const manualForm = document.getElementById('addManualForm');
+        if (manualForm) {
+            manualForm.addEventListener('submit', function() {
+                const titleVal = document.querySelector('input[name="title"]').value;
+                const descVal = document.querySelector('textarea[name="description"]').value;
+                const marksVal = document.querySelector('input[name="total_marks"]').value;
+                
+                const tInput = document.createElement('input');
+                tInput.type = 'hidden';
+                tInput.name = 'title';
+                tInput.value = titleVal;
+                this.appendChild(tInput);
+                
+                const dInput = document.createElement('input');
+                dInput.type = 'hidden';
+                dInput.name = 'description';
+                dInput.value = descVal;
+                this.appendChild(dInput);
+                
+                const mInput = document.createElement('input');
+                mInput.type = 'hidden';
+                mInput.name = 'total_marks';
+                mInput.value = marksVal;
+                this.appendChild(mInput);
+            });
+        }
+        
+        const genForm = document.getElementById('aiGeneratorForm');
+        if (genForm) {
+            genForm.addEventListener('submit', function() {
+                document.getElementById('generatingOverlay').style.display = 'flex';
+                
+                const titleVal = document.querySelector('input[name="title"]').value;
+                const descVal = document.querySelector('textarea[name="description"]').value;
+                const marksVal = document.querySelector('input[name="total_marks"]').value;
+                
+                const tInput = document.createElement('input');
+                tInput.type = 'hidden';
+                tInput.name = 'title';
+                tInput.value = titleVal;
+                this.appendChild(tInput);
+                
+                const dInput = document.createElement('input');
+                dInput.type = 'hidden';
+                dInput.name = 'description';
+                dInput.value = descVal;
+                this.appendChild(dInput);
+                
+                const mInput = document.createElement('input');
+                mInput.type = 'hidden';
+                mInput.name = 'total_marks';
+                mInput.value = marksVal;
+                this.appendChild(mInput);
+            });
+        }
+    });
+</script>
+{% endblock %}

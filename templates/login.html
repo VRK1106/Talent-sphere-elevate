@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Login - Talent Sphere Elevate{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh;">
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <span style="font-size: 3.5rem;">🚀</span>
+        <div style="font-size: 1.8rem; font-weight: 800; 
+                    background: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%); 
+                    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+                    margin-top: 0.5rem;">
+            Talent Sphere Elevate
+        </div>
+        <div style="font-size: 0.85rem; color: var(--ts-text-secondary); margin-top: 0.3rem;">
+            Sign in to access your knowledge discovery platform
+        </div>
+    </div>
+
+    <div class="ts-card" style="width: 100%; max-width: 450px; padding: 2rem; border-radius: 16px;">
+        <!-- Validation / Error Flash messages -->
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div style="background-color: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; padding: 0.75rem; border-radius: 8px; margin-bottom: 1.2rem; font-size: 0.88rem;">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form action="/login" method="POST" style="display: flex; flex-direction: column; gap: 1.2rem;">
+            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Username</label>
+                <input type="text" name="username" placeholder="Enter your username" required
+                       style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg, #0f172a); color: var(--ts-text); outline: none;">
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Password</label>
+                <input type="password" name="password" placeholder="Enter your password" required
+                       style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg, #0f172a); color: var(--ts-text); outline: none;">
+            </div>
+
+            <button type="submit" class="btn-ts btn-ts-primary" style="padding: 0.75rem; margin-top: 0.5rem;">
+                🔐 Sign In
+            </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 1.5rem; font-size: 0.78rem; color: var(--ts-text-muted);">
+            🔑 Demo credentials: <b>admin</b> / <b>admin123</b> &nbsp;|&nbsp; <b>demo</b> / <b>demo123</b>
+        </div>
+    </div>
+</div>
+{% endblock %}

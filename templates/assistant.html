@@ -1,0 +1,441 @@
+{% extends "base.html" %}
+{% block title %}AI Assistant - Talent Sphere Elevate{% endblock %}
+
+{% block head %}
+<style>
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+        height: 60vh;
+        min-height: 400px;
+        background: rgba(255, 255, 255, 0.01);
+        border: 1px solid var(--ts-border);
+        border-radius: 12px;
+        overflow: hidden;
+        margin-top: 1rem;
+    }
+    
+    .chat-messages {
+        flex-grow: 1;
+        padding: 1.5rem;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1.2rem;
+    }
+    
+    /* Message Bubbles */
+    .message-row {
+        display: flex;
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    .message-row.user {
+        justify-content: flex-end;
+    }
+    .message-row.assistant {
+        justify-content: flex-start;
+    }
+    
+    .message-bubble {
+        max-width: 75%;
+        padding: 1rem 1.25rem;
+        border-radius: 16px;
+        line-height: 1.6;
+        font-size: 0.95rem;
+        word-break: break-word;
+        box-shadow: var(--ts-shadow);
+        border: 1px solid var(--ts-border);
+    }
+    .message-row.user .message-bubble {
+        background: var(--ts-primary);
+        color: #FFFFFF !important;
+        border-bottom-right-radius: 4px;
+        border-color: var(--ts-primary);
+    }
+    .message-row.user .message-bubble * {
+        color: #FFFFFF !important;
+    }
+    .message-row.assistant .message-bubble {
+        background: var(--ts-inner-bg);
+        color: var(--ts-text);
+        border-bottom-left-radius: 4px;
+    }
+    
+    .message-avatar {
+        font-size: 1.5rem;
+        margin: 0 0.5rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    /* Input Form Area */
+    .chat-input-area {
+        padding: 1rem;
+        border-top: 1px solid var(--ts-border);
+        background: rgba(255, 255, 255, 0.02);
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .chat-input-row {
+        display: flex;
+        gap: 0.75rem;
+    }
+    
+    .chat-input-field {
+        flex-grow: 1;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--ts-border);
+        background-color: var(--ts-input-bg, #0f172a);
+        color: var(--ts-text);
+        outline: none;
+        font-size: 0.95rem;
+        resize: none;
+        height: 44px;
+        box-sizing: border-box;
+    }
+    
+    .sources-box {
+        margin-top: 0.75rem;
+        border-top: 1px dashed var(--ts-border);
+        padding-top: 0.5rem;
+    }
+</style>
+<!-- Markdown Parser CDN for client-side streaming rendering -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="ts-hero">
+    <div class="ts-hero-title">🤖 AI Study Assistant</div>
+    <div class="ts-hero-subtitle">
+        Your interactive LLM learning coach. Ask questions about training courses, guidelines, or technical concepts.
+    </div>
+</div>
+
+<!-- Config Bar -->
+<div class="ts-card" style="padding: 1rem; border-radius: 12px; margin-top: 1.5rem;">
+    <div style="display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 1.5rem; align-items: center;">
+        <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+            <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text-secondary);">Assistant Mode</label>
+            <div style="display: flex; gap: 0.5rem;">
+                <label class="btn-ts btn-ts-secondary" style="width: auto; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                    <input type="radio" name="chat_mode" id="modeRag" value="RAG (Document Guided)" checked style="accent-color: var(--ts-primary);">
+                    RAG Mode
+                </label>
+                <label class="btn-ts btn-ts-secondary" style="width: auto; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                    <input type="radio" name="chat_mode" id="modeGeneral" value="General Assistant" style="accent-color: var(--ts-primary);">
+                    General Mode
+                </label>
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+            <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text-secondary);">Groq AI Model</label>
+            {% if not groq_api_key %}
+                <div style="font-size: 0.85rem; color: #f87171;">⚠️ Groq API Key missing!</div>
+            {% else %}
+                <select id="chatModel" style="padding: 0.45rem; border-radius: 6px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none; font-size: 0.88rem;">
+                    {% for m in ollama_models %}
+                        <option value="{{ m }}" {% if "llama" in m.lower() %}selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+            {% endif %}
+        </div>
+
+        <div>
+            <form action="/assistant/clear" method="POST" onsubmit="return confirm('Are you sure you want to clear this conversation history?')">
+                <button type="submit" class="btn-ts btn-ts-secondary" style="padding: 0.45rem 1rem; font-size: 0.85rem;">
+                    🧹 Clear Messages
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Chat Window -->
+<div class="chat-container">
+    <div class="chat-messages" id="chatMessages">
+        {% if not active_messages %}
+            <div style="text-align: center; margin: auto; color: var(--ts-text-muted); font-size: 0.95rem;">
+                👋 Hello! I am your AI Study Coach. Ask me anything to get started.
+            </div>
+        {% else %}
+            {% for msg in active_messages %}
+                <div class="message-row {{ msg.role }}">
+                    {% if msg.role == 'assistant' %}
+                        <div class="message-avatar">🤖</div>
+                    {% endif %}
+                    
+                    <div class="message-bubble">
+                        <div class="message-text">{{ msg.content|safe }}</div>
+                        
+                        {% if msg.sources %}
+                            <div class="sources-box">
+                                <details style="font-size: 0.8rem; border: 1px solid var(--ts-border); border-radius: 6px; padding: 0.4rem;">
+                                    <summary style="cursor: pointer; font-weight: 600; color: var(--ts-text-secondary); outline: none;">
+                                        📚 Sources Cited ({{ msg.sources|length }})
+                                    </summary>
+                                    <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.4rem;">
+                                        {% for s in msg.sources %}
+                                            <div style="padding: 0.4rem; background: rgba(255,255,255,0.02); border-radius: 4px; border: 1px solid var(--ts-border);">
+                                                <b>[{{ loop.index }}] {{ s.source }} (Page {{ s.page }})</b>
+                                                <div style="font-size: 0.75rem; color: var(--ts-text-secondary); margin-top: 0.2rem;">
+                                                    Similarity Score: {{ "%.1f"|format(s.score * 100) }}%
+                                                </div>
+                                                <blockquote style="margin: 0.3rem 0 0 0; padding-left: 0.5rem; border-left: 2px solid var(--ts-primary); color: var(--ts-text-muted); font-style: italic;">
+                                                    {{ s.text }}
+                                                </blockquote>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </details>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    {% if msg.role == 'user' %}
+                        <div class="message-avatar">👤</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Active Input / Form -->
+    <div class="chat-input-area">
+        <div class="chat-input-row">
+            <textarea id="queryInput" placeholder="Ask a question to your AI Coach..." class="chat-input-field" 
+                      onkeydown="handleKeyPress(event)" {% if not groq_api_key %}disabled{% endif %}></textarea>
+            <button id="sendBtn" class="btn-ts btn-ts-primary" style="width: auto; padding: 0 1.5rem; height: 44px;" 
+                    onclick="submitMessage()" {% if not groq_api_key %}disabled{% endif %}>
+                🚀 Send
+            </button>
+            <button id="stopBtn" class="btn-ts" style="width: auto; padding: 0 1.5rem; height: 44px; display: none; color: #ef4444; border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.05);"
+                    onclick="stopGeneration()">
+                ⏹️ Stop
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let activeStreamController = null;
+    let isGenerating = false;
+
+    // Scroll chat window to bottom
+    function scrollToBottom() {
+        const box = document.getElementById('chatMessages');
+        box.scrollTop = box.scrollHeight;
+    }
+    
+    document.addEventListener("DOMContentLoaded", function() {
+        scrollToBottom();
+        // Parse all markdown messages in initial render
+        document.querySelectorAll('.message-row.assistant .message-text').forEach(el => {
+            el.innerHTML = marked.parse(el.textContent);
+        });
+    });
+
+    function handleKeyPress(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            submitMessage();
+        }
+    }
+
+    async function submitMessage() {
+        const queryField = document.getElementById('queryInput');
+        const query = queryField.value.trim();
+        if (!query || isGenerating) return;
+
+        // Clear query field
+        queryField.value = '';
+
+        // Add user message to UI
+        const messagesBox = document.getElementById('chatMessages');
+        
+        // Remove empty state if present
+        if (messagesBox.innerHTML.includes('Hello! I am your AI Study Coach')) {
+            messagesBox.innerHTML = '';
+        }
+
+        const userRow = document.createElement('div');
+        userRow.className = 'message-row user';
+        userRow.innerHTML = `
+            <div class="message-bubble">
+                <div class="message-text">${escapeHtml(query)}</div>
+            </div>
+            <div class="message-avatar">👤</div>
+        `;
+        messagesBox.appendChild(userRow);
+        scrollToBottom();
+
+        // Create Assistant response bubble placeholder
+        const assistantRow = document.createElement('div');
+        assistantRow.className = 'message-row assistant';
+        assistantRow.innerHTML = `
+            <div class="message-avatar">🤖</div>
+            <div class="message-bubble">
+                <div class="message-text" id="activeResponseText"><i>Thinking...</i></div>
+                <div id="activeSourcesBox" style="display: none;" class="sources-box"></div>
+            </div>
+        `;
+        messagesBox.appendChild(assistantRow);
+        scrollToBottom();
+
+        // Show/Hide buttons
+        document.getElementById('sendBtn').style.display = 'none';
+        document.getElementById('stopBtn').style.display = 'inline-flex';
+        isGenerating = true;
+
+        const mode = document.querySelector('input[name="chat_mode"]:checked').value;
+        const modelSelect = document.getElementById('chatModel');
+        const model = modelSelect ? modelSelect.value : '';
+
+        try {
+            activeStreamController = new AbortController();
+            const response = await fetch('/assistant/chat_stream', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query, model, mode }),
+                signal: activeStreamController.signal
+            });
+
+            if (!response.ok) {
+                throw new Error("Generation request failed.");
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let assistantResponseText = '';
+            let receivedSources = null;
+
+            const activeTextEl = document.getElementById('activeResponseText');
+            activeTextEl.innerHTML = ''; // Clear thinking
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                
+                const chunk = decoder.decode(value, { stream: true });
+                
+                // Check if chunk contains sources metadata block at the end
+                if (chunk.includes('[SOURCES_JSON_START]')) {
+                    const parts = chunk.split('[SOURCES_JSON_START]');
+                    assistantResponseText += parts[0];
+                    activeTextEl.innerHTML = marked.parse(assistantResponseText);
+                    
+                    const sourcesStr = parts[1].replace('[SOURCES_JSON_END]', '').trim();
+                    try {
+                        receivedSources = JSON.parse(sourcesStr);
+                    } catch(e) {
+                        console.error("Failed to parse sources", e);
+                    }
+                    break;
+                } else {
+                    assistantResponseText += chunk;
+                    activeTextEl.innerHTML = marked.parse(assistantResponseText);
+                    scrollToBottom();
+                }
+            }
+
+            // Render citations if present
+            if (receivedSources && receivedSources.length > 0) {
+                renderCitations(receivedSources);
+            }
+
+            finishGeneration();
+            // Refresh conversation in sidebar
+            window.location.reload();
+
+        } catch (err) {
+            if (err.name === 'AbortError') {
+                console.log("Generation aborted by user.");
+            } else {
+                console.error("Error during streaming:", err);
+                document.getElementById('activeResponseText').innerText = "An error occurred during generation.";
+                finishGeneration();
+            }
+        }
+    }
+
+    function renderCitations(sources) {
+        const box = document.getElementById('activeSourcesBox');
+        box.style.display = 'block';
+        
+        let detailsHtml = `
+            <details style="font-size: 0.8rem; border: 1px solid var(--ts-border); border-radius: 6px; padding: 0.4rem;">
+                <summary style="cursor: pointer; font-weight: 600; color: var(--ts-text-secondary); outline: none;">
+                    📚 Sources Cited (${sources.length})
+                </summary>
+                <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.4rem;">
+        `;
+        
+        sources.forEach((s, idx) => {
+            detailsHtml += `
+                <div style="padding: 0.4rem; background: rgba(255,255,255,0.02); border-radius: 4px; border: 1px solid var(--ts-border);">
+                    <b>[${idx + 1}] ${escapeHtml(s.source)} (Page ${s.page})</b>
+                    <div style="font-size: 0.75rem; color: var(--ts-text-secondary); margin-top: 0.2rem;">
+                        Similarity Score: ${(s.score * 100).toFixed(1)}%
+                    </div>
+                    <blockquote style="margin: 0.3rem 0 0 0; padding-left: 0.5rem; border-left: 2px solid var(--ts-primary); color: var(--ts-text-muted); font-style: italic;">
+                        ${escapeHtml(s.text)}
+                    </blockquote>
+                </div>
+            `;
+        });
+        
+        detailsHtml += `</div></details>`;
+        box.innerHTML = detailsHtml;
+        scrollToBottom();
+    }
+
+    async function stopGeneration() {
+        if (!isGenerating) return;
+        
+        if (activeStreamController) {
+            activeStreamController.abort();
+        }
+        
+        try {
+            // Inform server to stop generating and save whatever was compiled
+            await fetch('/assistant/chat_stop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+        } catch(e) {
+            console.error("Failed to stop generation on server", e);
+        }
+        
+        finishGeneration();
+        // Refresh page to load saved interrupted conversation
+        window.location.reload();
+    }
+
+    function finishGeneration() {
+        isGenerating = false;
+        document.getElementById('sendBtn').style.display = 'inline-flex';
+        document.getElementById('stopBtn').style.display = 'none';
+        
+        // Remove active IDs
+        const activeText = document.getElementById('activeResponseText');
+        if (activeText) activeText.removeAttribute('id');
+        const activeSources = document.getElementById('activeSourcesBox');
+        if (activeSources) activeSources.removeAttribute('id');
+    }
+
+    function escapeHtml(text) {
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+</script>
+{% endblock %}

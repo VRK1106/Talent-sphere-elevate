@@ -9,17 +9,19 @@ known hashes to skip files that were already indexed.
 from __future__ import annotations
 
 import chromadb
-import streamlit as st
 from chromadb.api import ClientAPI
 from chromadb.api.models.Collection import Collection
 
 from src.config import CHROMA_COLLECTION, CHROMA_DB_PATH
 
+_client_instance = None
 
-@st.cache_resource(show_spinner=False)
 def get_client() -> ClientAPI:
     """Return a cached, disk-persistent Chroma client."""
-    return chromadb.PersistentClient(path=CHROMA_DB_PATH)
+    global _client_instance
+    if _client_instance is None:
+        _client_instance = chromadb.PersistentClient(path=CHROMA_DB_PATH)
+    return _client_instance
 
 
 def get_collection() -> Collection:

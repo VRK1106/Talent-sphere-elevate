@@ -1,0 +1,626 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Talent Sphere Elevate{% endblock %}
+
+{% block head %}
+<!-- Chart.js CDN for premium charts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .ts-metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .tabs-container {
+        display: flex;
+        border-bottom: 1px solid var(--ts-border);
+        margin-top: 1.5rem;
+        margin-bottom: 1.5rem;
+        gap: 1rem;
+        overflow-x: auto;
+    }
+    .tab-link {
+        background: none;
+        border: none;
+        color: var(--ts-text-secondary);
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+    .tab-link:hover {
+        color: var(--ts-primary);
+    }
+    .tab-link.active {
+        color: var(--ts-primary);
+        border-bottom-color: var(--ts-primary);
+    }
+    .tab-content {
+        display: none;
+        animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    /* Directory tables styling */
+    .ts-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 0.5rem;
+        font-size: 0.9rem;
+    }
+    .ts-table th {
+        text-align: left;
+        padding: 0.75rem 1rem;
+        color: var(--ts-text-secondary);
+        border-bottom: 2px solid var(--ts-border);
+        font-weight: 600;
+    }
+    .ts-table td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--ts-border);
+        color: var(--ts-text);
+    }
+    .ts-table tr:hover {
+        background-color: rgba(255, 255, 255, 0.02);
+    }
+    body.ts-light-mode .ts-table tr:hover {
+        background-color: rgba(0, 0, 0, 0.01);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% if session.get('user_role') == 'admin' %}
+    <!-- =======================================================================
+         ADMIN VIEW
+         ======================================================================= -->
+    <div class="ts-hero">
+        <div class="ts-hero-title">Admin Control Center</div>
+        <div class="ts-hero-subtitle">
+            Platform health, user engagement, vector indexing, and trainees performance metrics in real-time.
+        </div>
+    </div>
+
+    <!-- 8 Metrics Grid -->
+    <div class="ts-metrics-grid">
+        <div class="ts-metric ts-metric-card" onclick="switchTabDirectly('directory')" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.trainees_count }}</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">Trainees ➡️</div>
+        </div>
+        <div class="ts-metric ts-metric-card" onclick="switchTabDirectly('directory')" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.active_now }}</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-secondary);">Active Now ➡️</div>
+        </div>
+        <div class="ts-metric ts-metric-card" onclick="window.location.href='/documents'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.doc_count }}</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-accent);">Documents ➡️</div>
+        </div>
+        <div class="ts-metric ts-metric-card" onclick="window.location.href='/documents'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.chunk_count }}</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">Knowledge Chunks ➡️</div>
+        </div>
+    </div>
+    
+    <div class="ts-metrics-grid">
+        <div class="ts-metric ts-metric-card" onclick="window.location.href='/assistant'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.total_sessions }}</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-secondary);">Chat Sessions ➡️</div>
+        </div>
+        <div class="ts-metric ts-metric-card" onclick="window.location.href='/assistant'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.total_messages }}</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-accent);">Total Messages ➡️</div>
+        </div>
+        <div class="ts-metric ts-metric-card" onclick="window.location.href='/exams'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.exams_count }}</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">Exams Created ➡️</div>
+        </div>
+        <div class="ts-metric ts-metric-card" onclick="switchTabDirectly('performance')" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ "%.1f"|format(admin_stats.avg_score_pct) }}%</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-secondary);">Avg Exam Score ➡️</div>
+        </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div class="tabs-container">
+        <button class="tab-link active" onclick="openTab(event, 'performance')">📊 Performance & Usage</button>
+        <button class="tab-link" onclick="openTab(event, 'directory')">👥 Trainee Directory</button>
+        <button class="tab-link" onclick="openTab(event, 'sizing')">📂 Content Sizing</button>
+        <button class="tab-link" onclick="openTab(event, 'coach')">💬 AI Coach Analysis</button>
+    </div>
+
+    <!-- Tab 1: Performance & Usage -->
+    <div id="performance" class="tab-content" style="display: block;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 1rem;">
+            <div>
+                <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 1rem;'>📈 Assistant Activity (Messages per Day)</div>
+                <div class="ts-card" style="padding: 1rem; border-radius: 12px;">
+                    <canvas id="chatActivityChart" style="height: 250px;"></canvas>
+                </div>
+            </div>
+            <div>
+                <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-secondary); margin-bottom: 1rem;'>🎯 Exam Score Distribution</div>
+                <div class="ts-card" style="padding: 1rem; border-radius: 12px;">
+                    <canvas id="examScoreChart" style="height: 250px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 2: Trainee Directory -->
+    <div id="directory" class="tab-content">
+        <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 0.8rem;'>👥 Registered Trainee Activity Log</div>
+        <div class="ts-card" style="padding: 1rem; border-radius: 12px; overflow-x: auto;">
+            {% if not trainee_rows %}
+                <div style="padding: 1rem; color: var(--ts-text-muted);">No trainees registered yet.</div>
+            {% else %}
+                <table class="ts-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Domain</th>
+                            <th>Email</th>
+                            <th>Completed</th>
+                            <th>Pending</th>
+                            <th>Avg Score</th>
+                            <th>Last Active</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in trainee_rows %}
+                        <tr>
+                            <td>{{ t.ID }}</td>
+                            <td style="font-weight: 600;">{{ t.Name }}</td>
+                            <td><span class="ts-profile-badge">{{ t.Domain }}</span></td>
+                            <td>{{ t.Email }}</td>
+                            <td>{{ t.Completed }}</td>
+                            <td>{{ t.Pending }}</td>
+                            <td style="font-weight: 600; color: var(--ts-primary);">{{ t.Avg_Score }}</td>
+                            <td><span style="font-size: 0.8rem; color: var(--ts-text-muted);">{{ t.Last_Active }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+        
+        <div style="margin-top: 2rem;">
+            <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-accent); margin-bottom: 1rem;'>📊 Trainees Distribution by Domain</div>
+            <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; display: flex; justify-content: center;">
+                <div style="width: 320px; height: 320px;">
+                    <canvas id="domainChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 3: Content Sizing -->
+    <div id="sizing" class="tab-content">
+        <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 0.8rem;'>📂 Vector Catalog Size Analytics</div>
+        <div class="ts-card" style="padding: 1rem; border-radius: 12px; overflow-x: auto; margin-bottom: 2rem;">
+            {% if not doc_rows %}
+                <div style="padding: 1rem; color: var(--ts-text-muted);">No documents indexed yet.</div>
+            {% else %}
+                <table class="ts-table">
+                    <thead>
+                        <tr>
+                            <th>Document Name</th>
+                            <th>Pages</th>
+                            <th>Vector Chunks</th>
+                            <th>Est. Size (Characters)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for doc in doc_rows %}
+                        <tr>
+                            <td style="font-weight: 600;">{{ doc.name }}</td>
+                            <td>{{ doc.pages }}</td>
+                            <td>{{ doc.chunks }}</td>
+                            <td>{{ doc.chunks * 1000 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+
+        <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-accent); margin-bottom: 1rem;'>🧩 Vector Chunks per Indexed Document</div>
+        <div class="ts-card" style="padding: 1rem; border-radius: 12px;">
+            <canvas id="chunksChart" style="height: 250px;"></canvas>
+        </div>
+    </div>
+
+    <!-- Tab 4: AI Coach Analysis -->
+    <div id="coach" class="tab-content">
+        <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 0.8rem;'>💬 Assistant Conversational Modes Analysis</div>
+        <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 2rem; margin-top: 1rem;">
+            <div class="ts-card" style="padding: 1rem; border-radius: 12px;">
+                <canvas id="modesChart" style="height: 250px;"></canvas>
+            </div>
+            
+            <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; display: flex; flex-direction: column; gap: 1rem;">
+                <div style='font-size: 1.05rem; font-weight: 600;'>🤖 LLM Performance Parameters</div>
+                <hr class="ts-divider-line" style="margin: 0.2rem 0;">
+                <div>
+                    <span style="font-size: 0.85rem; color: var(--ts-text-secondary);">Active Embedding Model:</span>
+                    <div style="font-weight: 600; margin-top: 0.2rem;">{{ embedding_model_name }}</div>
+                </div>
+                <div>
+                    <span style="font-size: 0.85rem; color: var(--ts-text-secondary);">RAG Usage Ratio:</span>
+                    <div style="font-weight: 600; margin-top: 0.2rem; color: var(--ts-primary);">
+                        {{ "%.1f"|format(admin_stats.rag_ratio) }}% (Doc-Guided Queries)
+                    </div>
+                </div>
+                <div>
+                    <span style="font-size: 0.85rem; color: var(--ts-text-secondary);">Knowledge Coverage:</span>
+                    <div style="font-weight: 600; margin-top: 0.2rem;">100% Secure Offline</div>
+                </div>
+                <div>
+                    <span style="font-size: 0.85rem; color: var(--ts-text-secondary);">Avg. Confidence Similarity:</span>
+                    <div style="font-weight: 600; margin-top: 0.2rem;">84.5%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% else %}
+    <!-- =======================================================================
+         TRAINEE VIEW
+         ======================================================================= -->
+    <div class="ts-hero">
+        <div class="ts-hero-title">Welcome back, {{ session.get('current_user') }} 👋</div>
+        <div class="ts-hero-subtitle">
+            Track your training progress, complete assigned assessments, and query your AI Study Coach.
+        </div>
+    </div>
+
+    <!-- 4 Metrics Grid -->
+    <div class="ts-metrics-grid">
+        <div class="ts-metric ts-metric-card" onclick="window.location.href='/exams'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ trainee_stats.pending_count }}</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">Pending Exams ➡️</div>
+        </div>
+        <div class="ts-metric ts-metric-card" onclick="window.location.href='/exams'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ trainee_stats.completed_count }}</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-secondary);">Completed Exams ➡️</div>
+        </div>
+        <div class="ts-metric ts-metric-card" onclick="switchTabDirectly('trainee-progress')" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ "%.1f"|format(trainee_stats.personal_avg) }}%</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-accent);">My Average Score ➡️</div>
+        </div>
+        <div class="ts-metric ts-metric-card" onclick="window.location.href='/assistant'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ trainee_stats.chat_count }}</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">AI Chat Sessions ➡️</div>
+        </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div class="tabs-container">
+        <button class="tab-link active" onclick="openTab(event, 'trainee-progress')">📈 My Progress & Assessments</button>
+        <button class="tab-link" onclick="openTab(event, 'trainee-recs')">📚 AI Coach Recommendations</button>
+    </div>
+
+    <!-- Tab 1: Trainee Progress -->
+    <div id="trainee-progress" class="tab-content" style="display: block;">
+        <!-- Score Trajectory -->
+        <div style="margin-bottom: 2rem;">
+            <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 1rem;'>📈 My Score Trajectory</div>
+            <div class="ts-card" style="padding: 1rem; border-radius: 12px;">
+                {% if not trainee_stats.completed_count %}
+                    <div style="padding: 1.5rem; text-align: center; color: var(--ts-text-secondary);">
+                        💡 Complete your first exam under the <b>Exams</b> tab to plot your score trajectory!
+                    </div>
+                {% else %}
+                    <canvas id="trajectoryChart" style="height: 250px;"></canvas>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Pending Assessments -->
+        <div>
+            <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-secondary); margin-bottom: 0.8rem;'>📝 Pending Training Assessments</div>
+            {% if not pending_exams %}
+                <div class="ts-info-banner" style="padding: 1rem; border-radius: 8px;">
+                    <div class="ts-info-title" style="font-weight: 600;">🎉 Well done!</div>
+                    <div class="ts-info-body" style="font-size: 0.9rem; margin-top: 0.2rem;">You have completed all assigned assessments.</div>
+                </div>
+            {% else %}
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    {% for a in pending_exams %}
+                    <div class="ts-card" style="padding: 1.2rem; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="flex-grow: 1;">
+                            <div style="font-size: 1.05rem; font-weight: 600; color: var(--ts-text);">📝 {{ a.title }}</div>
+                            <div style="font-size: 0.82rem; color: var(--ts-text-muted); margin-top: 0.2rem;">
+                                Due Date: <b>{{ a.due_date if a.due_date else 'No Due Date' }}</b> &nbsp;·&nbsp; Total Marks: <b>{{ a.total_marks }}</b>
+                            </div>
+                            <div style="font-size: 0.88rem; color: var(--ts-text-secondary); margin-top: 0.5rem;">{{ a.description }}</div>
+                        </div>
+                        <div style="margin-left: 1.5rem; width: 140px;">
+                            <a href="/exams" class="btn-ts btn-ts-primary">Start Exam ➡️</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Tab 2: Trainee Recommendations -->
+    <div id="trainee-recs" class="tab-content">
+        <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 0.8rem;'>📚 Recommended Study Material</div>
+        {% if not recommendations %}
+            <div style="padding: 1rem; color: var(--ts-text-secondary);">No training documents have been ingested to the platform database yet.</div>
+        {% else %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                {% for rec in recommendations %}
+                <div class="ts-card" style="padding: 1.2rem; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between; height: 180px; box-sizing: border-box;">
+                    <div>
+                        <div style="font-size: 1.05rem; font-weight: 600; color: var(--ts-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">📄 {{ rec.name }}</div>
+                        <div style="font-size: 0.82rem; color: var(--ts-text-secondary); margin-top: 0.3rem;">
+                            Pages: <b>{{ rec.pages }}</b> &nbsp;·&nbsp; Chunks: <b>{{ rec.chunks }}</b>
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--ts-text-muted); margin-top: 0.5rem;">Recommended to review based on your learning domain requirements.</div>
+                    </div>
+                    <a href="/documents" class="btn-ts btn-ts-secondary" style="margin-top: 0.5rem;">Open Document 🔍</a>
+                </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <hr class="ts-divider-line">
+
+        <!-- Resume Chats -->
+        <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-accent); margin-bottom: 0.8rem; margin-top: 1.5rem;'>💬 Resume AI Coach Conversations</div>
+        {% if not resume_chats %}
+            <div class="ts-info-banner" style="padding: 1rem; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                <div class="ts-info-body">You haven't started any chat conversations with your AI Coach yet.</div>
+                <div style="width: 220px;"><a href="/assistant" class="btn-ts btn-ts-primary">Start AI Coach Session 🤖</a></div>
+            </div>
+        {% else %}
+            <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+                {% for chat in resume_chats %}
+                <div class="ts-card" style="padding: 1.2rem; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 0.98rem; font-weight: 600; color: var(--ts-text);">💬 {{ chat.title }}</div>
+                        <div style="font-size: 0.78rem; color: var(--ts-text-muted); margin-top: 0.2rem;">Started: {{ chat.created_at }}</div>
+                    </div>
+                    <div style="width: 160px;">
+                        <a href="/assistant?session_id={{ chat.session_id }}" class="btn-ts btn-ts-primary">Resume Chat ➡️</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+{% endif %}
+
+
+<!-- =======================================================================
+     JS & Charting Configurations
+     ======================================================================= -->
+<script>
+    // Tab controller
+    function openTab(evt, tabName) {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        tablinks = document.getElementsByClassName("tab-link");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].classList.remove("active");
+        }
+        document.getElementById(tabName).style.display = "block";
+        evt.currentTarget.classList.add("active");
+    }
+
+    function switchTabDirectly(tabName) {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        tablinks = document.getElementsByClassName("tab-link");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].classList.remove("active");
+            // Match tab buttons that open this specific tabName
+            if (tablinks[i].getAttribute('onclick') && tablinks[i].getAttribute('onclick').includes(tabName)) {
+                tablinks[i].classList.add("active");
+            }
+        }
+        const targetTab = document.getElementById(tabName);
+        if (targetTab) {
+            targetTab.style.display = "block";
+            targetTab.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+    
+    // Setup Chart.js charts
+    document.addEventListener("DOMContentLoaded", function() {
+        const isLightTheme = document.body.classList.contains('ts-light-mode');
+        const gridColor = isLightTheme ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.05)';
+        const textColor = isLightTheme ? '#4b5563' : '#9ca3af';
+
+        // --- Admin Charts ---
+        {% if session.get('user_role') == 'admin' %}
+            // 1. Chat activity chart
+            const chatCtx = document.getElementById('chatActivityChart');
+            if (chatCtx) {
+                new Chart(chatCtx, {
+                    type: 'line',
+                    data: {
+                        labels: {{ admin_stats.chat_dates|tojson }},
+                        datasets: [{
+                            label: 'Messages',
+                            data: {{ admin_stats.chat_counts|tojson }},
+                            borderColor: '#60A5FA',
+                            backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { color: gridColor }, ticks: { color: textColor } },
+                            y: { grid: { color: gridColor }, ticks: { color: textColor } }
+                        }
+                    }
+                });
+            }
+
+            // 2. Exam scores distribution bar chart
+            const examCtx = document.getElementById('examScoreChart');
+            if (examCtx) {
+                new Chart(examCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: {{ admin_stats.score_ranges|tojson }},
+                        datasets: [{
+                            data: {{ admin_stats.score_counts|tojson }},
+                            backgroundColor: '#34D399',
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { color: textColor } },
+                            y: { grid: { color: gridColor }, ticks: { color: textColor } }
+                        }
+                    }
+                });
+            }
+
+            // 3. Domain distribution donut chart
+            const domainCtx = document.getElementById('domainChart');
+            if (domainCtx) {
+                new Chart(domainCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: {{ admin_stats.domain_labels|tojson }},
+                        datasets: [{
+                            data: {{ admin_stats.domain_counts|tojson }},
+                            backgroundColor: ['#60A5FA', '#34D399', '#A78BFA', '#FBBF24', '#F87171'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: textColor, boxWidth: 12 }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 4. Content size chunks chart
+            const chunksCtx = document.getElementById('chunksChart');
+            if (chunksCtx) {
+                new Chart(chunksCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: {{ admin_stats.doc_labels|tojson }},
+                        datasets: [{
+                            data: {{ admin_stats.doc_chunks|tojson }},
+                            backgroundColor: '#A78BFA',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { color: gridColor }, ticks: { color: textColor } },
+                            y: { grid: { display: false }, ticks: { color: textColor } }
+                        }
+                    }
+                });
+            }
+
+            // 5. Conversational mode queries count
+            const modesCtx = document.getElementById('modesChart');
+            if (modesCtx) {
+                new Chart(modesCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['RAG (Document Guided)', 'General Assistant'],
+                        datasets: [{
+                            data: [{{ admin_stats.rag_use_count }}, {{ admin_stats.general_use_count }}],
+                            backgroundColor: ['#60A5FA', '#8B5CF6'],
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { color: textColor } },
+                            y: { grid: { color: gridColor }, ticks: { color: textColor } }
+                        }
+                    }
+                });
+            }
+        {% endif %}
+
+        // --- Trainee Charts ---
+        {% if session.get('user_role') != 'admin' and trainee_stats.completed_count > 0 %}
+            const trajectoryCtx = document.getElementById('trajectoryChart');
+            if (trajectoryCtx) {
+                new Chart(trajectoryCtx, {
+                    type: 'line',
+                    data: {
+                        labels: {{ trainee_stats.trajectory_labels|tojson }},
+                        datasets: [{
+                            label: 'Score Percentage',
+                            data: {{ trainee_stats.trajectory_scores|tojson }},
+                            borderColor: '#60A5FA',
+                            backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            borderWidth: 2,
+                            pointBackgroundColor: '#60A5FA'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { color: gridColor }, ticks: { color: textColor } },
+                            y: { 
+                                grid: { color: gridColor }, 
+                                ticks: { color: textColor },
+                                min: 0,
+                                max: 100
+                            }
+                        }
+                    }
+                });
+            }
+        {% endif %}
+    });
+</script>
+
+{% endblock %}

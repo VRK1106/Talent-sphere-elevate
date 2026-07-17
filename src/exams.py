@@ -311,6 +311,20 @@ def submit_exam_answers(assignment_id: int, answers: dict[str, Any], score: floa
         return False
 
 
+def delete_assignment(assignment_id: int) -> bool:
+    """Delete a trainee assignment by ID."""
+    init_exams_db()
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM assignments WHERE assignment_id = ?", (assignment_id,))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception:
+        return False
+
+
 # --- Announcements operations ---
 
 def get_all_announcements() -> list[dict[str, Any]]:

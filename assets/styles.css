@@ -57,17 +57,14 @@
 /* ---------- Base layout ---------- */
 html,
 body,
-[class*="css"],
-.stApp {
+[class*="css"] {
   font-family: "Outfit", "Inter", system-ui, sans-serif;
   color: var(--ts-text);
   background-color: var(--ts-bg) !important;
 }
 
-.stApp {
+body {
   position: relative;
-  min-height: 100vh;
-  overflow: visible;
   background:
     radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
     radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.12) 0%, transparent 40%),
@@ -75,14 +72,14 @@ body,
     var(--ts-bg) !important;
 }
 
-.stApp::before {
+body::before {
   content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
   background-size: 50px 50px;
   opacity: 0.8;
   z-index: 0;
@@ -103,7 +100,7 @@ h3,
 h4 {
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #FFFFFF;
+  color: var(--ts-text-heading, #FFFFFF);
 }
 
 /* ---------- Hero banner ---------- */
@@ -112,7 +109,7 @@ h4 {
   overflow: hidden;
   background: var(--ts-gradient-hero);
   border: 1px solid var(--ts-border);
-  color: #fff;
+  color: var(--ts-text);
   border-radius: 24px;
   padding: 2.5rem 2.8rem;
   box-shadow: var(--ts-shadow), 0 0 30px rgba(99, 102, 241, 0.1);
@@ -332,7 +329,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:hover {
 .ts-info-title {
   font-size: 1rem;
   font-weight: 700;
-  color: #E0E7FF;
+  color: var(--ts-text-heading, #E0E7FF);
 }
 
 .ts-info-body {
@@ -349,7 +346,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:hover {
   border-radius: var(--ts-radius-pill);
   font-size: 0.8rem;
   font-weight: 600;
-  color: #fff;
+  color: #FFFFFF;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
@@ -402,7 +399,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:hover {
 .ts-highlight {
   background-color: rgba(245, 158, 11, 0.25);
   border-bottom: 2px solid var(--ts-warning);
-  color: #FFFFFF;
+  color: var(--ts-text);
   padding: 0.1rem 0.25rem;
   border-radius: 4px;
   font-weight: 500;
@@ -423,7 +420,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:hover {
   margin-top: 0.8rem;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #FFFFFF;
+  color: var(--ts-text-heading, #FFFFFF);
 }
 
 .ts-empty-body {
@@ -457,7 +454,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:hover {
 
 .ts-catalog-name {
   font-weight: 600;
-  color: #FFFFFF;
+  color: var(--ts-text-heading, #FFFFFF);
   font-size: 1.05rem;
 }
 
@@ -1117,4 +1114,415 @@ div[data-baseweb="popover"] [role="option"]:hover,
   --ts-input-bg: rgba(17, 24, 39, 0.5);
   --ts-popover-bg: #0b0f19;
   --ts-popover-text: #FFFFFF;
+}
+
+/* ============================================================
+   Light Theme and Theme Swapping Styles
+   ============================================================ */
+
+body.ts-light-mode {
+  --ts-bg: #F3F4F6;
+  --ts-surface: rgba(255, 255, 255, 0.7);
+  --ts-border: rgba(0, 0, 0, 0.08);
+  --ts-border-hover: rgba(99, 102, 241, 0.35);
+  --ts-text: #1F2937;
+  --ts-text-heading: #111827;
+  --ts-text-secondary: #4B5563;
+  --ts-text-muted: #9CA3AF;
+  --ts-input-bg: rgba(255, 255, 255, 0.85);
+  --ts-popover-bg: #FFFFFF;
+  --ts-popover-text: #1F2937;
+  --ts-inner-bg: rgba(0, 0, 0, 0.025);
+  --ts-badge-bg: rgba(99, 102, 241, 0.1);
+  --ts-badge-border: rgba(99, 102, 241, 0.2);
+  --ts-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+  --ts-shadow-hover: 0 10px 40px rgba(99, 102, 241, 0.1);
+  --ts-shadow-glow: 0 0 15px rgba(99, 102, 241, 0.06);
+  --ts-gradient-hero: linear-gradient(120deg, #FFFFFF 0%, #EEF2F6 50%, #E2E8F0 100%);
+}
+
+body.ts-light-mode {
+  background:
+    radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.04) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.04) 0%, transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.03) 0%, transparent 50%),
+    var(--ts-bg) !important;
+}
+
+body.ts-light-mode::before {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.015) 1px, transparent 1px) !important;
+}
+
+body.ts-light-mode .ts-sidebar-profile {
+  background: rgba(0, 0, 0, 0.025) !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+body.ts-light-mode .ts-sidebar-health {
+  background: rgba(0, 0, 0, 0.015) !important;
+  border: 1px solid rgba(0, 0, 0, 0.04) !important;
+}
+
+body.ts-light-mode .ts-divider-line {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+body.ts-light-mode ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+body.ts-light-mode ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* ============================================================
+   Premium Table Design (.ts-table)
+   ============================================================ */
+.ts-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 1rem;
+}
+
+.ts-table th {
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--ts-text-heading);
+  font-family: "Outfit", sans-serif;
+  font-weight: 600;
+  text-align: left;
+  padding: 1rem;
+  font-size: 0.9rem;
+  border-bottom: 1.5px solid var(--ts-border);
+}
+
+.ts-table th:first-child {
+  border-top-left-radius: 10px;
+}
+
+.ts-table th:last-child {
+  border-top-right-radius: 10px;
+}
+
+.ts-table td {
+  padding: 1rem;
+  color: var(--ts-text);
+  font-size: 0.92rem;
+  border-bottom: 1px solid var(--ts-border);
+  transition: all 0.2s ease;
+}
+
+.ts-table tr:last-child td {
+  border-bottom: none;
+}
+
+.ts-table tr {
+  transition: background-color 0.2s ease;
+}
+
+.ts-table tr:hover td {
+  background-color: rgba(99, 102, 241, 0.04);
+}
+
+body.ts-light-mode .ts-table th {
+  background: rgba(99, 102, 241, 0.05);
+}
+body.ts-light-mode .ts-table tr:hover td {
+  background-color: rgba(99, 102, 241, 0.02);
+}
+
+/* Modern Select Multiple styling */
+select[multiple] {
+  width: 100%;
+  min-height: 120px;
+  background-color: var(--ts-input-bg) !important;
+  border: 1px solid var(--ts-border) !important;
+  border-radius: var(--ts-radius) !important;
+  color: var(--ts-text) !important;
+  padding: 0.5rem !important;
+  outline: none;
+  font-family: inherit;
+}
+
+select[multiple] option {
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+select[multiple] option:hover {
+  background-color: rgba(99, 102, 241, 0.1) !important;
+  color: var(--ts-primary) !important;
+}
+
+select[multiple] option:checked {
+  background: var(--ts-gradient) !important;
+  color: #FFFFFF !important;
+}
+
+body.ts-light-mode input,
+body.ts-light-mode textarea,
+body.ts-light-mode select {
+  background-color: var(--ts-input-bg) !important;
+  color: var(--ts-text) !important;
+  border-color: var(--ts-border) !important;
+}
+
+body.ts-light-mode input::placeholder,
+body.ts-light-mode textarea::placeholder {
+  color: var(--ts-text-muted) !important;
+}
+
+/* ============================================================
+   LIGHT MODE — Comprehensive Text Color Fixes
+   Covers all elements with hardcoded dark-theme colors
+   ============================================================ */
+
+/* Headings - hardcoded #FFFFFF in base */
+body.ts-light-mode h1,
+body.ts-light-mode h2,
+body.ts-light-mode h3,
+body.ts-light-mode h4 {
+  color: var(--ts-text-heading) !important;
+  -webkit-text-fill-color: var(--ts-text-heading) !important;
+}
+
+/* Hero banner */
+body.ts-light-mode .ts-hero {
+  background: linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(6,182,212,0.06) 100%) !important;
+  border: 1px solid rgba(99, 102, 241, 0.15) !important;
+  color: var(--ts-text) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05) !important;
+}
+
+body.ts-light-mode .ts-hero-title {
+  background: linear-gradient(135deg, var(--ts-primary) 0%, var(--ts-accent) 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+body.ts-light-mode .ts-hero-subtitle {
+  color: #374151 !important;
+  -webkit-text-fill-color: #374151 !important;
+}
+
+/* Section titles */
+body.ts-light-mode .ts-section-title {
+  background: linear-gradient(135deg, var(--ts-primary) 0%, var(--ts-secondary) 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+body.ts-light-mode .ts-section-subtitle {
+  color: #4B5563 !important;
+  -webkit-text-fill-color: #4B5563 !important;
+}
+
+/* Cards */
+body.ts-light-mode .ts-card {
+  background: rgba(255,255,255,0.75) !important;
+  border: 1px solid rgba(0,0,0,0.06) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.04) !important;
+}
+
+body.ts-light-mode .ts-card-title {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+body.ts-light-mode .ts-card-body {
+  color: #4B5563 !important;
+  -webkit-text-fill-color: #4B5563 !important;
+}
+
+/* Metric cards */
+body.ts-light-mode .ts-metric {
+  background: rgba(255,255,255,0.85) !important;
+  border: 1px solid rgba(0,0,0,0.06) !important;
+}
+
+body.ts-light-mode .ts-metric-value {
+  background: linear-gradient(135deg, var(--ts-primary) 0%, var(--ts-secondary) 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+body.ts-light-mode .ts-metric-label {
+  color: #4B5563 !important;
+  -webkit-text-fill-color: #4B5563 !important;
+}
+
+/* Info banners */
+body.ts-light-mode .ts-info-banner {
+  background: linear-gradient(120deg, rgba(99,102,241,0.07), rgba(6,182,212,0.03)) !important;
+  border-color: rgba(99,102,241,0.15) !important;
+}
+
+body.ts-light-mode .ts-info-title {
+  color: #1E40AF !important;
+  -webkit-text-fill-color: #1E40AF !important;
+}
+
+body.ts-light-mode .ts-info-body {
+  color: #374151 !important;
+  -webkit-text-fill-color: #374151 !important;
+}
+
+/* Pills & tags */
+body.ts-light-mode .ts-pill {
+  background: rgba(99,102,241,0.08) !important;
+  color: var(--ts-primary) !important;
+  border-color: rgba(99,102,241,0.2) !important;
+}
+
+body.ts-light-mode .ts-pill:hover {
+  background: rgba(99,102,241,0.15) !important;
+  color: var(--ts-primary) !important;
+}
+
+/* Highlights */
+body.ts-light-mode .ts-highlight {
+  background-color: rgba(245,158,11,0.2) !important;
+  color: #92400E !important;
+  -webkit-text-fill-color: #92400E !important;
+}
+
+/* Catalog cards */
+body.ts-light-mode .ts-catalog-card {
+  background: rgba(255,255,255,0.7) !important;
+  border-color: rgba(0,0,0,0.07) !important;
+}
+
+body.ts-light-mode .ts-catalog-name {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+body.ts-light-mode .ts-catalog-meta {
+  color: #4B5563 !important;
+}
+
+/* Empty state */
+body.ts-light-mode .ts-empty {
+  background: rgba(255,255,255,0.5) !important;
+}
+
+body.ts-light-mode .ts-empty-title {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+body.ts-light-mode .ts-empty-body {
+  color: #4B5563 !important;
+}
+
+/* Search results */
+body.ts-light-mode .ts-result-page {
+  background: rgba(0,0,0,0.04) !important;
+  border-color: rgba(0,0,0,0.06) !important;
+  color: #4B5563 !important;
+}
+
+body.ts-light-mode .ts-result-text {
+  color: #1F2937 !important;
+}
+
+/* Sidebar container */
+body.ts-light-mode .sidebar-container {
+  background-color: #FFFFFF !important;
+  border-right-color: rgba(0,0,0,0.08) !important;
+}
+
+/* Navigation links */
+body.ts-light-mode .nav-link {
+  color: #4B5563 !important;
+}
+
+body.ts-light-mode .nav-link:hover {
+  background-color: rgba(99,102,241,0.06) !important;
+  color: var(--ts-primary) !important;
+}
+
+body.ts-light-mode .nav-section-title {
+  color: #9CA3AF !important;
+}
+
+/* Sidebar profile card */
+body.ts-light-mode .ts-sidebar-profile {
+  background: rgba(0,0,0,0.03) !important;
+  border: 1px solid rgba(0,0,0,0.05) !important;
+}
+
+body.ts-light-mode .ts-profile-name {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+body.ts-light-mode .ts-profile-details {
+  color: #6B7280 !important;
+  -webkit-text-fill-color: #6B7280 !important;
+}
+
+/* Health indicators */
+body.ts-light-mode .ts-sidebar-health {
+  background: rgba(0,0,0,0.02) !important;
+  border: 1px solid rgba(0,0,0,0.04) !important;
+}
+
+/* Nested cards */
+body.ts-light-mode .ts-nested-card {
+  background-color: rgba(0,0,0,0.025) !important;
+  border-color: rgba(0,0,0,0.07) !important;
+}
+
+/* Badge outline in light mode */
+body.ts-light-mode .ts-badge-outline {
+  background: rgba(99,102,241,0.08) !important;
+  border-color: rgba(99,102,241,0.2) !important;
+  color: var(--ts-primary) !important;
+}
+
+/* Tab links */
+body.ts-light-mode .tab-link {
+  color: #6B7280 !important;
+}
+
+body.ts-light-mode .tab-link:hover,
+body.ts-light-mode .tab-link.active {
+  color: var(--ts-primary) !important;
+}
+
+/* Progress bar track */
+body.ts-light-mode .ts-progress-bar-bg {
+  background: rgba(0,0,0,0.08) !important;
+}
+
+/* Divider lines */
+body.ts-light-mode .ts-divider-line {
+  background-color: rgba(0,0,0,0.08) !important;
+}
+
+/* Chat history panel */
+body.ts-light-mode .chat-history-sidebar-box {
+  border-left-color: rgba(0,0,0,0.12) !important;
+}
+
+/* Question cards in exam */
+body.ts-light-mode .question-card {
+  background: rgba(0,0,0,0.02) !important;
+  border-color: rgba(0,0,0,0.07) !important;
+}
+
+body.ts-light-mode .mcq-option-label {
+  background: rgba(0,0,0,0.02) !important;
+  border-color: rgba(0,0,0,0.08) !important;
+  color: #1F2937 !important;
+}
+
+body.ts-light-mode .mcq-option-label:hover {
+  background: rgba(99,102,241,0.05) !important;
 }

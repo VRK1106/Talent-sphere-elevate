@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+{% block title %}User Management - Talent Sphere Elevate{% endblock %}
+
+{% block head %}
+<style>
+    .tabs-container {
+        display: flex;
+        border-bottom: 1px solid var(--ts-border);
+        margin-bottom: 1.5rem;
+        gap: 1rem;
+    }
+    .tab-link {
+        background: none;
+        border: none;
+        color: var(--ts-text-secondary);
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s ease;
+    }
+    .tab-link:hover {
+        color: var(--ts-primary);
+    }
+    .tab-link.active {
+        color: var(--ts-primary);
+        border-bottom-color: var(--ts-primary);
+    }
+    .tab-content {
+        display: none;
+        animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ts-hero">
+    <div class="ts-hero-title">👥 User Management</div>
+    <div class="ts-hero-subtitle">
+        Provision trainee accounts. Credentials are stored securely (hashed) in SQLite.
+    </div>
+</div>
+
+<div class="tabs-container" style="margin-top: 1.5rem;">
+    <button class="tab-link {% if active_tab == 'create' %}active{% endif %}" onclick="openTab(event, 'create-user')">Create User</button>
+    <button class="tab-link {% if active_tab == 'manage' %}active{% endif %}" onclick="openTab(event, 'manage-users')">Manage Users</button>
+</div>
+
+<!-- Tab 1: Create User -->
+<div id="create-user" class="tab-content" style="{% if active_tab == 'create' %}display: block;{% endif %}">
+    <!-- Success Banner showing credentials -->
+    {% if last_created_user %}
+        <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; border-color: rgba(52, 211, 153, 0.3); background-color: rgba(52, 211, 153, 0.02); margin-bottom: 1.5rem;">
+            <div style="font-size: 1.1rem; font-weight: 700; color: #34d399; margin-bottom: 0.5rem;">User Created Successfully</div>
+            <div style="font-size: 0.9rem; color: var(--ts-text); margin-bottom: 1rem;">
+                Share these credentials with the user now — the password is not stored in plain text and cannot be shown again.
+            </div>
+            <ul style="color: var(--ts-text); font-size: 0.95rem; margin-left: 1.2rem; line-height: 1.6;">
+                <li>Email: <b>{{ last_created_user.email }}</b></li>
+                <li>Password: <b>{{ last_created_user.password }}</b></li>
+            </ul>
+            <a href="/user_management" class="btn-ts btn-ts-secondary" style="width: auto; padding: 0.5rem 1.5rem; margin-top: 0.5rem; display: inline-flex;">
+                Dismiss / Create Another
+            </a>
+        </div>
+    {% endif %}
+
+    <!-- Flash message alerts -->
+    {% with messages = get_flashed_messages(category_filter=["create_user_error"]) %}
+        {% if messages %}
+            {% for message in messages %}
+                <div style="background-color: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; padding: 0.75rem; border-radius: 8px; margin-bottom: 1.2rem; font-size: 0.88rem;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="ts-card" style="padding: 1.5rem; border-radius: 12px;">
+        <form action="/user_management/create" method="POST" style="display: flex; flex-direction: column; gap: 1.5rem;">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Employee ID</label>
+                    <input type="text" name="employee_id" placeholder="EMP-1024" required
+                           style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                </div>
+                <div class="form-group">
+                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Full Name</label>
+                    <input type="text" name="full_name" placeholder="Priya Sharma" required
+                           style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                </div>
+            </div>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Email</label>
+                    <input type="email" name="email" placeholder="priya@company.com" required
+                           style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                </div>
+                <div class="form-group">
+                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Training Domain</label>
+                    <select name="domain" style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                        <option value="general">General</option>
+                        <option value="development">Development</option>
+                        <option value="testing">Testing</option>
+                        <option value="design">Design</option>
+                        <option value="security">Security</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Password setup selection -->
+            <div class="form-group">
+                <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Password Option</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <label class="btn-ts btn-ts-secondary" style="width: auto; cursor: pointer; display: flex; align-items: center; gap: 0.4rem;">
+                        <input type="radio" name="password_mode" value="auto" checked onchange="togglePasswordInput(true)">
+                        Auto-generate
+                    </label>
+                    <label class="btn-ts btn-ts-secondary" style="width: auto; cursor: pointer; display: flex; align-items: center; gap: 0.4rem;">
+                        <input type="radio" name="password_mode" value="manual" onchange="togglePasswordInput(false)">
+                        Set manually
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group" id="manualPasswordGroup" style="display: none;">
+                <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Manual password (min 8 chars)</label>
+                <input type="password" name="manual_password" placeholder="Leave blank if auto-generating" id="manualPasswordInput"
+                       style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+            </div>
+
+            <button type="submit" class="btn-ts btn-ts-primary" style="width: auto; padding: 0.75rem 2rem;">
+                👤 Create User
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Tab 2: Manage Users -->
+<div id="manage-users" class="tab-content" style="{% if active_tab == 'manage' %}display: block;{% endif %}">
+    <!-- Success delete flashes -->
+    {% with messages = get_flashed_messages(category_filter=["manage_user_info"]) %}
+        {% if messages %}
+            {% for message in messages %}
+                <div style="background-color: rgba(52, 211, 153, 0.1); border: 1px solid rgba(52, 211, 153, 0.2); color: #34d399; padding: 0.75rem; border-radius: 8px; margin-bottom: 1.2rem; font-size: 0.88rem;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="ts-card" style="padding: 1.5rem; border-radius: 12px;">
+        {% if not users %}
+            <div style="padding: 1rem; color: var(--ts-text-muted);">No registered users found in the system.</div>
+        {% else %}
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                {% for u in users %}
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--ts-border); padding-bottom: 1rem; margin-bottom: 0.5rem; {% if loop.last %}border-bottom: none; margin-bottom: 0; padding-bottom: 0;{% endif %}">
+                    <div>
+                        <div style="margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 1.05rem; font-weight: 600; color: var(--ts-text);">👤 {{ u.full_name }}</span>
+                            <span class="ts-profile-badge" style="padding: 0.1rem 0.4rem; font-size: 0.7rem;">{{ u.role|upper }}</span>
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--ts-text-secondary); line-height: 1.5;">
+                            ID: <b>{{ u.employee_id }}</b> &nbsp;·&nbsp; 
+                            Email: <b>{{ u.email }}</b> &nbsp;·&nbsp; 
+                            Domain: <b>{{ u.domain }}</b>
+                            <br>
+                            <span style="margin-top: 0.4rem; display: inline-block; color: var(--ts-primary); font-weight: 500;">
+                                🔑 Credentials: &nbsp;Username: <code style="background: rgba(255,255,255,0.05); padding: 0.1rem 0.3rem; border-radius: 4px; border: 1px solid var(--ts-border)">{{ u.employee_id }}</code> &nbsp;·&nbsp; 
+                                Password: <code style="background: rgba(255,255,255,0.05); padding: 0.1rem 0.3rem; border-radius: 4px; border: 1px solid var(--ts-border)">{{ u.password_plain if u.password_plain else 'demo123' }}</code>
+                            </span>
+                        </div>
+                    </div>
+                    <div style="width: auto;">
+                        {% if u.employee_id == 'admin' %}
+                            <span style="font-size: 0.85rem; color: var(--ts-text-muted);">Protected</span>
+                        {% else %}
+                            <form action="/user_management/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete user {{ u.full_name }}?')">
+                                <input type="hidden" name="employee_id" value="{{ u.employee_id }}">
+                                <button type="submit" class="btn-ts btn-ts-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; color: #f87171; border-color: rgba(248, 113, 113, 0.2);">
+                                    🗑️ Delete
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    function openTab(evt, tabId) {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        tablinks = document.getElementsByClassName("tab-link");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].classList.remove("active");
+        }
+        document.getElementById(tabId).style.display = "block";
+        evt.currentTarget.classList.add("active");
+        
+        // Save state in URL hash if desired
+        if(tabId === 'create-user') {
+            window.location.hash = 'create';
+        } else {
+            window.location.hash = 'manage';
+        }
+    }
+    
+    function togglePasswordInput(auto) {
+        const group = document.getElementById('manualPasswordGroup');
+        const input = document.getElementById('manualPasswordInput');
+        if (auto) {
+            group.style.display = 'none';
+            input.required = false;
+        } else {
+            group.style.display = 'flex';
+            input.required = true;
+        }
+    }
+    
+    // Check URL hash on page load
+    document.addEventListener("DOMContentLoaded", function() {
+        if(window.location.hash === '#manage') {
+            const btn = document.querySelector("button[onclick*='manage-users']");
+            if(btn) btn.click();
+        } else if(window.location.hash === '#create') {
+            const btn = document.querySelector("button[onclick*='create-user']");
+            if(btn) btn.click();
+        }
+    });
+</script>
+{% endblock %}
