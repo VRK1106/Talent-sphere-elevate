@@ -1321,6 +1321,22 @@ def exams_submit():
 # AI ASSISTANT & SSE CHAT STREAMING
 active_generations = {} # employee_id -> { "session_id", "query", "partial_response", "sources", "stop" }
 
+@app.before_request
+def before_request_cleanup():
+    # Only clean up for authenticated users and non-static/non-assistant routes
+    if session.get('authenticated'):
+        path = request.path
+        if not (path.startswith('/assistant') or path.startswith('/assets') or path.startswith('/static')):
+            user_info = session.get('user_info', {}) or {}
+            emp_id = user_info.get('employee_id')
+            if emp_id:
+                try:
+                    for s in get_chat_sessions_for_user(emp_id):
+                        if not get_chat_messages(s["session_id"]):
+                            delete_chat_session(s["session_id"])
+                except Exception:
+                    pass
+
 @app.route('/assistant')
 @login_required
 def assistant():
@@ -1331,14 +1347,27 @@ def assistant():
     
     session_id = request.args.get('session_id')
     if session_id:
+        # Delete any empty session that is not the one we are explicitly loading
+        for s in user_sessions:
+            if s["session_id"] != session_id and not get_chat_messages(s["session_id"]):
+                delete_chat_session(s["session_id"])
         session['active_chat_session_id'] = session_id
         active_id = session_id
     else:
-        active_id = str(uuid.uuid4())
-        create_chat_session(active_id, emp_id, "New Chat")
+        # Check if there is an existing empty session. If so, reuse it.
+        # Otherwise, create a new one.
+        empty_sessions = [s for s in user_sessions if not get_chat_messages(s["session_id"])]
+        if empty_sessions:
+            active_id = empty_sessions[0]["session_id"]
+            # Clean up any other empty sessions
+            for s in empty_sessions[1:]:
+                delete_chat_session(s["session_id"])
+        else:
+            active_id = str(uuid.uuid4())
+            create_chat_session(active_id, emp_id, "New Chat")
         session['active_chat_session_id'] = active_id
-        user_sessions = get_chat_sessions_for_user(emp_id)
         
+    user_sessions = get_chat_sessions_for_user(emp_id)
     active_messages = get_chat_messages(active_id)
     return render_template(
         'assistant.html',
@@ -1474,7 +1503,7 @@ def assistant_session_create():
     new_id = str(uuid.uuid4())
     create_chat_session(new_id, emp_id, "New Conversation")
     session['active_chat_session_id'] = new_id
-    return redirect(url_for('assistant'))
+    return redirect(url_for('assistant', session_id=new_id))
 
 @app.route('/assistant/session/rename')
 @login_required

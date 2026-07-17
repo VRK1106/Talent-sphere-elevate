@@ -93,38 +93,38 @@
     <div class="ts-metrics-grid">
         <div class="ts-metric ts-metric-card" onclick="switchTabDirectly('directory')" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.trainees_count }}</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">Trainees ➡️</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">Trainees</div>
         </div>
         <div class="ts-metric ts-metric-card" onclick="switchTabDirectly('directory')" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.active_now }}</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-secondary);">Active Now ➡️</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-secondary);">Active Now</div>
         </div>
         <div class="ts-metric ts-metric-card" onclick="window.location.href='/documents'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.doc_count }}</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-accent);">Documents ➡️</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-accent);">Documents</div>
         </div>
         <div class="ts-metric ts-metric-card" onclick="window.location.href='/documents'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.chunk_count }}</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">Knowledge Chunks ➡️</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">Knowledge Chunks</div>
         </div>
     </div>
     
     <div class="ts-metrics-grid">
         <div class="ts-metric ts-metric-card" onclick="window.location.href='/assistant'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.total_sessions }}</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-secondary);">Chat Sessions ➡️</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-secondary);">Chat Sessions</div>
         </div>
         <div class="ts-metric ts-metric-card" onclick="window.location.href='/assistant'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.total_messages }}</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-accent);">Total Messages ➡️</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-accent);">Total Messages</div>
         </div>
         <div class="ts-metric ts-metric-card" onclick="window.location.href='/exams'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.exams_count }}</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">Exams Created ➡️</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">Exams Created</div>
         </div>
         <div class="ts-metric ts-metric-card" onclick="switchTabDirectly('performance')" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ "%.1f"|format(admin_stats.avg_score_pct) }}%</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-secondary);">Avg Exam Score ➡️</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-secondary);">Avg Exam Score</div>
         </div>
     </div>
 
@@ -286,19 +286,19 @@
     <div class="ts-metrics-grid">
         <div class="ts-metric ts-metric-card" onclick="window.location.href='/exams'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ trainee_stats.pending_count }}</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">Pending Exams ➡️</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">Pending Exams</div>
         </div>
         <div class="ts-metric ts-metric-card" onclick="window.location.href='/exams'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ trainee_stats.completed_count }}</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-secondary);">Completed Exams ➡️</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-secondary);">Completed Exams</div>
         </div>
         <div class="ts-metric ts-metric-card" onclick="switchTabDirectly('trainee-progress')" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ "%.1f"|format(trainee_stats.personal_avg) }}%</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-accent);">My Average Score ➡️</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-accent);">My Average Score</div>
         </div>
         <div class="ts-metric ts-metric-card" onclick="window.location.href='/assistant'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ trainee_stats.chat_count }}</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">AI Chat Sessions ➡️</div>
+            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">AI Chat Sessions</div>
         </div>
     </div>
 
