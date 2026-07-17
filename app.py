@@ -66,6 +66,57 @@ init_chats_db()
 app = Flask(__name__, static_folder='assets', static_url_path='/assets')
 app.secret_key = os.environ.get('SECRET_KEY', 'talent-sphere-elevate-secret-key-12345')
 
+# Register TabSessionInterface for separate browser tabs logins
+from flask.sessions import SessionInterface, SessionMixin
+
+class DictSession(dict, SessionMixin):
+    pass
+
+class TabSessionInterface(SessionInterface):
+    def __init__(self):
+        self.sessions = {} # tab_id -> session dict
+
+    def open_session(self, app, request):
+        tab_id = request.args.get('tab_id') or request.form.get('tab_id')
+        
+        if not tab_id and request.is_json:
+            try:
+                json_data = request.get_json(silent=True) or {}
+                tab_id = json_data.get('tab_id')
+            except Exception:
+                pass
+                
+        if not tab_id:
+            referer = request.headers.get('Referer')
+            if referer:
+                from urllib.parse import urlparse, parse_qs
+                try:
+                    parsed = urlparse(referer)
+                    q = parse_qs(parsed.query)
+                    if 'tab_id' in q:
+                        tab_id = q['tab_id'][0]
+                except Exception:
+                    pass
+                    
+        if not tab_id:
+            tab_id = request.cookies.get('fallback_tab_id')
+            if not tab_id:
+                tab_id = 'temp_' + str(uuid.uuid4())
+                
+        if tab_id not in self.sessions:
+            self.sessions[tab_id] = DictSession()
+            
+        self.sessions[tab_id]['_tab_id'] = tab_id
+        return self.sessions[tab_id]
+
+    def save_session(self, app, session, response):
+        tab_id = session.get('_tab_id')
+        if tab_id:
+            self.sessions[tab_id] = session
+            response.set_cookie('fallback_tab_id', tab_id)
+
+app.session_interface = TabSessionInterface()
+
 # Helper: clean LLM output to parse as JSON
 def clean_json_response(raw_resp: str) -> str:
     resp = raw_resp.strip()
@@ -85,6 +136,25 @@ def login_required(f):
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
+
+# Helper: redirect wrapper to preserve tab_id
+flask_redirect = redirect
+def redirect(location, code=302):
+    try:
+        tab_id = session.get('_tab_id') or request.args.get('tab_id')
+        if tab_id:
+            from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode
+            parsed = urlparse(location)
+            # Only append tab_id for internal redirects
+            if not parsed.netloc or parsed.netloc == request.host:
+                query = dict(parse_qsl(parsed.query))
+                if 'tab_id' not in query:
+                    query['tab_id'] = tab_id
+                    new_query = urlencode(query)
+                    location = urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment))
+    except Exception:
+        pass
+    return flask_redirect(location, code=code)
 
 # Context Processor for base template and other views
 @app.context_processor
@@ -1399,7 +1469,7 @@ def chat_stream():
         if s["session_id"] == active_session_id:
             current_title = s["title"]
             break
-    if current_title in ["Welcome Conversation", "New Conversation"] or current_title.startswith("Chat "):
+    if current_title in ["Welcome Conversation", "New Conversation", "New Chat"] or current_title.startswith("Chat "):
         new_title = " ".join(query.split()[:4])
         if len(new_title) > 20:
             new_title = new_title[:18] + "..."

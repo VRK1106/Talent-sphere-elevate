@@ -141,6 +141,59 @@
     </style>
     
     <script>
+        // Tab-specific Session Management
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            let tabId = urlParams.get('tab_id');
+            let storedTabId = sessionStorage.getItem('ts_tab_id');
+            
+            if (!storedTabId) {
+                storedTabId = 'tab_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+                sessionStorage.setItem('ts_tab_id', storedTabId);
+            }
+            
+            if (tabId !== storedTabId) {
+                urlParams.set('tab_id', storedTabId);
+                window.location.search = urlParams.toString();
+            }
+        })();
+
+        // Intercept all links and forms to append tab_id
+        document.addEventListener("DOMContentLoaded", () => {
+            const tabId = sessionStorage.getItem('ts_tab_id');
+            if (tabId) {
+                // Update existing links on page load
+                document.querySelectorAll('a').forEach(a => {
+                    const href = a.getAttribute('href');
+                    if (href && (href.startsWith('/') || href.startsWith(window.location.origin))) {
+                        try {
+                            const url = new URL(href, window.location.origin);
+                            if (!url.searchParams.has('tab_id')) {
+                                url.searchParams.set('tab_id', tabId);
+                                a.setAttribute('href', url.pathname + url.search + url.hash);
+                            }
+                        } catch (e) {}
+                    }
+                });
+            }
+        });
+
+        // Intercept form submissions
+        document.addEventListener("submit", function(e) {
+            const form = e.target;
+            const tabId = sessionStorage.getItem('ts_tab_id');
+            if (tabId) {
+                let input = form.querySelector('input[name="tab_id"]');
+                if (!input) {
+                    input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'tab_id';
+                    form.appendChild(input);
+                }
+                input.value = tabId;
+            }
+        });
+
         // Set light/dark theme early on boot to prevent page flickering
         (function() {
             const savedTheme = localStorage.getItem('theme');
