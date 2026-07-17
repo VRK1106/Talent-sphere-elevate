@@ -1139,6 +1139,8 @@ body.ts-light-mode {
   --ts-shadow-hover: 0 10px 40px rgba(99, 102, 241, 0.1);
   --ts-shadow-glow: 0 0 15px rgba(99, 102, 241, 0.06);
   --ts-gradient-hero: linear-gradient(120deg, #FFFFFF 0%, #EEF2F6 50%, #E2E8F0 100%);
+  --ts-danger: #B91C1C;
+  --ts-warning: #B45309;
 }
 
 body.ts-light-mode {
