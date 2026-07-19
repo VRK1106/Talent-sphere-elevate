@@ -1151,11 +1151,11 @@
             return;
         }
         
-        const randomMs = 60000 + Math.random() * 30000; // randomized 60s - 90s
+        const checkIntervalMs = 15000; // Check every 15 seconds
         presenceTimer = setTimeout(async () => {
             await performPresenceCheck();
             scheduleNextPresenceCheck();
-        }, randomMs);
+        }, checkIntervalMs);
     }
 
     async function performPresenceCheck() {
