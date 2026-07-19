@@ -386,6 +386,15 @@ def login():
 
 @app.route('/logout')
 def logout():
+    tab_id = session.get('_tab_id')
+    if tab_id:
+        try:
+            conn = sqlite3.connect(str(_SESSIONS_DB))
+            conn.execute("DELETE FROM tab_sessions WHERE tab_id = ?", (tab_id,))
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
     session.clear()
     return redirect(url_for('login'))
 
