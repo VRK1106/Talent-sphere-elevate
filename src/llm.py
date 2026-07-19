@@ -336,15 +336,21 @@ def analyze_proctor_image(image_base64: str) -> str:
             method="POST",
         )
         
-        with urllib.request.urlopen(req, timeout=30.0) as resp:
+        with urllib.request.urlopen(req, timeout=10.0) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             answer = data["choices"][0]["message"]["content"].strip().lower()
             for label in ["phone", "second_person", "absent", "none"]:
                 if label in answer:
                     return label
             return "none"
+    except urllib.error.HTTPError as e:
+        if e.code in [400, 403, 404]:
+            print(f"[PROCTOR VISION] Groq vision model not available or decommissioned ({e.code} {e.reason}). Bypassing AI validation.")
+        else:
+            print(f"[PROCTOR VISION] HTTP error during analysis: {e.code} {e.reason}")
+        return "none"
     except Exception as e:
-        print(f"Error in Groq vision analysis: {e}")
+        print(f"[PROCTOR VISION] Error in Groq vision analysis: {e}")
         return "none"
 
 
