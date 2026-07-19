@@ -290,10 +290,64 @@ def generate_chat_answer_stream(prompt: str, model_name: str, system_instruction
         yield f"An unexpected error occurred: {e}"
 
 
+def _analyze_proctor_image_local(image_base64: str) -> str:
+    """Analyze a base64 encoded JPEG image locally using Ollama's Moondream model."""
+    try:
+        # Strip data URL prefix if present
+        if "," in image_base64:
+            image_base64 = image_base64.split(",")[1]
+            
+        url = "http://localhost:11434/api/chat"
+        payload = {
+            "model": "moondream:latest",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "Does this image show a phone, a second person, or is the student absent? Answer in one word: none / phone / second_person / absent.",
+                    "images": [image_base64]
+                }
+            ],
+            "stream": False
+        }
+        
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        
+        with urllib.request.urlopen(req, timeout=15.0) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            answer = data.get("message", {}).get("content", "").strip().lower()
+            print(f"[PROCTOR OLLAMA] Local Moondream response: '{answer}'")
+            for label in ["phone", "second_person", "absent", "none"]:
+                if label in answer:
+                    return label
+            return "none"
+    except Exception as e:
+        print(f"[PROCTOR OLLAMA] Error in local vision analysis: {e}")
+        return "none"
+
+
 def analyze_proctor_image(image_base64: str) -> str:
-    """Analyze a base64 encoded JPEG image using Groq's vision model.
-    Returns: 'none', 'phone', 'second_person', 'absent', or 'error'.
-    """
+    """Analyze a base64 encoded JPEG image. Try local Ollama Moondream first, fallback to Groq."""
+    # 1. Try local Ollama Moondream if available
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(0.5)
+        s.connect(('localhost', 11434))
+        s.close()
+        
+        # Ollama is running, execute local analysis
+        ollama_res = _analyze_proctor_image_local(image_base64)
+        if ollama_res != "none":
+            return ollama_res
+    except Exception:
+        pass
+        
+    # 2. Fallback to Groq API
     if not GROQ_API_KEY:
         return "none"
         
