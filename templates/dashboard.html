@@ -275,10 +275,31 @@
     <!-- =======================================================================
          TRAINEE VIEW
          ======================================================================= -->
-    <div class="ts-hero">
-        <div class="ts-hero-title">Welcome back, {{ session.get('current_user') }} 👋</div>
-        <div class="ts-hero-subtitle">
-            Track your training progress, complete assigned assessments, and query your AI Study Coach.
+    <div class="ts-hero" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; position: relative; overflow: visible !important;">
+        <div>
+            <div class="ts-hero-title">Welcome back, {{ session.get('current_user') }} 👋</div>
+            <div class="ts-hero-subtitle">
+                Track your training progress, complete assigned assessments, and query your AI Study Coach.
+            </div>
+        </div>
+        
+        <!-- Notifications Bell System -->
+        <div class="notifications-bell-container" style="position: relative;">
+            <button id="notiBellBtn" onclick="toggleNotiDropdown(event)" style="background: rgba(255, 255, 255, 0.08); border: 1px solid var(--ts-border); padding: 0.75rem; border-radius: 50%; color: var(--ts-text); cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; position: relative; backdrop-filter: blur(8px); box-shadow: var(--ts-shadow);" title="View Notifications">
+                <span style="font-size: 1.25rem;">🔔</span>
+                <span id="notiCountBadge" style="position: absolute; top: -2px; right: -2px; background-color: var(--ts-accent, #6366f1); color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid var(--ts-popover-bg, #1e1b4b); display: none;">0</span>
+            </button>
+            
+            <!-- Dropdown Menu -->
+            <div id="notiDropdown" class="ts-card" style="display: none; position: absolute; top: 58px; right: 0; width: 340px; border: 1px solid var(--ts-border); border-radius: 12px; box-shadow: var(--ts-shadow); padding: 1rem; text-align: left; z-index: 1000; background: var(--ts-popover-bg); backdrop-filter: blur(16px);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; border-bottom: 1px solid var(--ts-border); padding-bottom: 0.5rem;">
+                    <span style="font-weight: 700; color: var(--ts-text); font-size: 0.95rem; display: flex; align-items: center; gap: 0.4rem;">🔔 Notifications</span>
+                    <button onclick="clearAllNotifications(event)" style="background: none; border: none; color: var(--ts-primary); font-size: 0.85rem; font-weight: 600; cursor: pointer; padding: 0.2rem; transition: color 0.2s;" onmouseover="this.style.color='var(--ts-accent)'" onmouseout="this.style.color='var(--ts-primary)'">Clear All</button>
+                </div>
+                <div id="notiList" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.6rem; padding-right: 2px;">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
         </div>
     </div>
 
@@ -408,6 +429,213 @@
      JS & Charting Configurations
      ======================================================================= -->
 <script>
+    // Embed data for student notifications
+    {% if session.get('user_role') != 'admin' %}
+    const rawAnnouncements = {{ announcements|tojson if announcements is defined else '[]' }};
+    const rawPendingExams = {{ pending_exams|tojson if pending_exams is defined else '[]' }};
+    {% else %}
+    const rawAnnouncements = [];
+    const rawPendingExams = [];
+    {% endif %}
+
+    // --- Student Dashboard Notifications Engine ---
+    document.addEventListener("DOMContentLoaded", function() {
+        if (typeof rawAnnouncements !== 'undefined' && (rawAnnouncements.length > 0 || rawPendingExams.length > 0)) {
+            renderNotifications();
+        }
+    });
+
+    function getClearedNotifications() {
+        try {
+            return JSON.parse(localStorage.getItem('ts_cleared_notifications') || '[]');
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function saveClearedNotification(id) {
+        const cleared = getClearedNotifications();
+        if (!cleared.includes(id)) {
+            cleared.push(id);
+            localStorage.setItem('ts_cleared_notifications', JSON.stringify(cleared));
+        }
+    }
+
+    function toggleNotiDropdown(event) {
+        if (event) {
+            event.stopPropagation();
+        }
+        const dropdown = document.getElementById('notiDropdown');
+        if (dropdown) {
+            const isHidden = dropdown.style.display === 'none';
+            dropdown.style.display = isHidden ? 'block' : 'none';
+        }
+    }
+
+    // Close dropdown on outside click
+    document.addEventListener('click', function(event) {
+        const container = document.querySelector('.notifications-bell-container');
+        const dropdown = document.getElementById('notiDropdown');
+        if (dropdown && container && !container.contains(event.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
+
+    function renderNotifications() {
+        const cleared = getClearedNotifications();
+        const notiList = document.getElementById('notiList');
+        const notiCountBadge = document.getElementById('notiCountBadge');
+        
+        if (!notiList) return;
+        notiList.innerHTML = '';
+        
+        let activeCount = 0;
+        const allNotifications = [];
+        
+        // 1. Process Pending Exams
+        rawPendingExams.forEach(exam => {
+            const id = `exam_${exam.assignment_id || exam.exam_id}`;
+            if (!cleared.includes(id)) {
+                const examTitle = exam.title || 'Untitled Exam';
+                const examDueDate = exam.due_date || 'No due date';
+                const examMarks = exam.total_marks !== undefined ? exam.total_marks : 0;
+                allNotifications.push({
+                    id: id,
+                    title: `📝 New Exam Assigned: ${examTitle}`,
+                    text: `Due: ${examDueDate} · Marks: ${examMarks}`,
+                    targetUrl: '/exams',
+                    type: 'exam'
+                });
+                activeCount++;
+            }
+        });
+        
+        // 2. Process Announcements
+        rawAnnouncements.forEach(ann => {
+            const id = `announcement_${ann.announcement_id}`;
+            if (!cleared.includes(id)) {
+                const annTitle = ann.title || 'Untitled Announcement';
+                const annContent = ann.content || '';
+                const excerpt = annContent.substring(0, 80) + (annContent.length > 80 ? '...' : '');
+                
+                // If title or content mentions exam/assessment/test/quiz, redirect to exams page
+                const isExamRelated = /exam|assessment|test|quiz/i.test(annTitle) || /exam|assessment|test|quiz/i.test(annContent);
+                const targetUrl = isExamRelated ? '/exams' : '/announcements';
+
+                allNotifications.push({
+                    id: id,
+                    title: annTitle,
+                    text: excerpt,
+                    targetUrl: targetUrl,
+                    type: 'announcement'
+                });
+                activeCount++;
+            }
+        });
+        
+        // Update count badge
+        if (notiCountBadge) {
+            notiCountBadge.textContent = activeCount;
+            notiCountBadge.style.display = activeCount > 0 ? 'flex' : 'none';
+        }
+        
+        if (allNotifications.length === 0) {
+            notiList.innerHTML = `
+                <div style="padding: 1.5rem 1rem; text-align: center; color: var(--ts-text-muted); font-size: 0.85rem;">
+                    ✨ All caught up! No new notifications.
+                </div>
+            `;
+            return;
+        }
+        
+        allNotifications.forEach(noti => {
+            const item = document.createElement('div');
+            item.className = 'noti-item';
+            item.style.cssText = `
+                padding: 0.65rem 0.75rem;
+                border-radius: 8px;
+                background: rgba(255, 255, 255, 0.02);
+                border: 1px solid var(--ts-border);
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                position: relative;
+            `;
+            
+            // Hover styling dynamically
+            item.onmouseover = () => {
+                item.style.background = 'rgba(255, 255, 255, 0.05)';
+                item.style.borderColor = 'var(--ts-primary)';
+            };
+            item.onmouseout = () => {
+                item.style.background = 'rgba(255, 255, 255, 0.02)';
+                item.style.borderColor = 'var(--ts-border)';
+            };
+            
+            // Clicking the notification leads to the respective section and removes it
+            item.onclick = (e) => {
+                if (e.target.closest('.clear-single-noti-btn')) return;
+                saveClearedNotification(noti.id);
+                window.location.href = noti.targetUrl;
+            };
+            
+            item.innerHTML = `
+                <div style="flex-grow: 1; padding-right: 1rem;">
+                    <div style="font-weight: 600; font-size: 0.85rem; color: var(--ts-text); margin-bottom: 0.15rem; line-height: 1.3;">${noti.title}</div>
+                    <div style="font-size: 0.76rem; color: var(--ts-text-secondary); line-height: 1.3;">${noti.text}</div>
+                </div>
+                <button class="clear-single-noti-btn" onclick="clearSingleNotification('${noti.id}', event)" style="background: none; border: none; color: var(--ts-text-muted); cursor: pointer; font-size: 0.8rem; padding: 0.1rem 0.3rem; border-radius: 4px; display: flex; align-items: center; justify-content: center;" title="Clear notification" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='var(--ts-text-muted)'">
+                    ✕
+                </button>
+            `;
+            
+            notiList.appendChild(item);
+        });
+    }
+
+    function clearSingleNotification(id, event) {
+        if (event) {
+            event.stopPropagation();
+        }
+        saveClearedNotification(id);
+        renderNotifications();
+    }
+
+    function clearAllNotifications(event) {
+        if (event) {
+            event.stopPropagation();
+        }
+        
+        const cleared = getClearedNotifications();
+        
+        rawPendingExams.forEach(exam => {
+            const id = `exam_${exam.assignment_id || exam.exam_id}`;
+            if (!cleared.includes(id)) cleared.push(id);
+        });
+        
+        rawAnnouncements.forEach(ann => {
+            const id = `announcement_${ann.announcement_id}`;
+            if (!cleared.includes(id)) cleared.push(id);
+        });
+        
+        localStorage.setItem('ts_cleared_notifications', JSON.stringify(cleared));
+        renderNotifications();
+    }
+
+    // Auto-refresh when navigated back/from another section via history or cache
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+            window.location.reload();
+        }
+    });
+
+    // Auto-refresh every 30 seconds
+    setInterval(function() {
+        window.location.reload();
+    }, 30000);
+
     // Tab controller
     function openTab(evt, tabName) {
         var i, tabcontent, tablinks;

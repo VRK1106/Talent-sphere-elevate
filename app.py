@@ -29,7 +29,7 @@ from flask import (
 # Ensure the project root is importable
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from src.users import init_db, verify_user, get_all_users, get_active_users_count, _DB_PATH
+from src.users import init_db, verify_user, get_all_users, get_active_users_count, _DB_PATH, set_user_face_descriptor, get_user_face_descriptor, set_user_accommodation
 from src.exams import (
     init_exams_db,
     get_all_exams,
@@ -42,7 +42,9 @@ from src.exams import (
     submit_exam_answers,
     get_all_announcements,
     add_announcement,
-    delete_announcement
+    delete_announcement,
+    add_proctor_log,
+    get_proctor_logs_for_assignment
 )
 from src.chats import (
     init_chats_db,
@@ -56,7 +58,7 @@ from src.chats import (
 )
 from src.config import EMBEDDING_MODEL, DOCUMENTS_DIR
 from src.vectorstore import stats, get_source_chunks, search, get_collection
-from src.llm import list_local_models, generate_chat_answer, generate_rag_answer, GROQ_API_KEY
+from src.llm import list_local_models, generate_chat_answer, generate_rag_answer, GROQ_API_KEY, analyze_proctor_image
 
 # Initialize databases
 init_db()
@@ -66,56 +68,105 @@ init_chats_db()
 app = Flask(__name__, static_folder='assets', static_url_path='/assets')
 app.secret_key = os.environ.get('SECRET_KEY', 'talent-sphere-elevate-secret-key-12345')
 
-# Register TabSessionInterface for separate browser tabs logins
+# Register TabSessionInterface — SQLite-backed so sessions survive server restarts
 from flask.sessions import SessionInterface, SessionMixin
 
 class DictSession(dict, SessionMixin):
     pass
 
-class TabSessionInterface(SessionInterface):
-    def __init__(self):
-        self.sessions = {} # tab_id -> session dict
+_SESSIONS_DB = Path(__file__).resolve().parent / "users.db"
 
-    def open_session(self, app, request):
+def _init_sessions_table():
+    conn = sqlite3.connect(str(_SESSIONS_DB))
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS tab_sessions (
+            tab_id TEXT PRIMARY KEY,
+            data   TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+_init_sessions_table()
+
+class TabSessionInterface(SessionInterface):
+    """SQLite-backed per-tab session store. Survives server restarts."""
+
+    def _load(self, tab_id):
+        try:
+            conn = sqlite3.connect(str(_SESSIONS_DB))
+            row = conn.execute("SELECT data FROM tab_sessions WHERE tab_id=?", (tab_id,)).fetchone()
+            conn.close()
+            if row:
+                return DictSession(json.loads(row[0]))
+        except Exception:
+            pass
+        return None
+
+    def _save(self, tab_id, session):
+        try:
+            data = json.dumps({k: v for k, v in session.items() if k != '_tab_id'})
+            conn = sqlite3.connect(str(_SESSIONS_DB))
+            conn.execute("""
+                INSERT INTO tab_sessions (tab_id, data, updated_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(tab_id) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at
+            """, (tab_id, data))
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            print(f'[SESSION SAVE ERROR] tab_id={tab_id}: {e}')
+
+    def _resolve_tab_id(self, request):
         tab_id = request.args.get('tab_id') or request.form.get('tab_id')
-        
+
         if not tab_id and request.is_json:
             try:
-                json_data = request.get_json(silent=True) or {}
-                tab_id = json_data.get('tab_id')
+                tab_id = (request.get_json(silent=True) or {}).get('tab_id')
             except Exception:
                 pass
-                
+
         if not tab_id:
-            referer = request.headers.get('Referer')
-            if referer:
+            referer = request.headers.get('Referer', '')
+            try:
                 from urllib.parse import urlparse, parse_qs
-                try:
-                    parsed = urlparse(referer)
-                    q = parse_qs(parsed.query)
-                    if 'tab_id' in q:
-                        tab_id = q['tab_id'][0]
-                except Exception:
-                    pass
-                    
+                q = parse_qs(urlparse(referer).query)
+                tab_id = q.get('tab_id', [None])[0]
+            except Exception:
+                pass
+
         if not tab_id:
             tab_id = request.cookies.get('fallback_tab_id')
-            if not tab_id:
-                tab_id = 'temp_' + str(uuid.uuid4())
-                
-        if tab_id not in self.sessions:
-            self.sessions[tab_id] = DictSession()
-            
-        self.sessions[tab_id]['_tab_id'] = tab_id
-        return self.sessions[tab_id]
+
+        if not tab_id:
+            tab_id = 'temp_' + str(uuid.uuid4())
+
+        return tab_id
+
+    def open_session(self, app, request):
+        tab_id = self._resolve_tab_id(request)
+        sess = self._load(tab_id) or DictSession()
+        sess['_tab_id'] = tab_id
+        return sess
+
+    def should_set_cookie(self, app, session):
+        # Always persist — we manage our own storage
+        return True
+
+    def is_null_session(self, obj):
+        # Never treat our session as null
+        return False
 
     def save_session(self, app, session, response):
         tab_id = session.get('_tab_id')
         if tab_id:
-            self.sessions[tab_id] = session
-            response.set_cookie('fallback_tab_id', tab_id)
+            self._save(tab_id, session)
+            response.set_cookie('fallback_tab_id', tab_id, samesite='Lax')
 
 app.session_interface = TabSessionInterface()
+
 
 # Helper: clean LLM output to parse as JSON
 def clean_json_response(raw_resp: str) -> str:
@@ -128,14 +179,20 @@ def clean_json_response(raw_resp: str) -> str:
             resp = resp[:-3]
     return resp.strip()
 
-# Login guard decorator
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not session.get('authenticated'):
+        authenticated = session.get('authenticated')
+        if not authenticated:
+            # For API/AJAX calls return JSON instead of an HTML redirect
+            if (request.path.startswith('/api/') or
+                    request.is_json or
+                    request.headers.get('X-Requested-With') == 'XMLHttpRequest'):
+                return jsonify({"error": "session_expired", "message": "Your session has expired. Please refresh the page and log in again."}), 401
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
+
 
 # Helper: redirect wrapper to preserve tab_id
 flask_redirect = redirect
@@ -155,6 +212,14 @@ def redirect(location, code=302):
     except Exception:
         pass
     return flask_redirect(location, code=code)
+
+@app.after_request
+def add_header(r):
+    if request.path.startswith('/api/'):
+        r.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        r.headers["Pragma"] = "no-cache"
+        r.headers["Expires"] = "0"
+    return r
 
 # Context Processor for base template and other views
 @app.context_processor
@@ -516,12 +581,16 @@ def dashboard():
             "trajectory_scores": trajectory_scores
         }
         
+        from src.exams import get_all_announcements
+        announcements = get_all_announcements()
+
         return render_template(
             'dashboard.html',
             trainee_stats=trainee_stats,
             pending_exams=pending_exams,
             recommendations=recommendations,
-            resume_chats=resume_chats
+            resume_chats=resume_chats,
+            announcements=announcements
         )
 
 # DOCUMENT EXPLORER
@@ -732,6 +801,7 @@ def ingest_post():
     files_processed = 0
     chunks_added = 0
     duplicates = 0
+    success_files = []
     
     for file in uploaded_files:
         try:
@@ -765,11 +835,21 @@ def ingest_post():
             known_hashes.add(digest)
             files_processed += 1
             chunks_added += added
+            success_files.append(file.filename)
             flash(f"✅ {file.filename} — Created {added} chunks from {len(pages)} pages.")
             
         except Exception as exc:
             flash(f"❌ Failed to process {file.filename}: {exc}")
             
+    if success_files:
+        file_names = ", ".join(success_files)
+        add_announcement(
+            "📂 New Study Documents Uploaded",
+            f"The Administrator has successfully uploaded and processed new document(s) into the knowledge base:\n\n"
+            f"Files: {file_names}\n\n"
+            f"You can now query this information using the Document Explorer or AI Assistant."
+        )
+
     session['ingest_summary'] = {
         'processed': files_processed,
         'chunks': chunks_added,
@@ -793,6 +873,10 @@ def ingest_delete():
                 pdf_file.unlink()
         except Exception:
             pass
+        add_announcement(
+            "🗑️ Document Removed",
+            f"The document '{doc_name}' has been removed from the knowledge base by the Administrator."
+        )
         flash(f"Deleted {doc_name}")
     return redirect(url_for('ingest'))
 
@@ -823,6 +907,10 @@ def ingest_reset_execute():
             pdf_file.unlink()
     except Exception:
         pass
+    add_announcement(
+        "⚠️ Knowledge Base Reset",
+        "The entire document database has been reset by the Administrator. All previous study materials and vector search indexes have been cleared."
+    )
     session.pop('confirm_reset', None)
     flash("Index reset complete.")
     return redirect(url_for('ingest'))
@@ -894,6 +982,18 @@ def user_management_create():
             "password": generated_password,
             "name": full_name
         }
+        # Send onboarding credentials email
+        try:
+            from src.mail import send_user_credentials
+            send_user_credentials(
+                email=email,
+                name=full_name,
+                employee_id=employee_id,
+                password_plain=generated_password
+            )
+        except Exception as mail_err:
+            print(f"Failed to send welcome credentials email: {mail_err}")
+            
         return redirect(url_for('user_management', tab='create'))
     else:
         flash(msg, "create_user_error")
@@ -923,7 +1023,31 @@ def user_management_delete():
 @login_required
 def announcements():
     anns = get_all_announcements()
-    return render_template('announcements.html', announcements=anns)
+    email_logs = []
+    email_enabled = True
+    if session.get('user_role') == 'admin':
+        from src.exams import get_all_email_logs, get_system_setting
+        email_logs = get_all_email_logs(limit=50)
+        email_enabled = get_system_setting("email_notifications_enabled", "true").lower() == "true"
+    return render_template('announcements.html', announcements=anns, email_logs=email_logs, email_enabled=email_enabled)
+
+@app.route('/announcements/settings/toggle', methods=['POST'])
+@login_required
+def announcements_settings_toggle():
+    if session.get('user_role') != 'admin':
+        return redirect(url_for('dashboard'))
+    
+    from src.exams import get_system_setting, set_system_setting
+    current_val = get_system_setting("email_notifications_enabled", "true").lower() == "true"
+    new_val = "false" if current_val else "true"
+    set_system_setting("email_notifications_enabled", new_val)
+    
+    if new_val == "true":
+        flash("Email notifications enabled.")
+    else:
+        flash("Email notifications disabled.")
+        
+    return redirect(url_for('announcements'))
 
 @app.route('/announcements/create', methods=['POST'])
 @login_required
@@ -995,7 +1119,8 @@ def exams():
                 "ai_feedback_overall": grade_sheet.get("overall_comments", ""),
                 "ai_feedback_questions": grade_sheet.get("questions", []),
                 "answers_submitted": detail["answers"],
-                "questions": detail["questions"]
+                "questions": detail["questions"],
+                "proctor_logs": get_proctor_logs_for_assignment(review_assignment_id)
             }
             active_tab = 'results'
             
@@ -1016,7 +1141,8 @@ def exams():
                 "ai_feedback_overall": grade_sheet.get("overall_comments", ""),
                 "ai_feedback_questions": grade_sheet.get("questions", []),
                 "answers_submitted": detail["answers"],
-                "questions": detail["questions"]
+                "questions": detail["questions"],
+                "proctor_logs": get_proctor_logs_for_assignment(trainee_review_id)
             }
             
     taking_assignment_id = session.get('taking_assignment_id')
@@ -1184,6 +1310,12 @@ def exams_create_save():
         return redirect(url_for('exams', active_tab='create'))
         
     if add_exam(title, description, total_marks, questions):
+        add_announcement(
+            f"📝 New Exam Published: {title}",
+            f"A new exam titled '{title}' (Total Marks: {total_marks}) has been published by the Administrator.\n\n"
+            f"Description: {description}\n\n"
+            f"Please check your dashboard or exams section for active assignments."
+        )
         flash(f"Exam '{title}' saved successfully!")
         session.pop('exam_title_draft', None)
         session.pop('exam_desc_draft', None)
@@ -1253,7 +1385,15 @@ def exams_delete_post():
         
     exam_id = request.form.get('exam_id', type=int)
     if exam_id:
+        from src.exams import get_exam_by_id
+        exam = get_exam_by_id(exam_id)
         if delete_exam(exam_id):
+            if exam:
+                title = exam.get('title', 'Unknown Exam')
+                add_announcement(
+                    f"🗑️ Exam Cancelled/Removed: {title}",
+                    f"The exam '{title}' has been deleted/cancelled by the Administrator. Any pending assignments for this exam have been removed."
+                )
             flash("Exam deleted successfully.")
         else:
             flash("Failed to delete exam.")
@@ -1695,6 +1835,68 @@ def assistant_wizard_get_templates():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+@app.route('/assistant/wizard/announcement/generate', methods=['POST'])
+@login_required
+def assistant_wizard_announcement_generate():
+    if session.get('user_role') != 'admin':
+        return jsonify({"error": "Admin role required"}), 403
+        
+    data = request.get_json() or {}
+    title = data.get('title', '').strip()
+    category = data.get('category', 'General').strip()
+    priority = data.get('priority', 'Standard').strip()
+    model = data.get('model', 'llama-3.3-70b-versatile')
+    
+    if not title:
+        return jsonify({"error": "Title is required"}), 400
+        
+    prompt = (
+        f"Generate a professional corporate training announcement body based on the following metadata:\n"
+        f"- Title: {title}\n"
+        f"- Category: {category}\n"
+        f"- Priority: {priority}\n\n"
+        f"The announcement should be clear, professional, engaging, and encourage participation if it's a course/event. "
+        f"Ensure it does not have title headers or greetings like 'Dear Trainees' in the content, as this will be rendered under the announcement card header."
+    )
+    
+    try:
+        from src.llm import generate_chat_answer
+        response = generate_chat_answer(
+            prompt=prompt,
+            model_name=model,
+            system_instruction="You are a corporate communication expert. You write professional, succinct, and engaging announcements."
+        )
+        return jsonify({"content": response.strip()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/assistant/wizard/announcement/save', methods=['POST'])
+@login_required
+def assistant_wizard_announcement_save():
+    if session.get('user_role') != 'admin':
+        return jsonify({"error": "Admin role required"}), 403
+        
+    data = request.get_json() or {}
+    title = data.get('title', '').strip()
+    content = data.get('content', '').strip()
+    send_email = data.get('send_email', True)
+    
+    if not title or not content:
+        return jsonify({"error": "Title and content are required"}), 400
+        
+    try:
+        from src.exams import add_announcement
+        success = add_announcement(title, content, send_email=send_email)
+        if success:
+            return jsonify({"status": "success"})
+        else:
+            return jsonify({"error": "Failed to save announcement"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/assistant/wizard/generate', methods=['POST'])
 @login_required
 def assistant_wizard_generate():
@@ -1882,6 +2084,13 @@ def assistant_wizard_save():
         conn.commit()
         conn.close()
         
+        add_announcement(
+            f"📝 New Exam Published: {title}",
+            f"A new exam titled '{title}' (Total Marks: {total_marks}) has been generated and published by the Administrator via the AI Assistant.\n\n"
+            f"Description: {full_desc}\n\n"
+            f"Please check your dashboard or exams section for active assignments."
+        )
+        
         trainees_to_assign = []
         if assignee_id == 'all':
             conn = sqlite3.connect(str(_DB_PATH))
@@ -1912,6 +2121,100 @@ def assistant_wizard_save():
         return jsonify({"status": "success", "exam_id": exam_id})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/get_face_descriptor', methods=['GET'])
+def api_get_face_descriptor():
+    # employee_id sent as query param by the Jinja-embedded PROCTOR_EMP_ID constant
+    employee_id = request.args.get('emp_id') or (session.get('user_info') or {}).get('employee_id')
+    if not employee_id:
+        return jsonify({"error": "Missing employee_id"}), 400
+    
+    conn = sqlite3.connect(str(_DB_PATH))
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT face_descriptor, accommodation_proctoring FROM users WHERE employee_id = ?", (employee_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        desc_str = row["face_descriptor"]
+        accommodation = bool(row["accommodation_proctoring"])
+        if desc_str:
+            try:
+                descriptor = json.loads(desc_str)
+                return jsonify({"enrolled": True, "descriptor": descriptor, "accommodation": accommodation})
+            except Exception:
+                pass
+        return jsonify({"enrolled": False, "accommodation": accommodation})
+    return jsonify({"error": "User not found"}), 404
+
+
+@app.route('/api/enroll_face', methods=['POST'])
+def api_enroll_face():
+    data = request.get_json() or {}
+    employee_id = data.get('emp_id') or (session.get('user_info') or {}).get('employee_id')
+    if not employee_id:
+        return jsonify({"error": "Missing employee_id"}), 400
+    descriptor = data.get("descriptor")
+    if not descriptor or not isinstance(descriptor, list) or len(descriptor) != 128:
+        return jsonify({"error": "Invalid face descriptor. Must be a list of 128 floats."}), 400
+        
+    success = set_user_face_descriptor(employee_id, json.dumps(descriptor))
+    if success:
+        return jsonify({"status": "success", "message": "Face enrolled successfully."})
+    return jsonify({"error": "Database write failed."}), 500
+
+
+@app.route('/api/log_proctoring_event', methods=['POST'])
+def api_log_proctoring_event():
+    data = request.get_json() or {}
+    assignment_id = data.get("assignment_id")
+    trigger_reason = data.get("trigger_reason")
+    snapshot_data = data.get("snapshot_data")
+    score = data.get("score")
+    
+    if not assignment_id or not trigger_reason or not snapshot_data:
+        return jsonify({"error": "Missing required fields."}), 400
+        
+    # Analyze the image using Groq vision API
+    groq_label = "none"
+    if trigger_reason in ["face_presence_check", "tab_switch", "fullscreen_exit"]:
+        # Only run vision analysis on actual webcam snapshots
+        groq_label = analyze_proctor_image(snapshot_data)
+    elif trigger_reason == "identity_mismatch":
+        groq_label = "mismatch"
+        
+    # Add proctor log to DB
+    log_id = add_proctor_log(
+        assignment_id=assignment_id,
+        trigger_reason=trigger_reason,
+        groq_label=groq_label,
+        snapshot_data=snapshot_data,
+        score=score
+    )
+    
+    if log_id:
+        return jsonify({"status": "success", "log_id": log_id, "groq_label": groq_label})
+    return jsonify({"error": "Failed to log event."}), 500
+
+
+@app.route('/user_management/toggle_accommodation', methods=['POST'])
+@login_required
+def toggle_accommodation():
+    if session.get('user_role') != 'admin':
+        return jsonify({"error": "Forbidden"}), 403
+        
+    employee_id = request.form.get('employee_id')
+    enabled = request.form.get('enabled')
+    if not employee_id:
+        return jsonify({"error": "Missing employee ID"}), 400
+        
+    enabled_val = 1 if enabled == 'true' or enabled == '1' else 0
+    success = set_user_accommodation(employee_id, enabled_val)
+    if success:
+        return jsonify({"status": "success", "enabled": enabled_val})
+    return jsonify({"error": "Failed to toggle accommodation"}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)

@@ -2,6 +2,9 @@
 {% block title %}Exams & Assessments - Talent Sphere Elevate{% endblock %}
 
 {% block head %}
+<!-- TensorFlow.js and face-api.js CDNs -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <style>
     .tabs-container {
         display: flex;
@@ -466,6 +469,53 @@
                         </div>
                     </div>
 
+                    <!-- Proctoring Logs Card -->
+                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--ts-text-heading); margin-top: 2rem; margin-bottom: 1rem; border-bottom: 1px solid var(--ts-border); padding-bottom: 0.5rem;">Proctoring Integrity Logs</div>
+                    
+                    {% if review_detail.proctor_logs %}
+                        <div class="ts-nested-card" style="padding: 1.2rem; margin-bottom: 2rem; border-color: rgba(239, 68, 68, 0.25);">
+                            <div style="font-weight: 700; color: var(--ts-danger); font-size: 0.95rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.4rem;">
+                                ⚠️ <span>Flagged Proctoring Events ({{ review_detail.proctor_logs|length }})</span>
+                            </div>
+                            
+                            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                                {% for log in review_detail.proctor_logs %}
+                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--ts-border); padding-bottom: 0.8rem; {% if loop.last %}border-bottom: none; padding-bottom: 0;{% endif %}">
+                                    <div>
+                                        <div style="font-weight: 600; color: var(--ts-text); font-size: 0.9rem;">
+                                            Trigger: <span style="color: var(--ts-primary);">{{ log.trigger_reason|replace('_', ' ')|replace('-', ' ')|title }}</span>
+                                        </div>
+                                        <div style="font-size: 0.8rem; color: var(--ts-text-secondary); margin-top: 0.2rem;">
+                                            Timestamp: <b>{{ log.timestamp }}</b> &nbsp;·&nbsp; AI Label: 
+                                            {% if log.groq_label == 'none' %}
+                                                <span style="color: #34d399; font-weight: bold;">None / Compliant</span>
+                                            {% elif log.groq_label == 'mismatch' %}
+                                                <span style="color: var(--ts-warning); font-weight: bold; text-transform: uppercase;">Identity Mismatch</span>
+                                            {% else %}
+                                                <span style="color: var(--ts-danger); font-weight: bold; text-transform: uppercase;">{{ log.groq_label }}</span>
+                                            {% endif %}
+                                            {% if log.score %}
+                                                &nbsp;·&nbsp; Distance Score: <b>{{ "%.3f"|format(log.score) }}</b>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div style="flex-shrink: 0; margin-left: 1rem;">
+                                        <img src="{{ log.snapshot_data }}" alt="Proctor Snapshot" 
+                                             style="width: 80px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid var(--ts-border); cursor: pointer; transition: transform 0.2s;"
+                                             onclick="openProctorImageModal('{{ log.snapshot_data }}', '{{ log.trigger_reason|replace('_', ' ')|replace('-', ' ')|title }}', '{{ log.timestamp }}', '{{ log.groq_label }}')"
+                                             onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="ts-nested-card" style="padding: 1.2rem; margin-bottom: 2rem; border-color: rgba(52, 211, 153, 0.25); display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="color: #34d399; font-size: 1.2rem;">✓</span>
+                            <span style="font-size: 0.9rem; color: var(--ts-text-secondary);">No proctoring violations or flags registered during this assessment.</span>
+                        </div>
+                    {% endif %}
+
                     <div style="font-size: 1.1rem; font-weight: 700; color: var(--ts-text-heading); margin-bottom: 1rem; border-bottom: 1px solid var(--ts-border); padding-bottom: 0.5rem;">Question Level Breakdown</div>
                     <div style="display: flex; flex-direction: column; gap: 1.2rem;">
                         {% for q in review_detail.questions %}
@@ -575,26 +625,59 @@
 
     <!-- taking exam flow -->
     {% if taking_assignment %}
-        <!-- Fullscreen Activation Prompt Overlay -->
-        <div id="fullscreenPromptOverlay" style="position: fixed; inset: 0; background: var(--ts-bg, #0b0f19); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
-            <div class="ts-card" style="width: 90%; max-width: 550px; padding: 2.5rem; border-radius: 16px; text-align: center; border: 1px solid var(--ts-border); box-shadow: var(--ts-shadow); background: var(--ts-popover-bg, #0d0d0d);">
-                <div style="font-size: 4rem; margin-bottom: 1rem;">🔒</div>
-                <div style="font-size: 1.5rem; font-weight: 800; color: var(--ts-primary); margin-bottom: 0.8rem; letter-spacing: 0.03em;">SECURE EXAM SYSTEM</div>
-                <div style="font-size: 0.95rem; color: var(--ts-text); margin-bottom: 2rem; line-height: 1.6; text-align: left;">
-                    To attend this exam, you must enter secure fullscreen mode. 
-                    <br><br>
-                    During the assessment:
-                    <ul style="margin: 0.5rem 0; padding-left: 1.2rem; color: var(--ts-text-secondary);">
-                        <li>You cannot switch tabs or minimize the browser window.</li>
-                        <li>Screenshots and copy-pasting are disabled.</li>
-                        <li>Exiting fullscreen mode counts as a proctoring infraction.</li>
-                    </ul>
-                    Any violation will register a warning or automatically flag the test as <b>malpractice</b> and submit a score of 0.
+        <!-- Secure Consent and Webcam Verification Overlay -->
+        <div id="fullscreenPromptOverlay" style="position: fixed; inset: 0; background: var(--ts-bg, #0b0f19); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); overflow-y: auto; padding: 2rem 0;">
+            <div class="ts-card" style="width: 90%; max-width: 550px; padding: 2rem; border-radius: 16px; text-align: center; border: 1px solid var(--ts-border); box-shadow: var(--ts-shadow); background: var(--ts-popover-bg, #0d0d0d); margin: auto;">
+                <div style="font-size: 3rem; margin-bottom: 0.5rem;">🔒</div>
+                <div style="font-size: 1.4rem; font-weight: 800; color: var(--ts-primary); margin-bottom: 0.8rem; letter-spacing: 0.03em;">SECURE EXAM SYSTEM</div>
+                
+                <div id="consentSection" style="text-align: left; margin-bottom: 1.5rem;">
+                    <div style="font-size: 0.95rem; color: var(--ts-text); margin-bottom: 1.2rem; line-height: 1.5;">
+                        To start this assessment, you must consent to webcam monitoring and enter secure fullscreen.
+                        <br><br>
+                        <strong>Monitoring Details:</strong>
+                        <ul style="margin: 0.4rem 0; padding-left: 1.2rem; color: var(--ts-text-secondary); font-size: 0.88rem; line-height: 1.4;">
+                            <li>Client-side face matching at start.</li>
+                            <li>Randomized face-presence checks (every 60–90s).</li>
+                            <li>Webcam snapshots are only logged/sent to the server if a violation occurs (e.g. 0 or multiple faces, tab-switching).</li>
+                            <li>All logged snapshots are analyzed by Groq AI and deleted automatically.</li>
+                        </ul>
+                    </div>
+                    
+                    <label style="display: flex; align-items: flex-start; gap: 0.6rem; font-size: 0.88rem; color: var(--ts-text); cursor: pointer; user-select: none;">
+                        <input type="checkbox" id="chkConsent" style="margin-top: 0.2rem; accent-color: var(--ts-primary);">
+                        <span>I consent to the webcam proctoring rules and understand my data privacy rights.</span>
+                    </label>
                 </div>
-                <button type="button" onclick="startExamFullscreen()" class="btn-ts btn-ts-primary" style="width: auto; padding: 0.8rem 3rem; font-weight: 600; font-size: 1rem; border-radius: var(--ts-radius);">
-                    🔒 Enter Fullscreen & Begin Exam
-                </button>
+                
+                <div id="webcamSetupSection" style="display: none; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div id="proctorStatusText" style="font-size: 0.9rem; font-weight: 600; color: var(--ts-warning);">Initializing webcam and loading AI models...</div>
+                    <div style="position: relative; width: 320px; height: 240px; border-radius: 8px; overflow: hidden; background: #000; border: 1px solid var(--ts-border);">
+                        <video id="proctorWebcam" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+                    </div>
+                    <div id="proctorInstructionText" style="font-size: 0.85rem; color: var(--ts-text-secondary); text-align: center; max-width: 400px;">
+                        Loading proctoring models...
+                    </div>
+                    
+                    <button type="button" id="btnEnrollFace" class="btn-ts btn-ts-primary" style="display: none; width: auto; padding: 0.6rem 2rem;">
+                        👤 Register My Face
+                    </button>
+                </div>
+
+                <div style="display: flex; gap: 1rem; justify-content: center; border-top: 1px solid var(--ts-border); padding-top: 1.2rem;">
+                    <button type="button" id="btnBeginSetup" class="btn-ts btn-ts-primary" disabled style="width: auto; padding: 0.65rem 2rem;">
+                        Continue to Camera Check
+                    </button>
+                    <a href="/exams" class="btn-ts btn-ts-secondary" style="width: auto; padding: 0.65rem 1.5rem; text-decoration: none; display: flex; align-items: center; justify-content: center;">
+                        Cancel
+                    </a>
+                </div>
             </div>
+        </div>
+
+        <!-- Floating Proctor Webcam PIP -->
+        <div id="proctorFloatingPip" style="position: fixed; bottom: 1.5rem; right: 1.5rem; width: 140px; height: 105px; border-radius: 12px; overflow: hidden; border: 2px solid var(--ts-primary); box-shadow: 0 8px 30px rgba(0,0,0,0.5); z-index: 9999; display: none; background: #000; backdrop-filter: blur(8px);">
+            <video id="proctorFloatingVideo" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
         </div>
 
         <div class="ts-card" style="padding: 1.8rem; border-radius: 12px; margin-top: 1.5rem; margin-bottom: 3rem; border-color: var(--ts-primary);">
@@ -783,13 +866,359 @@
 
 <script>
     const IS_TAKING_EXAM = {% if taking_assignment %}true{% else %}false{% endif %};
+    // Employee ID is embedded at render-time (page is already @login_required)
+    const PROCTOR_EMP_ID = "{{ session.get('user_info', {}).get('employee_id', '') }}";
     let infractionCount = 0;
     let modalActive = false;
+
+    // Webcam & Face-API variables
+    let takingAssignmentId = {% if taking_assignment %}{{ taking_assignment.assignment_id }}{% else %}null{% endif %};
+    let initStream = null;
+    let pipStream = null;
+    let presenceTimer = null;
+    let accommodationEnabled = false;
+    let enrolledDescriptor = null;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+
+    // Load models
+    async function loadFaceApiModels() {
+        await faceapi.nets.tinyFaceDetector.loadFromUri('/assets/models');
+        await faceapi.nets.faceLandmark68Net.loadFromUri('/assets/models');
+        await faceapi.nets.faceRecognitionNet.loadFromUri('/assets/models');
+    }
+
+    // Toggle setup button on consent checkbox change
+    document.addEventListener("DOMContentLoaded", function() {
+        const chkConsent = document.getElementById('chkConsent');
+        const btnBeginSetup = document.getElementById('btnBeginSetup');
+        if (chkConsent && btnBeginSetup) {
+            chkConsent.addEventListener('change', function() {
+                btnBeginSetup.disabled = !this.checked;
+            });
+            
+            btnBeginSetup.addEventListener('click', startWebcamSetup);
+        }
+        
+        const btnEnrollFace = document.getElementById('btnEnrollFace');
+        if (btnEnrollFace) {
+            btnEnrollFace.addEventListener('click', enrollTraineeFace);
+        }
+    });
+
+    function getTabId() {
+        const urlParams = new URLSearchParams(window.location.search);
+        let tabId = urlParams.get('tab_id');
+        if (!tabId) {
+            tabId = sessionStorage.getItem('ts_tab_id');
+        }
+        return tabId || '';
+    }
+
+    async function startWebcamSetup() {
+        // Hide consent, show webcam section
+        document.getElementById('consentSection').style.display = 'none';
+        document.getElementById('webcamSetupSection').style.display = 'flex';
+        
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            document.getElementById('proctorStatusText').innerText = "❌ Secure Context Required";
+            document.getElementById('proctorInstructionText').innerText = "Camera access requires a secure context (HTTPS or localhost). If you are accessing via a network IP address, please use http://127.0.0.1:5000/ or configure an HTTPS certificate.";
+            return;
+        }
+
+        try {
+            // Load Face-API models
+            document.getElementById('proctorStatusText').innerText = "Loading AI models...";
+            try {
+                await loadFaceApiModels();
+            } catch (modelErr) {
+                console.error("Model loading error:", modelErr);
+                throw new Error("Failed to load AI models: " + (modelErr.message || modelErr));
+            }
+            
+            // Get camera stream
+            document.getElementById('proctorStatusText').innerText = "Accessing camera...";
+            try {
+                initStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+            } catch (camErr) {
+                console.error("Camera access error:", camErr);
+                throw new Error("Camera access failed: " + (camErr.message || camErr));
+            }
+            const video = document.getElementById('proctorWebcam');
+            video.srcObject = initStream;
+            
+            // Check enrollment
+            document.getElementById('proctorStatusText').innerText = "Checking face enrollment...";
+            const tabId = getTabId();
+            let res;
+            try {
+                res = await fetch('/api/get_face_descriptor?emp_id=' + encodeURIComponent(PROCTOR_EMP_ID) + '&_t=' + Date.now(), { cache: 'no-store' });
+            } catch (fetchErr) {
+                console.error("Fetch descriptor network error:", fetchErr);
+                throw new Error("Network error checking face enrollment: " + fetchErr.message);
+            }
+            
+            // Handle session expiry: server returns 401 JSON instead of HTML redirect
+            if (res.status === 401) {
+                document.getElementById('proctorStatusText').innerText = "⚠️ Session Expired";
+                document.getElementById('proctorInstructionText').innerHTML =
+                    'Your login session has expired (server may have restarted). ' +
+                    '<br><br><button onclick="window.location.reload()" style="margin-top:0.5rem;padding:0.4rem 1.2rem;background:var(--ts-primary);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.95rem;">🔄 Reload &amp; Log In Again</button>';
+                return;
+            }
+
+            if (!res.ok) {
+                throw new Error(`Server returned HTTP ${res.status} when checking enrollment.`);
+            }
+            
+            const contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                const text = await res.text();
+                console.error('Unexpected non-JSON response body:', text.substring(0, 300));
+                throw new Error(`Unexpected server response (${contentType}). The server may have restarted — please reload and log in again.`);
+            }
+            
+            let data;
+            try {
+                data = await res.json();
+            } catch (jsonErr) {
+                console.error("JSON parse error:", jsonErr);
+                throw new Error("Failed to parse enrollment response: " + jsonErr.message);
+            }
+            
+            accommodationEnabled = data.accommodation;
+            
+            if (data.enrolled) {
+                enrolledDescriptor = new Float32Array(data.descriptor);
+                document.getElementById('proctorStatusText').innerText = "Face Enrolled. Verification starting...";
+                document.getElementById('proctorInstructionText').innerText = "Align your face in the center of the frame for identity check.";
+                retryCount = 0;
+                startFaceMatchingLoop();
+            } else {
+                document.getElementById('proctorStatusText').innerText = "Registration Required";
+                document.getElementById('proctorInstructionText').innerText = "You are not registered. Look directly at the camera and click 'Register My Face'.";
+                document.getElementById('btnEnrollFace').style.display = 'inline-block';
+            }
+        } catch (err) {
+            console.error('Camera/API init error:', err);
+            document.getElementById('proctorStatusText').innerText = "❌ Setup Failed";
+            document.getElementById('proctorInstructionText').innerText = "Error: " + (err.message || String(err));
+        }
+    }
+
+    async function enrollTraineeFace() {
+        const video = document.getElementById('proctorWebcam');
+        document.getElementById('proctorStatusText').innerText = "Analyzing face...";
+        document.getElementById('btnEnrollFace').disabled = true;
+        
+        try {
+            const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+            if (!detection) {
+                document.getElementById('proctorStatusText').innerText = "❌ No Face Detected";
+                document.getElementById('proctorInstructionText').innerText = "Please position your face clearly in front of the camera and try again.";
+                document.getElementById('btnEnrollFace').disabled = false;
+                return;
+            }
+            
+            const descriptorArray = Array.from(detection.descriptor);
+            const tabId = getTabId();
+            const res = await fetch('/api/enroll_face?tab_id=' + tabId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ emp_id: PROCTOR_EMP_ID, descriptor: descriptorArray })
+            });
+            const data = await res.json();
+            
+            if (data.status === 'success') {
+                enrolledDescriptor = detection.descriptor;
+                document.getElementById('btnEnrollFace').style.display = 'none';
+                document.getElementById('proctorStatusText').innerText = "✓ Registration Successful";
+                document.getElementById('proctorInstructionText').innerText = "Verifying identity...";
+                retryCount = 0;
+                startFaceMatchingLoop();
+            } else {
+                alert('Registration failed: ' + (data.error || 'unknown'));
+                document.getElementById('btnEnrollFace').disabled = false;
+            }
+        } catch (err) {
+            console.error('Enrollment error:', err);
+            alert('Error registering face. Please try again.');
+            document.getElementById('btnEnrollFace').disabled = false;
+        }
+    }
+
+    let matchingActive = false;
+    function startFaceMatchingLoop() {
+        matchingActive = true;
+        let matchInterval = setInterval(async () => {
+            if (!matchingActive) {
+                clearInterval(matchInterval);
+                return;
+            }
+            
+            const video = document.getElementById('proctorWebcam');
+            try {
+                const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+                if (detection) {
+                    const distance = faceapi.euclideanDistance(detection.descriptor, enrolledDescriptor);
+                    if (distance < 0.6) {
+                        // Match!
+                        matchingActive = false;
+                        clearInterval(matchInterval);
+                        document.getElementById('proctorStatusText').style.color = "#34d399";
+                        document.getElementById('proctorStatusText').innerText = "✓ Identity Verified";
+                        document.getElementById('proctorInstructionText').innerText = "Click below to enter secure fullscreen and start your exam.";
+                        
+                        // Replace the cancel button with the start exam button
+                        const footer = document.querySelector('#fullscreenPromptOverlay button[id="btnBeginSetup"]').parentElement;
+                        footer.innerHTML = `
+                            <button type="button" onclick="enterExamMode()" class="btn-ts btn-ts-primary" style="width: auto; padding: 0.65rem 2rem;">
+                                🔒 Enter Fullscreen & Begin Exam
+                            </button>
+                        `;
+                    } else {
+                        retryCount++;
+                        if (retryCount >= MAX_RETRIES) {
+                            matchingActive = false;
+                            clearInterval(matchInterval);
+                            
+                            // Log failure and soft pass
+                            document.getElementById('proctorStatusText').style.color = "#f87171";
+                            document.getElementById('proctorStatusText').innerText = "⚠️ Verification Mismatch";
+                            document.getElementById('proctorInstructionText').innerText = "Identity verification could not be confirmed. This check has been logged for manual review. You may proceed.";
+                            
+                            // Log the mismatch
+                            await captureAndSendProctorLog('identity_mismatch', { score: distance, videoEl: video });
+                            
+                            // Allow soft-proceed
+                            const footer = document.querySelector('#fullscreenPromptOverlay button[id="btnBeginSetup"]').parentElement;
+                            footer.innerHTML = `
+                                <button type="button" onclick="enterExamMode()" class="btn-ts btn-ts-primary" style="width: auto; padding: 0.65rem 2rem; background: var(--ts-warning); border-color: var(--ts-warning);">
+                                    ⚠️ Proceed with Warnings
+                                </button>
+                            `;
+                        } else {
+                            document.getElementById('proctorStatusText').innerText = `Comparing live face... (Attempt ${retryCount}/${MAX_RETRIES})`;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Matching verification error:', err);
+            }
+        }, 1500);
+    }
+
+    async function enterExamMode() {
+        // Stop initial webcam stream
+        if (initStream) {
+            initStream.getTracks().forEach(track => track.stop());
+        }
+        
+        // Hide initialization overlay
+        document.getElementById('fullscreenPromptOverlay').style.display = 'none';
+        
+        // Start secure fullscreen
+        const docEl = document.documentElement;
+        if (docEl.requestFullscreen) {
+            docEl.requestFullscreen();
+        } else if (docEl.mozRequestFullScreen) {
+            docEl.mozRequestFullScreen();
+        } else if (docEl.webkitRequestFullscreen) {
+            docEl.webkitRequestFullscreen();
+        } else if (docEl.msRequestFullscreen) {
+            docEl.msRequestFullscreen();
+        }
+        
+        // Start floating PIP stream
+        try {
+            const pipVideo = document.getElementById('proctorFloatingVideo');
+            pipStream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } });
+            pipVideo.srcObject = pipStream;
+            document.getElementById('proctorFloatingPip').style.display = 'block';
+        } catch (err) {
+            console.error('Failed to start proctoring PIP stream:', err);
+        }
+        
+        // Start presence checks
+        scheduleNextPresenceCheck();
+    }
+
+    function scheduleNextPresenceCheck() {
+        if (accommodationEnabled) {
+            console.log('Proctoring presence monitoring disabled via Accommodation status.');
+            return;
+        }
+        
+        const randomMs = 60000 + Math.random() * 30000; // randomized 60s - 90s
+        presenceTimer = setTimeout(async () => {
+            await performPresenceCheck();
+            scheduleNextPresenceCheck();
+        }, randomMs);
+    }
+
+    async function performPresenceCheck() {
+        const video = document.getElementById('proctorFloatingVideo');
+        if (!video || !video.srcObject) return;
+        
+        try {
+            const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions());
+            const faceCount = detections.length;
+            
+            if (faceCount !== 1) {
+                await captureAndSendProctorLog('face_presence_check', { face_count: faceCount, videoEl: video });
+            }
+        } catch (err) {
+            console.error('Error in presence check:', err);
+        }
+    }
+
+    async function captureAndSendProctorLog(reason, extra = {}) {
+        const video = extra.videoEl || document.getElementById('proctorFloatingVideo');
+        if (!video || !video.srcObject) return;
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = 480;
+        canvas.height = 360;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const jpegBase64 = canvas.toDataURL('image/jpeg', 0.6);
+        
+        const payload = {
+            emp_id: PROCTOR_EMP_ID,
+            assignment_id: takingAssignmentId,
+            trigger_reason: reason,
+            snapshot_data: jpegBase64,
+            score: extra.score || null
+        };
+        
+        try {
+            const res = await fetch('/api/log_proctoring_event', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            console.log('Proctor event logged:', data);
+            return data;
+        } catch (err) {
+            console.error('Error logging proctor event:', err);
+        }
+    }
+
+    function stopCameraStreams() {
+        if (presenceTimer) clearTimeout(presenceTimer);
+        if (initStream) {
+            initStream.getTracks().forEach(track => track.stop());
+        }
+        if (pipStream) {
+            pipStream.getTracks().forEach(track => track.stop());
+        }
+    }
 
     function triggerInfraction(type) {
         if (!IS_TAKING_EXAM) return;
         
-        // Ignore if grading/submission is already running
         const gradingOverlay = document.getElementById('gradingOverlay');
         if (gradingOverlay && gradingOverlay.style.display === 'flex') {
             return;
@@ -798,6 +1227,10 @@
         if (modalActive) return;
         
         infractionCount++;
+        
+        // Log snapshot for this infraction
+        captureAndSendProctorLog(type);
+        
         if (infractionCount === 1) {
             modalActive = true;
             const modal = document.getElementById('proctorWarningModal');
@@ -830,21 +1263,7 @@
     }
 
     function startExamFullscreen() {
-        const docEl = document.documentElement;
-        if (docEl.requestFullscreen) {
-            docEl.requestFullscreen();
-        } else if (docEl.mozRequestFullScreen) {
-            docEl.mozRequestFullScreen();
-        } else if (docEl.webkitRequestFullscreen) {
-            docEl.webkitRequestFullscreen();
-        } else if (docEl.msRequestFullscreen) {
-            docEl.msRequestFullscreen();
-        }
-        
-        const overlay = document.getElementById('fullscreenPromptOverlay');
-        if (overlay) {
-            overlay.style.setProperty('display', 'none', 'important');
-        }
+        // Handled by enterExamMode()
     }
 
     function flagMalpracticeAndSubmit() {
@@ -973,8 +1392,25 @@
                 document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
                 document.addEventListener('mozfullscreenchange', handleFullscreenChange);
                 document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+                
+                // Stop camera streams on form submit
+                takeForm.addEventListener('submit', function() {
+                    stopCameraStreams();
+                });
             }
         }
+
+        // Proctor Image Modal Controls
+        window.openProctorImageModal = function(src, trigger, timestamp, label) {
+            document.getElementById('proctorModalImg').src = src;
+            document.getElementById('proctorModalTitle').innerText = 'Violation Detail: ' + trigger;
+            document.getElementById('proctorModalMeta').innerHTML = '<b>Captured:</b> ' + timestamp + '<br><b>AI Assessment:</b> <span style="text-transform: uppercase; color: var(--ts-danger); font-weight: bold;">' + label + '</span>';
+            document.getElementById('proctorImageModal').style.setProperty('display', 'flex', 'important');
+        };
+        
+        window.closeProctorImageModal = function() {
+            document.getElementById('proctorImageModal').style.setProperty('display', 'none', 'important');
+        };
         
         const manualForm = document.getElementById('addManualForm');
         if (manualForm) {
@@ -1033,4 +1469,14 @@
         }
     });
 </script>
+
+<!-- Proctor Image Modal -->
+<div id="proctorImageModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 10001; align-items: center; justify-content: center; backdrop-filter: blur(10px);" onclick="closeProctorImageModal()">
+    <div class="ts-card" style="max-width: 600px; width: 90%; padding: 1rem; border-radius: 12px; background: var(--ts-popover-bg); border: 1px solid var(--ts-border); position: relative;" onclick="event.stopPropagation()">
+        <span style="position: absolute; top: 0.5rem; right: 0.8rem; font-size: 1.5rem; cursor: pointer; color: var(--ts-text-secondary);" onclick="closeProctorImageModal()">&times;</span>
+        <div style="font-weight: 700; font-size: 1rem; margin-bottom: 0.8rem; color: var(--ts-text-heading);" id="proctorModalTitle">Proctor Snapshot</div>
+        <img id="proctorModalImg" src="" alt="Proctor Snapshot Fullsize" style="width: 100%; border-radius: 8px; border: 1px solid var(--ts-border); max-height: 450px; object-fit: contain;">
+        <div style="font-size: 0.85rem; color: var(--ts-text-secondary); margin-top: 0.8rem; line-height: 1.4;" id="proctorModalMeta"></div>
+    </div>
+</div>
 {% endblock %}

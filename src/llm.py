@@ -289,3 +289,62 @@ def generate_chat_answer_stream(prompt: str, model_name: str, system_instruction
     except Exception as e:
         yield f"An unexpected error occurred: {e}"
 
+
+def analyze_proctor_image(image_base64: str) -> str:
+    """Analyze a base64 encoded JPEG image using Groq's vision model.
+    Returns: 'none', 'phone', 'second_person', 'absent', or 'error'.
+    """
+    if not GROQ_API_KEY:
+        return "none"
+        
+    try:
+        # Strip data URL prefix if present
+        if "," in image_base64:
+            image_base64 = image_base64.split(",")[1]
+            
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        payload = {
+            "model": "llama-3.2-11b-vision-preview",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Does this image show a phone, a second person, or the student absent from frame? Answer only: none / phone / second_person / absent."
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{image_base64}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "temperature": 0.0,
+            "max_tokens": 10
+        }
+        
+        req_headers = HEADERS.copy()
+        req_headers["Authorization"] = f"Bearer {GROQ_API_KEY}"
+        
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers=req_headers,
+            method="POST",
+        )
+        
+        with urllib.request.urlopen(req, timeout=30.0) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            answer = data["choices"][0]["message"]["content"].strip().lower()
+            for label in ["phone", "second_person", "absent", "none"]:
+                if label in answer:
+                    return label
+            return "none"
+    except Exception as e:
+        print(f"Error in Groq vision analysis: {e}")
+        return "none"
+
+

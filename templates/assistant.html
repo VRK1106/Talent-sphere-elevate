@@ -253,7 +253,6 @@
         const query = queryField.value.trim();
         if (!query || isGenerating) return;
 
-        // Auto mode toggle to RAG and expand wizard in input section if query is about exam creation
         const queryLower = query.toLowerCase();
         const isExamRequest = (queryLower.includes("create") || queryLower.includes("make") || queryLower.includes("generate") || queryLower.includes("setup") || queryLower.includes("new")) && (queryLower.includes("exam") || queryLower.includes("test") || queryLower.includes("assessment") || queryLower.includes("quiz"));
         if (isExamRequest) {
@@ -270,6 +269,28 @@
             wizContainer.style.display = 'block';
             wizContainer.innerHTML = getExamWizardHtml();
             initExamWizard();
+            
+            // Hide standard chat input row
+            document.getElementById('chatInputRow').style.display = 'none';
+            scrollToBottom();
+            return; // Early return to prevent normal message sending
+        }
+
+        const isAnnRequest = (queryLower.includes("create") || queryLower.includes("make") || queryLower.includes("generate") || queryLower.includes("post") || queryLower.includes("new")) && (queryLower.includes("announcement") || queryLower.includes("notice") || queryLower.includes("broadcast") || queryLower.includes("alert"));
+        if (isAnnRequest) {
+            const modeGeneral = document.getElementById('modeGeneral');
+            if (modeGeneral && modeGeneral.checked) {
+                document.getElementById('modeRag').checked = true;
+            }
+            
+            // Clear query field
+            queryField.value = '';
+            
+            // Expand the wizard inside the chat input area container
+            const wizContainer = document.getElementById('wizardContainer');
+            wizContainer.style.display = 'block';
+            wizContainer.innerHTML = getAnnWizardHtml();
+            initAnnWizard(query);
             
             // Hide standard chat input row
             document.getElementById('chatInputRow').style.display = 'none';
@@ -1714,5 +1735,322 @@
     window.toggleTemplateNameInput = toggleTemplateNameInput;
     window.renderSubjectiveRubricsList = renderSubjectiveRubricsList;
     window.showStep = showStep;
+
+    // --- Announcement Wizard JS ---
+    window.getAnnWizardHtml = getAnnWizardHtml;
+    window.initAnnWizard = initAnnWizard;
+    window.generateAiAnnouncementContent = generateAiAnnouncementContent;
+    window.annWizardNext = annWizardNext;
+    window.annWizardPrev = annWizardPrev;
+    window.showAnnStep = showAnnStep;
+    window.submitAnnWizard = submitAnnWizard;
+    window.closeAnnWizard = closeAnnWizard;
+
+    function getAnnWizardHtml() {
+        return `
+    <div class="ts-card ann-wizard-card" style="border: 1px solid var(--ts-primary); background: var(--ts-popover-bg); margin-top: 10px; border-radius: 12px; padding: 1.5rem; text-align: left; max-width: 100%; box-shadow: var(--ts-shadow); max-height: 520px; overflow-y: auto;">
+        <div style="font-size: 1.1rem; font-weight: 700; color: var(--ts-primary); margin-bottom: 0.8rem; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">📢 <span>Interactive Announcement Wizard</span></div>
+            <button type="button" onclick="closeAnnWizard()" style="background: none; border: none; font-size: 1.25rem; color: var(--ts-text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0.2rem;" title="Close Wizard">✕</button>
+        </div>
+        
+        <!-- Step indicator -->
+        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--ts-text-secondary); margin-bottom: 1.2rem; border-bottom: 1px solid var(--ts-border); padding-bottom: 0.5rem;">
+            <span id="annWizardStepLabel">Step 1 of 4: Title & Category</span>
+            <span id="annWizardStepNum">25%</span>
+        </div>
+
+        <!-- Step 1: Title & Category -->
+        <div id="annWizardStep1" class="ann-wizard-step-content">
+            <div style="margin-bottom: 0.8rem;">
+                <label style="font-size: 0.8rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.3rem;">Announcement Title</label>
+                <input type="text" id="annWizTitle" placeholder="e.g. Schedule Update: RAG Workshop" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+            </div>
+            <div style="margin-bottom: 1.2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.3rem;">Category</label>
+                    <select id="annWizCategory" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                        <option value="General">General Notice</option>
+                        <option value="Training">Training Course</option>
+                        <option value="Maintenance">System Maintenance</option>
+                        <option value="Event">Upcoming Event</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.3rem;">Priority</label>
+                    <select id="annWizPriority" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                        <option value="Standard">Standard</option>
+                        <option value="Low">Low</option>
+                        <option value="Urgent">⚠️ Urgent</option>
+                    </select>
+                </div>
+            </div>
+            <button type="button" onclick="annWizardNext(1)" class="btn-ts btn-ts-primary" style="width: 100%; justify-content: center;">Next: Edit Content ➡️</button>
+        </div>
+
+        <!-- Step 2: Content & Generation -->
+        <div id="annWizardStep2" class="ann-wizard-step-content" style="display: none;">
+            <div style="margin-bottom: 0.8rem; display: flex; justify-content: space-between; align-items: center;">
+                <label style="font-size: 0.8rem; font-weight: 600; color: var(--ts-text-secondary);">Announcement Content</label>
+                <button type="button" id="annAiGenBtn" onclick="generateAiAnnouncementContent()" class="btn-ts btn-ts-secondary" style="width: auto; padding: 0.2rem 0.6rem; font-size: 0.75rem;">🪄 AI Auto-Draft</button>
+            </div>
+            <div style="margin-bottom: 1.2rem;">
+                <textarea id="annWizContent" placeholder="Enter announcement body text here. You can use standard formatting..." rows="6" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text); outline: none; font-family: sans-serif; resize: vertical;"></textarea>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" onclick="annWizardPrev(2)" class="btn-ts btn-ts-secondary" style="flex: 1; justify-content: center;">⬅️ Back</button>
+                <button type="button" onclick="annWizardNext(2)" class="btn-ts btn-ts-primary" style="flex: 1; justify-content: center;">Next: Delivery Options ➡️</button>
+            </div>
+        </div>
+
+        <!-- Step 3: Scope & Delivery -->
+        <div id="annWizardStep3" class="ann-wizard-step-content" style="display: none;">
+            <div style="margin-bottom: 0.8rem;">
+                <label style="font-size: 0.8rem; font-weight: 600; color: var(--ts-text-secondary); display: block; margin-bottom: 0.3rem;">Target Audience</label>
+                <select id="annWizAudience" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--ts-border); background: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                    <option value="All">All Registered Trainees</option>
+                    <option value="Engineering">Engineering Department</option>
+                    <option value="Operations">Operations Department</option>
+                </select>
+            </div>
+            <div style="margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.6rem;">
+                <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; color: var(--ts-text); cursor: pointer;">
+                    <input type="checkbox" id="annWizSendEmail" checked> Send dynamic email notification to recipients
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; color: var(--ts-text); cursor: pointer;">
+                    <input type="checkbox" id="annWizPinNotice"> Pin announcement to the top of dashboard
+                </label>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" onclick="annWizardPrev(3)" class="btn-ts btn-ts-secondary" style="flex: 1; justify-content: center;">⬅️ Back</button>
+                <button type="button" onclick="annWizardNext(3)" class="btn-ts btn-ts-primary" style="flex: 1; justify-content: center;">Next: Final Review ➡️</button>
+            </div>
+        </div>
+
+        <!-- Step 4: Final Review & Publish -->
+        <div id="annWizardStep4" class="ann-wizard-step-content" style="display: none;">
+            <div style="margin-bottom: 0.8rem; font-size: 0.8rem; color: var(--ts-text-secondary);">Please review the announcement before publishing:</div>
+            
+            <!-- Real Preview Card -->
+            <div class="ts-card" style="padding: 1rem; border-radius: 8px; margin-bottom: 1.2rem; background: rgba(255,255,255,0.02); border-left: 4px solid var(--ts-primary);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span id="previewBadge" style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; background: rgba(79, 70, 229, 0.15); color: var(--ts-primary); padding: 0.2rem 0.5rem; border-radius: 4px;">General</span>
+                    <span id="previewPriority" style="font-size: 0.72rem; color: var(--ts-text-secondary);">Standard</span>
+                </div>
+                <h4 id="previewTitle" style="margin: 0 0 0.5rem 0; font-size: 1rem; color: var(--ts-text); font-weight: 700;">Announcement Title</h4>
+                <p id="previewContent" style="margin: 0; font-size: 0.85rem; color: var(--ts-text-secondary); white-space: pre-wrap; line-height: 1.5;">Announcement body text...</p>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" onclick="annWizardPrev(4)" class="btn-ts btn-ts-secondary" style="flex: 1; justify-content: center;">⬅️ Back</button>
+                <button type="button" id="annWizSubmitBtn" onclick="submitAnnWizard()" class="btn-ts btn-ts-primary" style="flex: 2; justify-content: center; background-color: var(--ts-accent); border-color: var(--ts-accent);">📢 Publish Notice</button>
+            </div>
+        </div>
+    </div>
+        `;
+    }
+
+    function initAnnWizard(query) {
+        // Adjust parent container styling to prevent overlap issues
+        const chatContainer = document.querySelector('.chat-container');
+        if (chatContainer) {
+            chatContainer.style.height = 'auto';
+            chatContainer.style.minHeight = '650px';
+            chatContainer.style.overflow = 'visible';
+        }
+        
+        // Auto-extract a title suggestion from the query
+        let titleSuggestion = "";
+        let cleanQuery = query.toLowerCase();
+        // Remove common trigger phrases
+        cleanQuery = cleanQuery.replace(/(create|make|generate|post|new|announcement|notice|broadcast|alert|about|for|to)/g, "").trim();
+        if (cleanQuery) {
+            // Capitalize first letter of words
+            titleSuggestion = cleanQuery.replace(/\b\w/g, c => c.toUpperCase());
+        } else {
+            titleSuggestion = "Announcement: System Update";
+        }
+        document.getElementById('annWizTitle').value = titleSuggestion;
+        
+        // Auto-set priority based on keywords
+        if (query.toLowerCase().includes("urgent") || query.toLowerCase().includes("critical") || query.toLowerCase().includes("important")) {
+            document.getElementById('annWizPriority').value = "Urgent";
+        }
+        
+        // Pre-fill categories based on keywords
+        if (query.toLowerCase().includes("maintenance") || query.toLowerCase().includes("downtime") || query.toLowerCase().includes("offline")) {
+            document.getElementById('annWizCategory').value = "Maintenance";
+        } else if (query.toLowerCase().includes("training") || query.toLowerCase().includes("course") || query.toLowerCase().includes("class") || query.toLowerCase().includes("exam")) {
+            document.getElementById('annWizCategory').value = "Training";
+        } else if (query.toLowerCase().includes("event") || query.toLowerCase().includes("meet") || query.toLowerCase().includes("webinar")) {
+            document.getElementById('annWizCategory').value = "Event";
+        }
+    }
+
+    async function generateAiAnnouncementContent() {
+        const title = document.getElementById('annWizTitle').value.trim();
+        const category = document.getElementById('annWizCategory').value;
+        const priority = document.getElementById('annWizPriority').value;
+        const genBtn = document.getElementById('annAiGenBtn');
+        const textEl = document.getElementById('annWizContent');
+        const modelSelect = document.getElementById('chatModel');
+        const model = modelSelect ? modelSelect.value : 'llama-3.3-70b-versatile';
+
+        if (!title) {
+            alert("Please specify a title in Step 1 first.");
+            return;
+        }
+
+        genBtn.disabled = true;
+        genBtn.innerHTML = '🪄 Generating Draft...';
+        textEl.placeholder = 'AI is compiling a professional draft based on your title & settings, please wait...';
+
+        try {
+            const res = await fetch('/assistant/wizard/announcement/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, category, priority, model })
+            });
+            const data = await res.json();
+            if (data.error) {
+                alert("Error: " + data.error);
+                textEl.placeholder = 'Enter announcement body text here...';
+            } else {
+                textEl.value = data.content;
+            }
+        } catch(e) {
+            console.error(e);
+            alert("Failed to communicate with AI model.");
+            textEl.placeholder = 'Enter announcement body text here...';
+        } finally {
+            genBtn.disabled = false;
+            genBtn.innerHTML = '🪄 AI Auto-Draft';
+        }
+    }
+
+    function annWizardNext(step) {
+        if (step === 1) {
+            const title = document.getElementById('annWizTitle').value.trim();
+            if (!title) {
+                alert("Announcement Title is required.");
+                return;
+            }
+            // Auto draft content if empty when moving to step 2
+            const content = document.getElementById('annWizContent').value.trim();
+            if (!content) {
+                generateAiAnnouncementContent();
+            }
+            showAnnStep(2);
+        } else if (step === 2) {
+            const content = document.getElementById('annWizContent').value.trim();
+            if (!content) {
+                alert("Announcement content is required.");
+                return;
+            }
+            showAnnStep(3);
+        } else if (step === 3) {
+            // Update step 4 review values
+            const title = document.getElementById('annWizTitle').value.trim();
+            const category = document.getElementById('annWizCategory').value;
+            const priority = document.getElementById('annWizPriority').value;
+            const content = document.getElementById('annWizContent').value;
+            
+            document.getElementById('previewTitle').textContent = title;
+            document.getElementById('previewContent').textContent = content;
+            document.getElementById('previewBadge').textContent = category;
+            
+            const pBadge = document.getElementById('previewPriority');
+            if (priority === 'Urgent') {
+                pBadge.textContent = '⚠️ URGENT';
+                pBadge.style.color = '#f87171';
+            } else {
+                pBadge.textContent = priority;
+                pBadge.style.color = 'var(--ts-text-secondary)';
+            }
+            
+            showAnnStep(4);
+        }
+    }
+
+    function annWizardPrev(step) {
+        showAnnStep(step - 1);
+    }
+
+    function showAnnStep(stepNum) {
+        const steps = [1, 2, 3, 4];
+        steps.forEach(i => {
+            const stepDiv = document.getElementById('annWizardStep' + i);
+            if (stepDiv) stepDiv.style.display = (i === stepNum) ? 'block' : 'none';
+        });
+        
+        const stepLabels = [
+            "Step 1 of 4: Title & Category",
+            "Step 2 of 4: Edit Content",
+            "Step 3 of 4: Delivery Options",
+            "Step 4 of 4: Final Review"
+        ];
+        
+        document.getElementById('annWizardStepLabel').textContent = stepLabels[stepNum - 1];
+        document.getElementById('annWizardStepNum').textContent = Math.round((stepNum / 4) * 100) + '%';
+    }
+
+    async function submitAnnWizard() {
+        const title = document.getElementById('annWizTitle').value.trim();
+        const content = document.getElementById('annWizContent').value.trim();
+        const category = document.getElementById('annWizCategory').value;
+        const priority = document.getElementById('annWizPriority').value;
+        const sendEmail = document.getElementById('annWizSendEmail').checked;
+        const btn = document.getElementById('annWizSubmitBtn');
+
+        let fullTitle = title;
+        if (priority === 'Urgent') {
+            fullTitle = "⚠️ [URGENT] " + title;
+        } else if (category === 'Training') {
+            fullTitle = "🎓 [Training] " + title;
+        } else if (category === 'Maintenance') {
+            fullTitle = "🔧 [Maintenance] " + title;
+        } else {
+            fullTitle = "📢 " + title;
+        }
+
+        btn.disabled = true;
+        btn.textContent = '📢 Publishing...';
+
+        try {
+            const res = await fetch('/assistant/wizard/announcement/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: fullTitle, content, send_email: sendEmail })
+            });
+            const data = await res.json();
+            if (data.error) {
+                alert("Error: " + data.error);
+                btn.disabled = false;
+                btn.textContent = '📢 Publish Notice';
+            } else {
+                alert("Announcement published successfully!");
+                closeAnnWizard();
+                // Redirect/Refresh to announcements board
+                window.location.href = '/announcements';
+            }
+        } catch(e) {
+            console.error(e);
+            alert("Failed to submit announcement.");
+            btn.disabled = false;
+            btn.textContent = '📢 Publish Notice';
+        }
+    }
+
+    function closeAnnWizard() {
+        const chatContainer = document.querySelector('.chat-container');
+        if (chatContainer) {
+            chatContainer.style.height = '';
+            chatContainer.style.minHeight = '';
+            chatContainer.style.overflow = '';
+        }
+        document.getElementById('wizardContainer').style.display = 'none';
+        document.getElementById('wizardContainer').innerHTML = '';
+        document.getElementById('chatInputRow').style.display = 'flex';
+    }
 </script>
 {% endblock %}

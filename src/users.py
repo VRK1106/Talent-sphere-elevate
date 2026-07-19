@@ -42,6 +42,10 @@ def init_db() -> None:
         cursor.execute("ALTER TABLE users ADD COLUMN password_plain TEXT")
     if "last_active" not in columns:
         cursor.execute("ALTER TABLE users ADD COLUMN last_active TIMESTAMP")
+    if "face_descriptor" not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN face_descriptor TEXT")
+    if "accommodation_proctoring" not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN accommodation_proctoring INTEGER DEFAULT 0")
     
     # Delete demo user if it exists (clean migration)
     cursor.execute("DELETE FROM users WHERE employee_id = 'demo'")
@@ -132,7 +136,7 @@ def get_all_users() -> list[dict[str, Any]]:
         conn = sqlite3.connect(str(_DB_PATH))
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("SELECT employee_id, email, full_name, domain, role, password_plain, last_active FROM users WHERE role != 'admin'")
+        cursor.execute("SELECT employee_id, email, full_name, domain, role, password_plain, last_active, accommodation_proctoring FROM users WHERE role != 'admin'")
         rows = cursor.fetchall()
         conn.close()
         return [dict(r) for r in rows]
@@ -201,3 +205,44 @@ def get_active_users_count(hours: int = 1) -> int:
         return max(count, 1)
     except Exception:
         return 1
+
+
+def set_user_face_descriptor(employee_id: str, descriptor_json: str) -> bool:
+    """Set the 128-float face descriptor for a user."""
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET face_descriptor = ? WHERE employee_id = ?", (descriptor_json, employee_id))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Failed to set face descriptor: {e}")
+        return False
+
+
+def get_user_face_descriptor(employee_id: str) -> str | None:
+    """Get the 128-float face descriptor for a user."""
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute("SELECT face_descriptor FROM users WHERE employee_id = ?", (employee_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return row[0] if row else None
+    except Exception:
+        return None
+
+
+def set_user_accommodation(employee_id: str, enabled: int) -> bool:
+    """Set the proctoring accommodation flag (0 or 1) for a user."""
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET accommodation_proctoring = ? WHERE employee_id = ?", (enabled, employee_id))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Failed to set user accommodation: {e}")
+        return False

@@ -187,6 +187,11 @@
                                 🔑 Credentials: &nbsp;Username: <code style="background: rgba(255,255,255,0.05); padding: 0.1rem 0.3rem; border-radius: 4px; border: 1px solid var(--ts-border)">{{ u.employee_id }}</code> &nbsp;·&nbsp; 
                                 Password: <code style="background: rgba(255,255,255,0.05); padding: 0.1rem 0.3rem; border-radius: 4px; border: 1px solid var(--ts-border)">{{ u.password_plain if u.password_plain else 'demo123' }}</code>
                             </span>
+                            <br>
+                            <label style="display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.6rem; font-size: 0.85rem; color: var(--ts-text); cursor: pointer;">
+                                <input type="checkbox" class="accommodation-toggle" data-emp-id="{{ u.employee_id }}" {% if u.accommodation_proctoring %}checked{% endif %} style="accent-color: var(--ts-primary);">
+                                <span>Accommodation (Skip presence check)</span>
+                            </label>
                         </div>
                     </div>
                     <div style="width: auto;">
@@ -251,6 +256,36 @@
             const btn = document.querySelector("button[onclick*='create-user']");
             if(btn) btn.click();
         }
+
+        // Setup Accommodation checkbox listeners
+        const checkboxes = document.querySelectorAll('.accommodation-toggle');
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
+                const empId = this.getAttribute('data-emp-id');
+                const isChecked = this.checked;
+                
+                const formData = new FormData();
+                formData.append('employee_id', empId);
+                formData.append('enabled', isChecked ? 'true' : 'false');
+                
+                const tabId = sessionStorage.getItem('ts_tab_id') || '';
+                fetch('/user_management/toggle_accommodation?tab_id=' + tabId, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status !== 'success') {
+                        alert('Error toggling accommodation: ' + (data.error || 'unknown'));
+                        this.checked = !isChecked; // revert
+                    }
+                })
+                .catch(err => {
+                    alert('Network error toggling accommodation.');
+                    this.checked = !isChecked; // revert
+                });
+            });
+        });
     });
 </script>
 {% endblock %}

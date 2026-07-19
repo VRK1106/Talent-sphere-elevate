@@ -84,6 +84,48 @@ def init_exams_db() -> None:
         """
     )
     
+    # 5. Create email_logs table for tracking delivery status
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS email_logs (
+            log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            recipient TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            status TEXT NOT NULL,
+            error_message TEXT,
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    
+    # 6. Create system_settings table for feature toggles
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS system_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+        """
+    )
+    # Insert default settings
+    cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('email_notifications_enabled', 'true')")
+    
+    # 7. Create proctor_logs table for webcam proctoring violations
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS proctor_logs (
+            log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            assignment_id INTEGER NOT NULL,
+            trigger_reason TEXT NOT NULL,
+            groq_label TEXT NOT NULL,
+            snapshot_data TEXT NOT NULL,
+            score REAL,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (assignment_id) REFERENCES assignments (assignment_id) ON DELETE CASCADE
+        )
+        """
+    )
+    
     conn.commit()
     conn.close()
 
@@ -365,10 +407,23 @@ def get_all_announcements() -> list[dict[str, Any]]:
         return []
 
 
-def add_announcement(title: str, content: str) -> bool:
+def add_announcement(title: str, content: str, send_email: bool = True) -> bool:
     """Add a new system announcement."""
     init_exams_db()
     try:
+        import re
+        import datetime
+        
+        title = (title or "").strip()
+        content = (content or "").strip()
+        
+        now = datetime.datetime.now()
+        current_dt_str = now.strftime("%B %d, %Y, %I:%M %p")
+        
+        pat = r'\[\s*(?:insert|enter)?\s*(?:dates?|time|date\s*(?:/|&|and)\s*time)\s*(?:here)?\s*\]'
+        title = re.sub(pat, current_dt_str, title, flags=re.IGNORECASE)
+        content = re.sub(pat, current_dt_str, content, flags=re.IGNORECASE)
+
         conn = sqlite3.connect(str(_DB_PATH))
         cursor = conn.cursor()
         cursor.execute(
@@ -376,10 +431,19 @@ def add_announcement(title: str, content: str) -> bool:
             INSERT INTO announcements (title, content)
             VALUES (?, ?)
             """,
-            (title.strip(), content.strip()),
+            (title, content),
         )
         conn.commit()
         conn.close()
+
+        # Broadcast via email
+        if send_email:
+            try:
+                from src.mail import broadcast_announcement
+                broadcast_announcement(title, content)
+            except Exception as e:
+                print(f"Failed to trigger email broadcast: {e}")
+
         return True
     except Exception:
         return False
@@ -439,5 +503,139 @@ def get_exam_templates() -> list[dict[str, Any]]:
                 d["config"] = {}
             result.append(d)
         return result
+    except Exception:
+        return []
+
+
+def add_email_log(recipient: str, subject: str, status: str, error_message: str | None = None) -> int | None:
+    """Insert a new email delivery log and return the row ID."""
+    init_exams_db()
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO email_logs (recipient, subject, status, error_message)
+            VALUES (?, ?, ?, ?)
+            """,
+            (recipient, subject, status, error_message),
+        )
+        log_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return log_id
+    except Exception as e:
+        print(f"Failed to write email log: {e}")
+        return None
+
+
+def update_email_log(log_id: int, status: str, error_message: str | None = None) -> bool:
+    """Update the status of an existing email delivery log."""
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE email_logs
+            SET status = ?, error_message = ?
+            WHERE log_id = ?
+            """,
+            (status, error_message, log_id),
+        )
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Failed to update email log: {e}")
+        return False
+
+
+def get_all_email_logs(limit: int = 50) -> list[dict[str, Any]]:
+    """Retrieve the most recent email delivery logs."""
+    init_exams_db()
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT log_id, recipient, subject, status, error_message, datetime(sent_at, 'localtime') as sent_at FROM email_logs ORDER BY log_id DESC LIMIT ?",
+            (limit,)
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+    except Exception:
+        return []
+
+
+def get_system_setting(key: str, default: str = "") -> str:
+    """Retrieve a system setting value by key."""
+    init_exams_db()
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM system_settings WHERE key = ?", (key,))
+        row = cursor.fetchone()
+        conn.close()
+        return row[0] if row else default
+    except Exception:
+        return default
+
+
+def set_system_setting(key: str, value: str) -> bool:
+    """Set/update a system setting value."""
+    init_exams_db()
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO system_settings (key, value)
+            VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """,
+            (key, str(value)),
+        )
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Failed to set system setting: {e}")
+        return False
+
+
+def add_proctor_log(assignment_id: int, trigger_reason: str, groq_label: str, snapshot_data: str, score: float | None = None) -> int | None:
+    """Insert a new proctoring violation log."""
+    init_exams_db()
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO proctor_logs (assignment_id, trigger_reason, groq_label, snapshot_data, score)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (assignment_id, trigger_reason, groq_label, snapshot_data, score)
+        )
+        log_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return log_id
+    except Exception as e:
+        print(f"Failed to add proctor log: {e}")
+        return None
+
+
+def get_proctor_logs_for_assignment(assignment_id: int) -> list[dict[str, Any]]:
+    """Fetch all proctoring logs for a given assignment."""
+    init_exams_db()
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT log_id, assignment_id, trigger_reason, groq_label, snapshot_data, score, timestamp FROM proctor_logs WHERE assignment_id = ? ORDER BY timestamp ASC", (assignment_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
     except Exception:
         return []
