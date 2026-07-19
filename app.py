@@ -1540,10 +1540,10 @@ active_generations = {} # employee_id -> { "session_id", "query", "partial_respo
 @app.before_request
 def before_request_cleanup():
     # Exam Proctoring Redirect Lock:
-    # If the student is actively taking an assignment, they are locked to /exams, /exams/submit, /exams/cancel, /logout, or static/assets files
+    # If the student is actively taking an assignment, they are locked to /exams, /exams/submit, /exams/cancel, /logout, static/assets files, or API endpoints
     if session.get('authenticated') and session.get('taking_assignment_id'):
         path = request.path
-        allowed_paths = ['/exams', '/logout', '/static', '/assets']
+        allowed_paths = ['/exams', '/logout', '/static', '/assets', '/api/']
         is_allowed = False
         for p in allowed_paths:
             if path.startswith(p):
