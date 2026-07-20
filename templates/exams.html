@@ -670,7 +670,7 @@
                     <button type="button" id="btnBeginSetup" class="btn-ts btn-ts-primary" disabled style="width: auto; padding: 0.65rem 2rem;">
                         Continue to Camera Check
                     </button>
-                    <a href="/exams" class="btn-ts btn-ts-secondary" style="width: auto; padding: 0.65rem 1.5rem; text-decoration: none; display: flex; align-items: center; justify-content: center;">
+                    <a href="/exams/cancel" class="btn-ts btn-ts-secondary" style="width: auto; padding: 0.65rem 1.5rem; text-decoration: none; display: flex; align-items: center; justify-content: center;">
                         Cancel
                     </a>
                 </div>
@@ -1111,6 +1111,13 @@
     }
 
     async function enterExamMode() {
+        // Tell the server that the exam has officially started
+        try {
+            await fetch('/exams/start_active', { method: 'POST' });
+        } catch(e) {
+            console.error("Failed to mark exam as active:", e);
+        }
+
         // Stop initial webcam stream
         if (initStream) {
             initStream.getTracks().forEach(track => track.stop());

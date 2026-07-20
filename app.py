@@ -1417,13 +1417,23 @@ def exams_take():
     assignment_id = request.form.get('assignment_id', type=int)
     if assignment_id:
         session['taking_assignment_id'] = assignment_id
+        session['exam_started'] = False
     return redirect(url_for('exams'))
 
 @app.route('/exams/cancel')
 @login_required
 def exams_cancel():
     session.pop('taking_assignment_id', None)
+    session.pop('exam_started', None)
     return redirect(url_for('exams'))
+
+@app.route('/exams/start_active', methods=['POST'])
+@login_required
+def exams_start_active():
+    if session.get('taking_assignment_id'):
+        session['exam_started'] = True
+        return jsonify({"status": "success"})
+    return jsonify({"error": "No exam in progress"}), 400
 
 @app.route('/exams/submit', methods=['POST'])
 @login_required
@@ -1435,6 +1445,7 @@ def exams_submit():
     detail = get_assignment_by_id(assignment_id)
     if not detail:
         session.pop('taking_assignment_id', None)
+        session.pop('exam_started', None)
         return redirect(url_for('exams'))
         
     is_malpractice = request.form.get('malpractice') == 'true'
@@ -1462,6 +1473,7 @@ def exams_submit():
             flash("Failed to save malpractice submission to database.")
             
         session.pop('taking_assignment_id', None)
+        session.pop('exam_started', None)
         return redirect(url_for('exams'))
         
     responses = {}
@@ -1544,6 +1556,7 @@ def exams_submit():
         flash("Failed to save submissions to database.")
         
     session.pop('taking_assignment_id', None)
+    session.pop('exam_started', None)
     return redirect(url_for('exams'))
 
 # AI ASSISTANT & SSE CHAT STREAMING
@@ -1554,15 +1567,29 @@ def before_request_cleanup():
     # Exam Proctoring Redirect Lock:
     # If the student is actively taking an assignment, they are locked to /exams, /exams/submit, /exams/cancel, /logout, static/assets files, or API endpoints
     if session.get('authenticated') and session.get('taking_assignment_id'):
-        path = request.path
-        allowed_paths = ['/exams', '/logout', '/static', '/assets', '/api/']
-        is_allowed = False
-        for p in allowed_paths:
-            if path.startswith(p):
-                is_allowed = True
-                break
-        if not is_allowed:
-            return redirect(url_for('exams'))
+        if session.get('exam_started'):
+            path = request.path
+            allowed_paths = ['/exams', '/logout', '/static', '/assets', '/api/']
+            is_allowed = False
+            for p in allowed_paths:
+                if path.startswith(p):
+                    is_allowed = True
+                    break
+            if not is_allowed:
+                return redirect(url_for('exams'))
+        else:
+            # If the exam has NOT started yet, they are allowed to navigate away!
+            # If they navigate to a non-exam page, automatically cancel/reset the taking session.
+            path = request.path
+            allowed_paths = ['/exams', '/logout', '/static', '/assets', '/api/']
+            is_allowed = False
+            for p in allowed_paths:
+                if path.startswith(p):
+                    is_allowed = True
+                    break
+            if not is_allowed:
+                session.pop('taking_assignment_id', None)
+                session.pop('exam_started', None)
 
     # Only clean up for authenticated users and non-static/non-assistant routes
     if session.get('authenticated'):
