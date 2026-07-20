@@ -697,7 +697,7 @@
                     <div class="ts-card" style="width: 90%; max-width: 500px; padding: 2.2rem; border-radius: 16px; border: 2.5px solid var(--ts-danger); text-align: center; background: var(--ts-popover-bg) !important; box-shadow: 0 20px 50px rgba(239, 68, 68, 0.25);">
                         <div style="font-size: 3.5rem; margin-bottom: 1rem;">⚠️</div>
                         <div style="font-size: 1.40rem; font-weight: 800; color: var(--ts-danger); margin-bottom: 0.8rem;">PROCTORING VIOLATION</div>
-                        <div style="font-size: 0.98rem; color: var(--ts-text); margin-bottom: 1.8rem; line-height: 1.6;">
+                        <div id="proctorWarningMessage" style="font-size: 0.98rem; color: var(--ts-text); margin-bottom: 1.8rem; line-height: 1.6;">
                             A tab switch, window focus loss, or screenshot attempt was detected. 
                             This exam is monitored in real-time.
                             <br><br>
@@ -1174,7 +1174,17 @@
             const faceCount = detections.length;
             
             if (faceCount !== 1) {
-                await captureAndSendProctorLog('face_presence_check', { face_count: faceCount, videoEl: video });
+                // Trigger client-side presence infraction immediately
+                triggerInfraction('face_presence_check', true);
+            } else {
+                // Face count is exactly 1. Check for objects/phone/absence on server using Groq/Moondream
+                const result = await captureAndSendProctorLog('face_presence_check', { face_count: faceCount, videoEl: video });
+                if (result && result.status === 'success') {
+                    const label = result.groq_label;
+                    if (label === 'phone' || label === 'second_person' || label === 'absent') {
+                        triggerInfraction('proctor_' + label, false);
+                    }
+                }
             }
         } catch (err) {
             console.error('Error in presence check:', err);
@@ -1225,7 +1235,7 @@
         }
     }
 
-    function triggerInfraction(type) {
+    function triggerInfraction(type, shouldLog = true) {
         if (!IS_TAKING_EXAM) return;
         
         const gradingOverlay = document.getElementById('gradingOverlay');
@@ -1237,8 +1247,34 @@
         
         infractionCount++;
         
-        // Log snapshot for this infraction
-        captureAndSendProctorLog(type);
+        // Log snapshot for this infraction if requested
+        if (shouldLog) {
+            captureAndSendProctorLog(type);
+        }
+        
+        // Format a user-friendly description of the violation
+        let violationDesc = "A tab switch, window focus loss, or screenshot attempt was detected.";
+        if (type === 'proctor_phone') {
+            violationDesc = "An unauthorized device (mobile phone) was detected in your webcam feed.";
+        } else if (type === 'proctor_second_person') {
+            violationDesc = "A second person was detected in your webcam feed.";
+        } else if (type === 'proctor_absent') {
+            violationDesc = "You were detected as absent from the camera frame.";
+        } else if (type === 'face_presence_check') {
+            violationDesc = "No face or multiple faces were detected in the camera frame.";
+        }
+        
+        const warningMsgEl = document.getElementById('proctorWarningMessage');
+        if (warningMsgEl) {
+            warningMsgEl.innerHTML = `
+                ${violationDesc}
+                This exam is monitored in real-time.
+                <br><br>
+                <strong style="color: var(--ts-warning); display: block; padding: 0.5rem; border-radius: 6px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2);">
+                    Warning: ${infractionCount} infraction registered. The next infraction will cause the exam to immediately close and be submitted as MALPRACTICE with a score of 0.
+                </strong>
+            `;
+        }
         
         if (infractionCount === 1) {
             modalActive = true;
