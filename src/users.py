@@ -246,3 +246,35 @@ def set_user_accommodation(employee_id: str, enabled: int) -> bool:
     except Exception as e:
         print(f"Failed to set user accommodation: {e}")
         return False
+
+
+def clear_all_trainee_users() -> bool:
+    """Delete all users in the database where role == 'trainee'."""
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        cursor = conn.cursor()
+        
+        # Get list of trainee employee IDs to delete their chat sessions/messages too
+        cursor.execute("SELECT employee_id FROM users WHERE role = 'trainee'")
+        trainee_ids = [row[0] for row in cursor.fetchall()]
+        
+        # Delete from users
+        cursor.execute("DELETE FROM users WHERE role = 'trainee'")
+        
+        # Also clean up assignments associated with deleted trainees
+        cursor.execute("DELETE FROM assignments WHERE trainee_id IN (SELECT employee_id FROM users WHERE role = 'trainee')")
+        
+        # Clear chat sessions & messages associated with trainees
+        for t_id in trainee_ids:
+            cursor.execute("SELECT session_id FROM chat_sessions WHERE user_id = ?", (t_id,))
+            sess_ids = [r[0] for r in cursor.fetchall()]
+            for s_id in sess_ids:
+                cursor.execute("DELETE FROM chat_messages WHERE session_id = ?", (s_id,))
+            cursor.execute("DELETE FROM chat_sessions WHERE user_id = ?", (t_id,))
+            
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error clearing trainees: {e}")
+        return False

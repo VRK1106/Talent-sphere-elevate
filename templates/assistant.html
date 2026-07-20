@@ -97,7 +97,84 @@
         height: 44px;
         box-sizing: border-box;
     }
-    
+
+    /* ── Voice / Mic button ─────────────────────────────────────────── */
+    #micBtn {
+        width: 44px;
+        height: 44px;
+        flex-shrink: 0;
+        border-radius: 50%;
+        border: 1.5px solid var(--ts-border);
+        background: var(--ts-input-bg, #0f172a);
+        color: var(--ts-text);
+        font-size: 1.15rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+        position: relative;
+        overflow: visible;
+    }
+    #micBtn:hover { border-color: var(--ts-primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+    #micBtn.recording {
+        background: rgba(239,68,68,0.15);
+        border-color: #ef4444;
+        animation: micPulse 1.1s ease-in-out infinite;
+    }
+    #micBtn.transcribing {
+        background: rgba(99,102,241,0.15);
+        border-color: var(--ts-primary);
+        opacity: 0.7;
+        cursor: not-allowed;
+        animation: none;
+    }
+    @keyframes micPulse {
+        0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
+        50%      { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+    }
+
+    /* Voice status bar */
+    #voiceStatusBar {
+        display: none;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.45rem 0.8rem;
+        border-radius: 8px;
+        background: rgba(99,102,241,0.08);
+        border: 1px solid rgba(99,102,241,0.2);
+        font-size: 0.82rem;
+        color: var(--ts-text-secondary);
+        margin-top: 0.4rem;
+        transition: all 0.2s;
+    }
+    #voiceStatusBar.recording-state {
+        background: rgba(239,68,68,0.08);
+        border-color: rgba(239,68,68,0.25);
+        color: #f87171;
+    }
+    .voice-waveform {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+    }
+    .voice-waveform span {
+        display: block;
+        width: 3px;
+        border-radius: 2px;
+        background: currentColor;
+        animation: waveBar 0.9s ease-in-out infinite;
+    }
+    .voice-waveform span:nth-child(1) { height: 8px;  animation-delay: 0s; }
+    .voice-waveform span:nth-child(2) { height: 14px; animation-delay: 0.1s; }
+    .voice-waveform span:nth-child(3) { height: 10px; animation-delay: 0.2s; }
+    .voice-waveform span:nth-child(4) { height: 16px; animation-delay: 0.05s; }
+    .voice-waveform span:nth-child(5) { height: 8px;  animation-delay: 0.15s; }
+    @keyframes waveBar {
+        0%,100% { transform: scaleY(0.5); opacity: 0.6; }
+        50%      { transform: scaleY(1.4); opacity: 1; }
+    }
+
     .sources-box {
         margin-top: 0.75rem;
         border-top: 1px dashed var(--ts-border);
@@ -223,6 +300,11 @@
         <div class="chat-input-row" id="chatInputRow">
             <textarea id="queryInput" placeholder="Ask a question to your AI Coach..." class="chat-input-field" 
                       onkeydown="handleKeyPress(event)" {% if not groq_api_key %}disabled{% endif %}></textarea>
+            <!-- Mic button for voice input (Groq Whisper Large V3) -->
+            <button id="micBtn" onclick="toggleVoiceRecording()" title="Hold to record voice message (Whisper Large V3)"
+                    {% if not groq_api_key %}disabled style="opacity:0.4;cursor:not-allowed;"{% endif %}>
+                🎙️
+            </button>
             <button id="sendBtn" class="btn-ts btn-ts-primary" style="width: auto; padding: 0 1.5rem; height: 44px;" 
                     onclick="submitMessage()" {% if not groq_api_key %}disabled{% endif %}>
                 🚀 Send
@@ -231,6 +313,13 @@
                     onclick="stopGeneration()">
                 ⏹️ Stop
             </button>
+        </div>
+        <!-- Voice recording status bar -->
+        <div id="voiceStatusBar">
+            <div class="voice-waveform" id="voiceWaveform">
+                <span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <span id="voiceStatusText">🎙️ Recording… click mic again to stop &amp; transcribe</span>
         </div>
     </div>
 </div>
@@ -2085,6 +2174,159 @@
         document.getElementById('wizardContainer').style.display = 'none';
         document.getElementById('wizardContainer').innerHTML = '';
         document.getElementById('chatInputRow').style.display = 'flex';
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    //  VOICE INPUT — Groq Whisper Large V3
+    // ═══════════════════════════════════════════════════════════════════════════
+    let _mediaRecorder   = null;
+    let _audioChunks     = [];
+    let _isRecording     = false;
+    let _recordingMimeType = 'audio/webm';
+
+    /** Switch the mic button and status bar to the given state */
+    function setVoiceMicState(state /* 'idle' | 'recording' | 'transcribing' */) {
+        const btn  = document.getElementById('micBtn');
+        const bar  = document.getElementById('voiceStatusBar');
+        const txt  = document.getElementById('voiceStatusText');
+        const wave = document.getElementById('voiceWaveform');
+        if (!btn) return;
+
+        btn.classList.remove('recording', 'transcribing');
+        bar.classList.remove('recording-state');
+
+        if (state === 'recording') {
+            btn.classList.add('recording');
+            btn.title = 'Click to stop recording & transcribe';
+            btn.textContent = '⏹️';
+            bar.style.display = 'flex';
+            bar.classList.add('recording-state');
+            wave.style.display = 'flex';
+            txt.textContent = '🎙️ Recording… click mic again to stop & transcribe';
+        } else if (state === 'transcribing') {
+            btn.classList.add('transcribing');
+            btn.disabled = true;
+            btn.title = 'Transcribing with Whisper Large V3…';
+            btn.textContent = '⌛';
+            bar.style.display = 'flex';
+            bar.classList.remove('recording-state');
+            wave.style.display = 'none';
+            txt.textContent = '⏳ Transcribing with Whisper Large V3…';
+        } else {
+            // idle
+            btn.disabled = false;
+            btn.title = 'Click to record a voice message (Whisper Large V3)';
+            btn.textContent = '🎙️';
+            bar.style.display = 'none';
+        }
+    }
+
+    /** Toggle recording start / stop */
+    async function toggleVoiceRecording() {
+        if (_isRecording) {
+            // Stop recording → triggers ondataavailable + onstop
+            _mediaRecorder.stop();
+            _isRecording = false;
+            setVoiceMicState('transcribing');
+            return;
+        }
+
+        // Check browser support
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('Your browser does not support microphone access. Please use Chrome, Edge, or Firefox.');
+            return;
+        }
+        if (typeof MediaRecorder === 'undefined') {
+            alert('MediaRecorder is not supported in this browser. Please use a modern browser.');
+            return;
+        }
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+
+            // Pick the best available MIME type
+            const preferredTypes = [
+                'audio/webm;codecs=opus',
+                'audio/webm',
+                'audio/ogg;codecs=opus',
+                'audio/ogg',
+                'audio/mp4',
+            ];
+            _recordingMimeType = '';
+            for (const t of preferredTypes) {
+                if (MediaRecorder.isTypeSupported(t)) { _recordingMimeType = t; break; }
+            }
+
+            _audioChunks = [];
+            _mediaRecorder = new MediaRecorder(stream, _recordingMimeType ? { mimeType: _recordingMimeType } : {});
+
+            _mediaRecorder.ondataavailable = (e) => {
+                if (e.data && e.data.size > 0) _audioChunks.push(e.data);
+            };
+
+            _mediaRecorder.onstop = async () => {
+                // Stop all tracks so the browser mic indicator disappears
+                stream.getTracks().forEach(t => t.stop());
+                const blob = new Blob(_audioChunks, { type: _recordingMimeType || 'audio/webm' });
+                await sendAudioForTranscription(blob, _recordingMimeType || 'audio/webm');
+            };
+
+            _mediaRecorder.start(250);   // collect chunks every 250 ms
+            _isRecording = true;
+            setVoiceMicState('recording');
+
+        } catch (err) {
+            console.error('[Voice] Microphone error:', err);
+            setVoiceMicState('idle');
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                alert('Microphone permission was denied. Please allow microphone access in your browser settings and try again.');
+            } else {
+                alert('Could not access your microphone: ' + err.message);
+            }
+        }
+    }
+
+    /** Upload the audio blob to Flask /assistant/voice and populate the textarea */
+    async function sendAudioForTranscription(blob, mimeType) {
+        const formData = new FormData();
+        formData.append('audio', blob, 'recording.' + (mimeType.split('/')[1] || 'webm').split(';')[0]);
+        formData.append('mime_type', mimeType);
+
+        try {
+            const resp = await fetch('/assistant/voice', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await resp.json();
+            setVoiceMicState('idle');
+
+            if (data.error) {
+                // Show a subtle inline error
+                const bar = document.getElementById('voiceStatusBar');
+                const txt = document.getElementById('voiceStatusText');
+                bar.style.display = 'flex';
+                bar.classList.remove('recording-state');
+                document.getElementById('voiceWaveform').style.display = 'none';
+                txt.textContent = '⚠️ ' + data.error;
+                setTimeout(() => { bar.style.display = 'none'; }, 6000);
+                return;
+            }
+
+            const textarea = document.getElementById('queryInput');
+            if (data.text) {
+                // Append to existing text (in case user typed something)
+                const existing = textarea.value.trim();
+                textarea.value = existing ? existing + ' ' + data.text : data.text;
+                textarea.focus();
+                // Auto-submit
+                submitMessage();
+            }
+        } catch (err) {
+            console.error('[Voice] Transcription request failed:', err);
+            setVoiceMicState('idle');
+            alert('Voice transcription failed. Please check your connection and try again.');
+        }
     }
 </script>
 {% endblock %}

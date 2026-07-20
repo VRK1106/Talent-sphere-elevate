@@ -352,6 +352,9 @@
         <a href="/announcements" class="nav-link {% if active_page == 'announcements' %}active{% endif %}">
             <span class="nav-icon">📢</span> Announcements
         </a>
+        <a href="/admin/maintenance" class="nav-link {% if active_page == 'maintenance' %}active{% endif %}" style="color: var(--ts-danger, #ef4444); opacity: 0.85;">
+            <span class="nav-icon">⚙️</span> Maintenance
+        </a>
         {% else %}
         <div class="nav-section-title">Learning</div>
         <a href="/exams" class="nav-link {% if active_page == 'exams' %}active{% endif %}">

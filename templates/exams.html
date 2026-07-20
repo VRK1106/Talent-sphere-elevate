@@ -131,6 +131,7 @@
         <button class="tab-link {% if active_tab == 'create' %}active{% endif %}" onclick="openTab(event, 'create-exam')">Create Exam</button>
         <button class="tab-link {% if active_tab == 'assign' %}active{% endif %}" onclick="openTab(event, 'assign-exam')">Assign</button>
         <button class="tab-link {% if active_tab == 'results' %}active{% endif %}" onclick="openTab(event, 'review-results')">Results</button>
+        <button class="tab-link {% if active_tab == 'all-assignments' %}active{% endif %}" onclick="openTab(event, 'all-assignments-panel')">All Assignments</button>
     </div>
 
     <!-- Tab 1: Create Exam -->
@@ -150,10 +151,20 @@
                         <textarea name="description" placeholder="e.g. Test understanding of supply chain tracking..." rows="2"
                                   style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none; font-family: sans-serif;">{{ exam_desc_draft }}</textarea>
                     </div>
-                    <div style="display: flex; flex-direction: column; gap: 0.4rem; width: 150px;">
-                        <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Total Marks</label>
-                        <input type="number" name="total_marks" min="1" max="100" value="{{ exam_marks_draft or 50 }}"
-                               style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <div style="display: flex; flex-direction: column; gap: 0.4rem; width: 150px;">
+                            <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Total Marks</label>
+                            <input type="number" name="total_marks" min="1" max="100" value="{{ exam_marks_draft or 50 }}"
+                                   style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.4rem; width: 250px;">
+                            <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Result Release Strategy</label>
+                            <select name="results_release"
+                                    style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                                <option value="auto">Publish Immediately (Auto)</option>
+                                <option value="manual">Manual Release by Instructor</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -397,6 +408,23 @@
                                     {{ a.status|upper }}
                                 </span>
                                 {% endif %}
+                                
+                                {% if a.status == 'completed' %}
+                                    {% if a.settings and a.settings.results_release == 'manual' %}
+                                        <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                                            {% if a.settings.results_published %}
+                                                <span style="font-size: 0.72rem; color: var(--ts-secondary); font-weight: 600;">📢 Published</span>
+                                            {% else %}
+                                                <span style="font-size: 0.72rem; color: var(--ts-warning); font-weight: 600;">⏳ Held</span>
+                                                <form action="/exams/assignment/publish" method="POST" style="margin: 0; display: inline;">
+                                                    <input type="hidden" name="assignment_id" value="{{ a.assignment_id }}">
+                                                    <input type="hidden" name="selected_exam_id" value="{{ selected_exam_id }}">
+                                                    <button type="submit" class="btn-ts btn-ts-primary" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; width: auto; height: auto; border-radius: 4px; line-height: 1;">Publish</button>
+                                                </form>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                {% endif %}
                             </div>
                             
                             <div style="text-align: right;">
@@ -586,12 +614,114 @@
                                 {% else %}
                                     {{ res.score }} / {{ res.total_marks }}
                                 {% endif %}
+                                {% if res.settings and res.settings.results_release == 'manual' %}
+                                    {% if res.settings.results_published %}
+                                        <span style="font-size: 0.7rem; background: rgba(52, 211, 153, 0.1); border: 1px solid rgba(52, 211, 153, 0.2); color: var(--ts-secondary); padding: 2px 6px; border-radius: 4px; margin-left: 0.4rem; font-weight: 700;">PUBLISHED</span>
+                                    {% else %}
+                                        <span style="font-size: 0.7rem; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); color: var(--ts-warning); padding: 2px 6px; border-radius: 4px; margin-left: 0.4rem; font-weight: 700;">HELD</span>
+                                    {% endif %}
+                                {% endif %}
                             </td>
                             <td style="font-size: 0.8rem; color: var(--ts-text-muted);">{{ res.completed_at }}</td>
-                            <td style="text-align: right;">
-                                <a href="/exams?active_tab=results&review_assignment_id={{ res.assignment_id }}" class="btn-ts btn-ts-secondary" style="width: auto; padding: 0.35rem 0.8rem; font-size: 0.8rem; text-decoration: none; display: inline-flex;">
+                            <td style="text-align: right; display: flex; justify-content: flex-end; align-items: center; gap: 0.5rem;">
+                                {% if res.settings and res.settings.results_release == 'manual' and not res.settings.results_published %}
+                                <form action="/exams/assignment/publish" method="POST" style="margin: 0; display: inline;">
+                                    <input type="hidden" name="assignment_id" value="{{ res.assignment_id }}">
+                                    <button type="submit" class="btn-ts btn-ts-primary" style="width: auto; padding: 0.35rem 0.8rem; font-size: 0.8rem; border-radius: 8px;">
+                                        📢 Publish
+                                    </button>
+                                </form>
+                                {% endif %}
+                                <a href="/exams?active_tab=results&review_assignment_id={{ res.assignment_id }}" class="btn-ts btn-ts-secondary" style="width: auto; padding: 0.35rem 0.8rem; font-size: 0.8rem; text-decoration: none; display: inline-flex; border-radius: 8px;">
                                     Review AI Grade
                                 </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Tab 4: All Assignments -->
+    <div id="all-assignments-panel" class="tab-content" style="{% if active_tab == 'all-assignments' %}display: block;{% endif %}">
+        <div style="font-size: 1.25rem; font-weight: 800; color: var(--ts-text-heading); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+            📋 <span>All Trainee Exam Assignments</span>
+        </div>
+
+        {% set all_assigns = get_all_assignments() %}
+        {% if not all_assigns %}
+            <div class="ts-info-banner" style="padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                <div class="ts-info-body">No exam assignments exist yet. Use the 'Assign' tab to assign an exam to trainees.</div>
+            </div>
+        {% else %}
+            <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; overflow-x: auto;">
+                <table class="ts-table" style="width: 100%; border-collapse: collapse; font-size: 0.86rem;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid var(--ts-border); text-align: left; color: var(--ts-text-muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em;">
+                            <th style="padding: 0.7rem 0.6rem;">Exam</th>
+                            <th style="padding: 0.7rem 0.6rem;">Trainee</th>
+                            <th style="padding: 0.7rem 0.6rem;">Assigned</th>
+                            <th style="padding: 0.7rem 0.6rem;">Due</th>
+                            <th style="padding: 0.7rem 0.6rem;">Status</th>
+                            <th style="padding: 0.7rem 0.6rem;">Score</th>
+                            <th style="padding: 0.7rem 0.6rem; text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in all_assigns %}
+                        <tr style="border-bottom: 1px solid var(--ts-border); color: var(--ts-text); vertical-align: middle;">
+                            <td style="padding: 0.7rem 0.6rem; font-weight: 600; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ a.title }}</td>
+                            <td style="padding: 0.7rem 0.6rem;">
+                                <div style="font-weight: 600;">{{ a.full_name }}</div>
+                                <div style="font-size: 0.75rem; color: var(--ts-text-secondary);">{{ a.trainee_id }}</div>
+                            </td>
+                            <td style="padding: 0.7rem 0.6rem; color: var(--ts-text-secondary); font-size: 0.8rem;">{{ a.assigned_at[:10] if a.assigned_at else '—' }}</td>
+                            <td style="padding: 0.7rem 0.6rem; color: var(--ts-text-secondary); font-size: 0.8rem;">{{ a.due_date if a.due_date else 'Flexible' }}</td>
+                            <td style="padding: 0.7rem 0.6rem;">
+                                {% if a.ai_feedback and 'MALPRACTICE' in a.ai_feedback %}
+                                    <span style="font-size: 0.72rem; background: rgba(239, 68, 68, 0.15); color: var(--ts-danger); padding: 2px 7px; border-radius: 4px; font-weight: 700;">MALPRACTICE</span>
+                                {% else %}
+                                    <span style="font-size: 0.72rem; background: {% if a.status == 'completed' %}rgba(52, 211, 153, 0.12){% else %}rgba(245, 158, 11, 0.12){% endif %}; color: {% if a.status == 'completed' %}var(--ts-secondary){% else %}var(--ts-warning){% endif %}; padding: 2px 7px; border-radius: 4px; font-weight: 600;">{{ a.status|upper }}</span>
+                                {% endif %}
+                                {% if a.status == 'completed' and a.settings and a.settings.results_release == 'manual' %}
+                                    <div style="margin-top: 0.3rem;">
+                                    {% if a.settings.results_published %}
+                                        <span style="font-size: 0.7rem; color: var(--ts-secondary); font-weight: 600;">📢 Published</span>
+                                    {% else %}
+                                        <span style="font-size: 0.7rem; color: var(--ts-warning); font-weight: 600;">⏳ Held</span>
+                                    {% endif %}
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td style="padding: 0.7rem 0.6rem; font-weight: 700;">
+                                {% if a.status == 'completed' %}
+                                    {% if a.ai_feedback and 'MALPRACTICE' in a.ai_feedback %}
+                                        <span style="color: var(--ts-danger);">0.0</span>
+                                    {% else %}
+                                        {{ a.score }} / {{ a.total_marks }}
+                                    {% endif %}
+                                {% else %}
+                                    <span style="color: var(--ts-text-muted);">—</span>
+                                {% endif %}
+                            </td>
+                            <td style="padding: 0.7rem 0.6rem;">
+                                <div style="display: flex; gap: 0.4rem; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
+                                    {% if a.status == 'completed' %}
+                                        {% if a.settings and a.settings.results_release == 'manual' and not a.settings.results_published %}
+                                            <form action="/exams/assignment/publish" method="POST" style="margin: 0;">
+                                                <input type="hidden" name="assignment_id" value="{{ a.assignment_id }}">
+                                                <button type="submit" class="btn-ts btn-ts-primary" style="padding: 0.25rem 0.55rem; font-size: 0.73rem; width: auto; height: auto; border-radius: 5px;">📢 Publish</button>
+                                            </form>
+                                        {% endif %}
+                                        <a href="/exams?active_tab=results&review_assignment_id={{ a.assignment_id }}" class="btn-ts btn-ts-secondary" style="padding: 0.25rem 0.55rem; font-size: 0.73rem; text-decoration: none; border-radius: 5px; width: auto; height: auto;">🔍 Review</a>
+                                    {% endif %}
+                                    <form action="/exams/assignment/delete" method="POST" onsubmit="return confirm('Delete this assignment?')" style="margin: 0;">
+                                        <input type="hidden" name="assignment_id" value="{{ a.assignment_id }}">
+                                        <button type="submit" style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: #ef4444; border-radius: 5px; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.8rem;" title="Delete">🗑️</button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -823,24 +953,34 @@
                 <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; margin-bottom: 3rem;">
                     <div style="display: flex; flex-direction: column; gap: 0.8rem;">
                         {% for a in completed_list %}
+                        {% set is_pending = a.settings and a.settings.results_release == 'manual' and not a.settings.results_published %}
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--ts-border); padding-bottom: 0.8rem; margin-bottom: 0.4rem; {% if loop.last %}border-bottom: none; margin-bottom: 0; padding-bottom: 0;{% endif %}">
                             <div>
                                 <span style="font-weight: 600; color: var(--ts-text);">📝 {{ a.title }}</span>
                                 <div style="font-size: 0.85rem; color: var(--ts-text-secondary); margin-top: 0.2rem;">
                                     Submitted: <b>{{ a.completed_at }}</b> &nbsp;·&nbsp;
-                                    Score: <span style="font-weight: 700; color: {% if a.ai_feedback and 'MALPRACTICE' in a.ai_feedback %}var(--ts-danger){% else %}var(--ts-primary){% endif %};">
-                                        {% if a.ai_feedback and 'MALPRACTICE' in a.ai_feedback %}
-                                            0.0 (MALPRACTICE)
-                                        {% else %}
-                                            {{ a.score }}
-                                        {% endif %}
-                                    </span> / {{ a.total_marks }}
+                                    Score: 
+                                    {% if is_pending %}
+                                        <span style="color: var(--ts-warning); font-weight: 600;">— (Pending Release)</span>
+                                    {% else %}
+                                        <span style="font-weight: 700; color: {% if a.ai_feedback and 'MALPRACTICE' in a.ai_feedback %}var(--ts-danger){% else %}var(--ts-primary){% endif %};">
+                                            {% if a.ai_feedback and 'MALPRACTICE' in a.ai_feedback %}
+                                                0.0 (MALPRACTICE)
+                                            {% else %}
+                                                {{ a.score }}
+                                            {% endif %}
+                                        </span> / {{ a.total_marks }}
+                                    {% endif %}
                                 </div>
                             </div>
                             <div style="width: auto;">
-                                <a href="/exams?trainee_review_id={{ a.assignment_id }}" class="btn-ts btn-ts-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; text-decoration: none; display: inline-flex;">
-                                    Review Grade
-                                </a>
+                                {% if is_pending %}
+                                    <span style="font-size: 0.78rem; font-weight: 600; color: var(--ts-warning); background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); padding: 0.35rem 0.7rem; border-radius: 6px; display: inline-flex; align-items: center;">⏳ Pending Release</span>
+                                {% else %}
+                                    <a href="/exams?trainee_review_id={{ a.assignment_id }}" class="btn-ts btn-ts-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; text-decoration: none; display: inline-flex; border-radius: 8px;">
+                                        Review Grade
+                                    </a>
+                                {% endif %}
                             </div>
                         </div>
                         {% endfor %}
@@ -868,10 +1008,27 @@
 
 <script>
     const IS_TAKING_EXAM = {% if taking_assignment %}true{% else %}false{% endif %};
+    // Tracks whether the exam has *actually* started (consent + camera done, fullscreen entered)
+    // Initialized from server session flag so page reloads mid-exam stay locked
+    let localExamStarted = {% if session.get('exam_started') %}true{% else %}false{% endif %};
     // Employee ID is embedded at render-time (page is already @login_required)
     const PROCTOR_EMP_ID = "{{ session.get('user_info', {}).get('employee_id', '') }}";
     let infractionCount = 0;
     let modalActive = false;
+
+    // ── Browser back-trap fix ──────────────────────────────────────────────────
+    // When IS_TAKING_EXAM is true but localExamStarted is false, the user is on
+    // the consent/camera-setup overlay and has NOT yet started. If they press the
+    // browser Back button we push a history state first, then intercept the popstate
+    // and redirect them to /exams/cancel which clears the session cleanly.
+    if (IS_TAKING_EXAM && !localExamStarted) {
+        history.pushState({ consentScreen: true }, '');
+        window.addEventListener('popstate', function(e) {
+            if (IS_TAKING_EXAM && !localExamStarted) {
+                window.location.href = '/exams/cancel';
+            }
+        });
+    }
 
     // Webcam & Face-API variables
     let takingAssignmentId = {% if taking_assignment %}{{ taking_assignment.assignment_id }}{% else %}null{% endif %};
@@ -1111,6 +1268,9 @@
     }
 
     async function enterExamMode() {
+        // Mark the exam as officially started locally so proctoring guards activate
+        localExamStarted = true;
+
         // Tell the server that the exam has officially started
         try {
             await fetch('/exams/start_active', { method: 'POST' });
@@ -1376,14 +1536,14 @@
             
             if (IS_TAKING_EXAM) {
                 document.addEventListener('visibilitychange', function() {
-                    if (document.hidden) {
+                    if (document.hidden && localExamStarted) {
                         triggerInfraction('visibility');
                     }
                 });
 
                 window.addEventListener('blur', function() {
                     setTimeout(function() {
-                        if (!document.hasFocus() && IS_TAKING_EXAM) {
+                        if (!document.hasFocus() && IS_TAKING_EXAM && localExamStarted) {
                             triggerInfraction('blur');
                         }
                     }, 300);
@@ -1391,6 +1551,7 @@
 
                 window.addEventListener('keyup', function(e) {
                     if (e.key === 'PrintScreen' || e.keyCode === 44) {
+                        if (!localExamStarted) return;
                         try {
                             navigator.clipboard.writeText('EXAM CONTENT PROTECTED');
                         } catch (err) {}
@@ -1400,6 +1561,7 @@
                 
                 window.addEventListener('keydown', function(e) {
                     if (e.key === 'PrintScreen' || e.keyCode === 44) {
+                        if (!localExamStarted) return;
                         e.preventDefault();
                         try {
                             navigator.clipboard.writeText('EXAM CONTENT PROTECTED');
@@ -1422,7 +1584,7 @@
 
                 // Listen to fullscreen changes
                 const handleFullscreenChange = function() {
-                    if (IS_TAKING_EXAM) {
+                    if (IS_TAKING_EXAM && localExamStarted) {
                         const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
                         const promptOverlay = document.getElementById('fullscreenPromptOverlay');
                         const isPromptVisible = promptOverlay && promptOverlay.style.display !== 'none';

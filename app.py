@@ -44,7 +44,11 @@ from src.exams import (
     add_announcement,
     delete_announcement,
     add_proctor_log,
-    get_proctor_logs_for_assignment
+    get_proctor_logs_for_assignment,
+    publish_assignment_results,
+    clear_all_exams,
+    clear_all_announcements,
+    get_all_assignments
 )
 from src.chats import (
     init_chats_db,
@@ -58,7 +62,7 @@ from src.chats import (
 )
 from src.config import EMBEDDING_MODEL, DOCUMENTS_DIR
 from src.vectorstore import stats, get_source_chunks, search, get_collection
-from src.llm import list_local_models, generate_chat_answer, generate_rag_answer, GROQ_API_KEY, analyze_proctor_image
+from src.llm import list_local_models, generate_chat_answer, generate_rag_answer, GROQ_API_KEY, analyze_proctor_image, transcribe_audio_whisper
 
 # Initialize databases
 init_db()
@@ -353,7 +357,8 @@ def inject_global_data():
         'get_assignments_for_exam': get_assignments_for_exam,
         'get_all_completed_submissions': get_all_completed_submissions,
         'get_trainee_assigned_exams': get_trainee_assigned_exams,
-        'get_trainee_completed_exams': get_trainee_completed_exams
+        'get_trainee_completed_exams': get_trainee_completed_exams,
+        'get_all_assignments': get_all_assignments
     }
 
 # AUTHENTICATION
@@ -547,12 +552,16 @@ def dashboard():
             "general_use_count": general_use_count
         }
         
+        from src.exams import get_system_setting
+        email_enabled = get_system_setting("email_notifications_enabled", "true").lower() == "true"
+
         return render_template(
             'dashboard.html',
             admin_stats=admin_stats,
             trainee_rows=trainee_rows,
             doc_rows=doc_rows,
-            embedding_model_name=EMBEDDING_MODEL
+            embedding_model_name=EMBEDDING_MODEL,
+            email_enabled=email_enabled
         )
     else:
         assignments = get_assignments_for_trainee(emp_id)
@@ -1137,6 +1146,12 @@ def exams():
     if trainee_review_id:
         detail = get_assignment_by_id(trainee_review_id)
         if detail:
+            # Enforce results_published check for trainees
+            asg_settings = detail.get("settings") or {}
+            if asg_settings.get("results_release") == "manual" and not asg_settings.get("results_published"):
+                flash("Results for this exam have not been published yet.")
+                return redirect(url_for('exams'))
+                
             try:
                 grade_sheet = json.loads(detail["ai_feedback"])
             except Exception:
@@ -1312,6 +1327,7 @@ def exams_create_save():
     title = request.form.get('title', '').strip()
     description = request.form.get('description', '').strip()
     total_marks = request.form.get('total_marks', 50, type=int)
+    results_release = request.form.get('results_release', 'auto').strip()
     questions = session.get('exam_questions', [])
     
     if not title:
@@ -1321,7 +1337,8 @@ def exams_create_save():
         flash("Cannot save an exam with zero questions.")
         return redirect(url_for('exams', active_tab='create'))
         
-    if add_exam(title, description, total_marks, questions):
+    settings = {"results_release": results_release}
+    if add_exam(title, description, total_marks, questions, settings):
         add_announcement(
             f"📝 New Exam Published: {title}",
             f"A new exam titled '{title}' (Total Marks: {total_marks}) has been published by the Administrator.\n\n"
@@ -1828,6 +1845,39 @@ def assistant_session_delete():
             session.pop('active_chat_session_id', None)
     return redirect(url_for('assistant'))
 
+@app.route('/assistant/voice', methods=['POST'])
+@login_required
+def assistant_voice():
+    """Transcribe a voice recording using Groq Whisper Large V3.
+
+    Expects: multipart form-data with field 'audio' (binary blob) and
+             optional 'mime_type' (e.g. 'audio/webm').
+    Returns: JSON { "text": "...", "error": null } or { "text": null, "error": "..." }
+    """
+    if not GROQ_API_KEY:
+        return jsonify({"text": None, "error": "Voice transcription requires a GROQ_API_KEY."}), 503
+
+    audio_file = request.files.get("audio")
+    if not audio_file:
+        return jsonify({"text": None, "error": "No audio file received."}), 400
+
+    mime_type = request.form.get("mime_type", audio_file.content_type or "audio/webm")
+    audio_bytes = audio_file.read()
+
+    if not audio_bytes:
+        return jsonify({"text": None, "error": "Received an empty audio file."}), 400
+
+    try:
+        text = transcribe_audio_whisper(audio_bytes, mime_type=mime_type)
+        if not text:
+            return jsonify({"text": None, "error": "No speech detected — please try again in a quieter environment."}), 200
+        return jsonify({"text": text, "error": None})
+    except RuntimeError as exc:
+        return jsonify({"text": None, "error": str(exc)}), 500
+    except Exception as exc:
+        return jsonify({"text": None, "error": f"Unexpected transcription error: {exc}"}), 500
+
+
 @app.route('/assistant/wizard/docs')
 @login_required
 def assistant_wizard_docs():
@@ -2273,6 +2323,121 @@ def toggle_accommodation():
     if success:
         return jsonify({"status": "success", "enabled": enabled_val})
     return jsonify({"error": "Failed to toggle accommodation"}), 500
+
+
+@app.route('/exams/assignment/publish', methods=['POST'])
+@login_required
+def exams_assignment_publish():
+    if session.get('user_role') != 'admin':
+        return redirect(url_for('dashboard'))
+        
+    assignment_id = request.form.get('assignment_id', type=int)
+    selected_exam_id = request.form.get('selected_exam_id', type=int)
+    
+    if publish_assignment_results(assignment_id):
+        flash("Results published successfully!")
+    else:
+        flash("Failed to publish results.")
+        
+    if selected_exam_id:
+        return redirect(url_for('exams', active_tab='assign', selected_exam_id=selected_exam_id))
+    return redirect(url_for('exams', active_tab='results'))
+
+
+@app.route('/admin/maintenance')
+@login_required
+def admin_maintenance():
+    if session.get('user_role') != 'admin':
+        return redirect(url_for('dashboard'))
+    return render_template('maintenance.html', active_page='maintenance')
+
+
+@app.route('/dashboard/settings/toggle_email', methods=['POST'])
+@login_required
+def dashboard_toggle_email():
+    if session.get('user_role') != 'admin':
+        return redirect(url_for('dashboard'))
+    from src.exams import get_system_setting, set_system_setting
+    current_val = get_system_setting("email_notifications_enabled", "true").lower() == "true"
+    new_val = "false" if current_val else "true"
+    set_system_setting("email_notifications_enabled", new_val)
+    flash("Email notifications " + ("enabled" if new_val == "true" else "disabled") + ".")
+    return redirect(url_for('dashboard'))
+
+
+@app.route('/admin/kill/exams', methods=['POST'])
+@login_required
+def admin_kill_exams():
+    if session.get('user_role') != 'admin':
+        return redirect(url_for('dashboard'))
+        
+    if clear_all_exams():
+        flash("💥 All exams, assignments, proctor logs, and templates have been deleted.")
+    else:
+        flash("Failed to delete exams.")
+    return redirect(url_for('admin_maintenance'))
+
+
+@app.route('/admin/kill/announcements', methods=['POST'])
+@login_required
+def admin_kill_announcements():
+    if session.get('user_role') != 'admin':
+        return redirect(url_for('dashboard'))
+        
+    if clear_all_announcements():
+        flash("💥 All announcements and email logs have been deleted.")
+    else:
+        flash("Failed to delete announcements.")
+    return redirect(url_for('admin_maintenance'))
+
+
+@app.route('/admin/kill/trainees', methods=['POST'])
+@login_required
+def admin_kill_trainees():
+    if session.get('user_role') != 'admin':
+        return redirect(url_for('dashboard'))
+        
+    from src.users import clear_all_trainee_users
+    if clear_all_trainee_users():
+        flash("💥 All trainee user accounts, chat sessions, messages, and results have been deleted.")
+    else:
+        flash("Failed to delete trainee users.")
+    return redirect(url_for('admin_maintenance'))
+
+
+@app.route('/admin/kill/overall', methods=['POST'])
+@login_required
+def admin_kill_overall():
+    if session.get('user_role') != 'admin':
+        return redirect(url_for('dashboard'))
+        
+    verify_text = request.form.get('verification', '').strip()
+    if verify_text != "DESTROY ALL DATA":
+        flash("Overall system reset aborted. Verification text did not match.")
+        return redirect(url_for('admin_maintenance'))
+        
+    # Clear exams, assignments, templates, proctor logs
+    clear_all_exams()
+    
+    # Clear announcements, email logs
+    clear_all_announcements()
+    
+    # Clear all trainee users
+    from src.users import clear_all_trainee_users
+    clear_all_trainee_users()
+    
+    # Clear vectorstore documents and index
+    from src.vectorstore import reset_collection
+    try:
+        reset_collection()
+        for pdf_file in Path(DOCUMENTS_DIR).glob("*.pdf"):
+            pdf_file.unlink()
+    except Exception as e:
+        print(f"Error resetting vectorstore/files during overall kill: {e}")
+        
+    flash("💥 OVERALL SYSTEM RESET COMPLETE: All data has been wiped.")
+    return redirect(url_for('admin_maintenance'))
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)

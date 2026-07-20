@@ -139,7 +139,7 @@ def get_all_exams() -> list[dict[str, Any]]:
         conn = sqlite3.connect(str(_DB_PATH))
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("SELECT exam_id, title, description, total_marks, questions, created_at FROM exams ORDER BY exam_id DESC")
+        cursor.execute("SELECT exam_id, title, description, total_marks, questions, created_at, settings FROM exams ORDER BY exam_id DESC")
         rows = cursor.fetchall()
         conn.close()
         
@@ -150,6 +150,10 @@ def get_all_exams() -> list[dict[str, Any]]:
                 d["questions"] = json.loads(d["questions"])
             except Exception:
                 d["questions"] = []
+            try:
+                d["settings"] = json.loads(d["settings"]) if d.get("settings") else {}
+            except Exception:
+                d["settings"] = {}
             result.append(d)
         return result
     except Exception:
@@ -163,7 +167,7 @@ def get_exam_by_id(exam_id: int) -> dict[str, Any] | None:
         conn = sqlite3.connect(str(_DB_PATH))
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("SELECT exam_id, title, description, total_marks, questions, created_at FROM exams WHERE exam_id = ?", (exam_id,))
+        cursor.execute("SELECT exam_id, title, description, total_marks, questions, created_at, settings FROM exams WHERE exam_id = ?", (exam_id,))
         row = cursor.fetchone()
         conn.close()
         if row:
@@ -172,13 +176,17 @@ def get_exam_by_id(exam_id: int) -> dict[str, Any] | None:
                 d["questions"] = json.loads(d["questions"])
             except Exception:
                 d["questions"] = []
+            try:
+                d["settings"] = json.loads(d["settings"]) if d.get("settings") else {}
+            except Exception:
+                d["settings"] = {}
             return d
     except Exception:
         pass
     return None
 
 
-def add_exam(title: str, description: str, total_marks: int, questions: list[dict[str, Any]]) -> bool:
+def add_exam(title: str, description: str, total_marks: int, questions: list[dict[str, Any]], settings: dict[str, Any] | None = None) -> bool:
     """Add a new exam containing a list of questions."""
     init_exams_db()
     try:
@@ -186,10 +194,10 @@ def add_exam(title: str, description: str, total_marks: int, questions: list[dic
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO exams (title, description, total_marks, questions)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO exams (title, description, total_marks, questions, settings)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (title.strip(), description.strip(), total_marks, json.dumps(questions)),
+            (title.strip(), description.strip(), total_marks, json.dumps(questions), json.dumps(settings or {})),
         )
         conn.commit()
         conn.close()
@@ -232,12 +240,28 @@ def assign_exam(exam_id: int, trainee_id: str, due_date: str | None) -> bool:
             conn.close()
             return False  # Already assigned and active
             
+        # Get exam settings
+        cursor.execute("SELECT settings FROM exams WHERE exam_id = ?", (exam_id,))
+        exam_row = cursor.fetchone()
+        exam_settings = {}
+        if exam_row and exam_row[0]:
+            try:
+                exam_settings = json.loads(exam_row[0])
+            except Exception:
+                pass
+                
+        results_release = exam_settings.get("results_release", "auto")
+        assignment_settings = {
+            "results_release": results_release,
+            "results_published": results_release == "auto"
+        }
+            
         cursor.execute(
             """
-            INSERT INTO assignments (exam_id, trainee_id, due_date)
-            VALUES (?, ?, ?)
+            INSERT INTO assignments (exam_id, trainee_id, due_date, settings)
+            VALUES (?, ?, ?, ?)
             """,
-            (exam_id, trainee_id, due_date),
+            (exam_id, trainee_id, due_date, json.dumps(assignment_settings)),
         )
         conn.commit()
         conn.close()
@@ -256,7 +280,7 @@ def get_assignments_for_exam(exam_id: int) -> list[dict[str, Any]]:
         cursor.execute(
             """
             SELECT a.assignment_id, a.exam_id, a.trainee_id, a.due_date, a.status, a.score, 
-                   a.answers, a.ai_feedback, a.assigned_at, a.completed_at, u.full_name, u.email
+                   a.answers, a.ai_feedback, a.assigned_at, a.completed_at, a.settings, u.full_name, u.email
             FROM assignments a
             JOIN users u ON a.trainee_id = u.employee_id
             WHERE a.exam_id = ?
@@ -274,6 +298,10 @@ def get_assignments_for_exam(exam_id: int) -> list[dict[str, Any]]:
                 d["answers"] = json.loads(d["answers"]) if d["answers"] else {}
             except Exception:
                 d["answers"] = {}
+            try:
+                d["settings"] = json.loads(d["settings"]) if d.get("settings") else {}
+            except Exception:
+                d["settings"] = {}
             result.append(d)
         return result
     except Exception:
@@ -290,7 +318,7 @@ def get_assignments_for_trainee(trainee_id: str) -> list[dict[str, Any]]:
         cursor.execute(
             """
             SELECT a.assignment_id, a.exam_id, a.trainee_id, a.due_date, a.status, a.score, 
-                   a.answers, a.ai_feedback, a.assigned_at, a.completed_at, e.title, e.description, e.total_marks
+                   a.answers, a.ai_feedback, a.assigned_at, a.completed_at, a.settings, e.title, e.description, e.total_marks
             FROM assignments a
             JOIN exams e ON a.exam_id = e.exam_id
             WHERE a.trainee_id = ?
@@ -308,6 +336,10 @@ def get_assignments_for_trainee(trainee_id: str) -> list[dict[str, Any]]:
                 d["answers"] = json.loads(d["answers"]) if d["answers"] else {}
             except Exception:
                 d["answers"] = {}
+            try:
+                d["settings"] = json.loads(d["settings"]) if d.get("settings") else {}
+            except Exception:
+                d["settings"] = {}
             result.append(d)
         return result
     except Exception:
@@ -324,7 +356,7 @@ def get_assignment_by_id(assignment_id: int) -> dict[str, Any] | None:
         cursor.execute(
             """
             SELECT a.assignment_id, a.exam_id, a.trainee_id, a.due_date, a.status, a.score, 
-                   a.answers, a.ai_feedback, a.assigned_at, a.completed_at, e.title, e.description, e.questions, e.total_marks, u.full_name
+                   a.answers, a.ai_feedback, a.assigned_at, a.completed_at, a.settings, e.title, e.description, e.questions, e.total_marks, u.full_name
             FROM assignments a
             JOIN exams e ON a.exam_id = e.exam_id
             JOIN users u ON a.trainee_id = u.employee_id
@@ -345,6 +377,10 @@ def get_assignment_by_id(assignment_id: int) -> dict[str, Any] | None:
                 d["answers"] = json.loads(d["answers"]) if d["answers"] else {}
             except Exception:
                 d["answers"] = {}
+            try:
+                d["settings"] = json.loads(d["settings"]) if d.get("settings") else {}
+            except Exception:
+                d["settings"] = {}
             return d
     except Exception:
         pass
@@ -639,3 +675,100 @@ def get_proctor_logs_for_assignment(assignment_id: int) -> list[dict[str, Any]]:
         return [dict(r) for r in rows]
     except Exception:
         return []
+
+
+def publish_assignment_results(assignment_id: int) -> bool:
+    """Publish results for a completed manual-release assignment."""
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute("SELECT settings FROM assignments WHERE assignment_id = ?", (assignment_id,))
+        row = cursor.fetchone()
+        if row:
+            try:
+                settings = json.loads(row[0]) if row[0] else {}
+            except Exception:
+                settings = {}
+            settings["results_published"] = True
+            cursor.execute(
+                "UPDATE assignments SET settings = ? WHERE assignment_id = ?",
+                (json.dumps(settings), assignment_id)
+            )
+            conn.commit()
+            conn.close()
+            return True
+        conn.close()
+    except Exception as e:
+        print(f"Error publishing results: {e}")
+    return False
+
+
+def get_all_assignments() -> list[dict[str, Any]]:
+    """Get all trainee assignments across every exam, ordered newest first."""
+    init_exams_db()
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT a.assignment_id, a.exam_id, a.trainee_id, a.due_date, a.status, a.score,
+                   a.assigned_at, a.completed_at, a.settings, a.ai_feedback,
+                   u.full_name, u.email,
+                   e.title, e.total_marks
+            FROM assignments a
+            JOIN users u ON a.trainee_id = u.employee_id
+            JOIN exams e ON a.exam_id = e.exam_id
+            ORDER BY a.assignment_id DESC
+            """
+        )
+        rows = cursor.fetchall()
+        assignments = []
+        for r in rows:
+            asg = dict(r)
+            try:
+                asg["settings"] = json.loads(r["settings"]) if r["settings"] else {}
+            except Exception:
+                asg["settings"] = {}
+            assignments.append(asg)
+        conn.close()
+        return assignments
+    except Exception as e:
+        print(f"Error in get_all_assignments: {e}")
+        return []
+
+
+def clear_all_exams() -> bool:
+    """Delete all exams, templates, assignments, and proctor logs."""
+    init_exams_db()
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        cursor = conn.cursor()
+        # Enable foreign key cascading
+        cursor.execute("PRAGMA foreign_keys = ON")
+        cursor.execute("DELETE FROM exams")
+        cursor.execute("DELETE FROM exam_templates")
+        cursor.execute("DELETE FROM assignments")
+        cursor.execute("DELETE FROM proctor_logs")
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error clearing exams: {e}")
+        return False
+
+
+def clear_all_announcements() -> bool:
+    """Delete all announcements and email logs."""
+    init_exams_db()
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM announcements")
+        cursor.execute("DELETE FROM email_logs")
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error clearing announcements: {e}")
+        return False

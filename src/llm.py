@@ -408,3 +408,68 @@ def analyze_proctor_image(image_base64: str) -> str:
         return "none"
 
 
+def transcribe_audio_whisper(audio_bytes: bytes, mime_type: str = "audio/webm") -> str:
+    """Transcribe audio using Groq Whisper Large V3 (free-tier eligible).
+
+    Args:
+        audio_bytes: Raw audio bytes from the browser MediaRecorder.
+        mime_type:   MIME type reported by the browser (e.g. 'audio/webm',
+                     'audio/ogg', 'audio/mp4').  Extension is inferred
+                     from this so Groq can detect the codec.
+
+    Returns:
+        Transcribed text string.
+
+    Raises:
+        RuntimeError: if GROQ_API_KEY is missing or the API call fails.
+    """
+    if not GROQ_API_KEY:
+        raise RuntimeError("GROQ_API_KEY is not configured. Voice transcription is unavailable.")
+
+    import tempfile
+    import pathlib
+
+    # Map MIME type -> file extension that Groq accepts
+    _MIME_TO_EXT: dict[str, str] = {
+        "audio/webm": "webm",
+        "audio/ogg":  "ogg",
+        "audio/ogg;codecs=opus": "ogg",
+        "audio/mp4":  "mp4",
+        "audio/mpeg": "mp3",
+        "audio/wav":  "wav",
+        "audio/x-wav": "wav",
+        "audio/flac": "flac",
+    }
+    base_mime = mime_type.split(";")[0].strip().lower()
+    ext = _MIME_TO_EXT.get(base_mime, "webm")
+
+    try:
+        from groq import Groq  # type: ignore
+        client = Groq(api_key=GROQ_API_KEY)
+
+        with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as tmp:
+            tmp.write(audio_bytes)
+            tmp_path = pathlib.Path(tmp.name)
+
+        try:
+            with open(tmp_path, "rb") as audio_file:
+                transcription = client.audio.transcriptions.create(
+                    file=(tmp_path.name, audio_file),
+                    model="whisper-large-v3",
+                    response_format="text",
+                    language="en",
+                    temperature=0.0,
+                )
+            return str(transcription).strip()
+        finally:
+            try:
+                tmp_path.unlink()
+            except Exception:
+                pass
+
+    except ImportError:
+        raise RuntimeError(
+            "The 'groq' Python package is required for voice transcription. Run: pip install groq"
+        )
+    except Exception as exc:
+        raise RuntimeError(f"Whisper transcription failed: {exc}") from exc
