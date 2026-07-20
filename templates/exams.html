@@ -1173,17 +1173,16 @@
             const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions());
             const faceCount = detections.length;
             
-            if (faceCount !== 1) {
-                // Trigger client-side presence infraction immediately
-                triggerInfraction('face_presence_check', true);
-            } else {
-                // Face count is exactly 1. Check for objects/phone/absence on server using Groq/Moondream
-                const result = await captureAndSendProctorLog('face_presence_check', { face_count: faceCount, videoEl: video });
-                if (result && result.status === 'success') {
-                    const label = result.groq_label;
-                    if (label === 'phone' || label === 'second_person' || label === 'absent') {
-                        triggerInfraction('proctor_' + label, false);
-                    }
+            // Send snapshot to backend for verification on every check
+            const result = await captureAndSendProctorLog('face_presence_check', { face_count: faceCount, videoEl: video });
+            
+            if (result && result.status === 'success' && result.is_violation) {
+                // If there's a violation, trigger the infraction!
+                const label = result.groq_label;
+                if (label === 'phone' || label === 'second_person' || label === 'absent') {
+                    triggerInfraction('proctor_' + label, false);
+                } else {
+                    triggerInfraction('face_presence_check', false);
                 }
             }
         } catch (err) {
@@ -1208,7 +1207,8 @@
             assignment_id: takingAssignmentId,
             trigger_reason: reason,
             snapshot_data: jpegBase64,
-            score: extra.score || null
+            score: extra.score || null,
+            face_count: extra.face_count !== undefined ? extra.face_count : null
         };
         
         try {

@@ -2222,6 +2222,7 @@ def api_log_proctoring_event():
     trigger_reason = data.get("trigger_reason")
     snapshot_data = data.get("snapshot_data")
     score = data.get("score")
+    face_count = data.get("face_count")
     
     if not assignment_id or not trigger_reason or not snapshot_data:
         return jsonify({"error": "Missing required fields."}), 400
@@ -2234,18 +2235,26 @@ def api_log_proctoring_event():
     elif trigger_reason == "identity_mismatch":
         groq_label = "mismatch"
         
-    # Add proctor log to DB
-    log_id = add_proctor_log(
-        assignment_id=assignment_id,
-        trigger_reason=trigger_reason,
-        groq_label=groq_label,
-        snapshot_data=snapshot_data,
-        score=score
-    )
-    
-    if log_id:
-        return jsonify({"status": "success", "log_id": log_id, "groq_label": groq_label})
-    return jsonify({"error": "Failed to log event."}), 500
+    # Determine if this is a real violation:
+    is_violation = True
+    if trigger_reason == "face_presence_check":
+        if face_count == 1 and groq_label == "none":
+            is_violation = False
+            
+    if is_violation:
+        log_id = add_proctor_log(
+            assignment_id=assignment_id,
+            trigger_reason=trigger_reason,
+            groq_label=groq_label,
+            snapshot_data=snapshot_data,
+            score=score
+        )
+        if log_id:
+            return jsonify({"status": "success", "log_id": log_id, "groq_label": groq_label, "is_violation": True})
+        return jsonify({"error": "Failed to log event."}), 500
+    else:
+        # Normal check: skip logging to database to prevent database bloat
+        return jsonify({"status": "success", "groq_label": "none", "is_violation": False})
 
 
 @app.route('/user_management/toggle_accommodation', methods=['POST'])
