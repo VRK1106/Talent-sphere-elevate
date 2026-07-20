@@ -1294,6 +1294,9 @@ def exams_create_remove_question():
 @app.route('/exams/create/clear', methods=['POST'])
 @login_required
 def exams_create_clear():
+    if session.get('user_role') != 'admin':
+        return redirect(url_for('dashboard'))
+        
     session.pop('exam_title_draft', None)
     session.pop('exam_desc_draft', None)
     session.pop('exam_marks_draft', None)
@@ -1646,7 +1649,7 @@ def chat_stream():
         rename_chat_session(active_session_id, new_title)
 
     query_lower = query.lower()
-    is_exam_request = ("create" in query_lower or "make" in query_lower or "generate" in query_lower or "setup" in query_lower or "new" in query_lower) and ("exam" in query_lower or "test" in query_lower or "assessment" in query_lower or "quiz" in query_lower)
+    is_exam_request = (session.get('user_role') == 'admin') and ("create" in query_lower or "make" in query_lower or "generate" in query_lower or "setup" in query_lower or "new" in query_lower) and ("exam" in query_lower or "test" in query_lower or "assessment" in query_lower or "quiz" in query_lower)
     
     if is_exam_request:
         def wizard_event_generator():
@@ -1801,6 +1804,8 @@ def assistant_session_delete():
 @app.route('/assistant/wizard/docs')
 @login_required
 def assistant_wizard_docs():
+    if session.get('user_role') != 'admin':
+        return jsonify({"error": "Admin role required"}), 403
     try:
         from src.vectorstore import get_collection
         coll = get_collection()
@@ -1814,6 +1819,8 @@ def assistant_wizard_docs():
 @app.route('/assistant/wizard/trainees')
 @login_required
 def assistant_wizard_trainees():
+    if session.get('user_role') != 'admin':
+        return jsonify({"error": "Admin role required"}), 403
     try:
         import sqlite3
         conn = sqlite3.connect(str(_DB_PATH))
@@ -1829,6 +1836,8 @@ def assistant_wizard_trainees():
 @app.route('/assistant/wizard/previous_exams')
 @login_required
 def assistant_wizard_previous_exams():
+    if session.get('user_role') != 'admin':
+        return jsonify({"error": "Admin role required"}), 403
     try:
         from src.exams import get_all_exams
         return jsonify({"exams": get_all_exams()})
@@ -1838,6 +1847,8 @@ def assistant_wizard_previous_exams():
 @app.route('/assistant/wizard/templates')
 @login_required
 def assistant_wizard_get_templates():
+    if session.get('user_role') != 'admin':
+        return jsonify({"error": "Admin role required"}), 403
     try:
         from src.exams import get_exam_templates
         return jsonify({"templates": get_exam_templates()})
@@ -1909,6 +1920,8 @@ def assistant_wizard_announcement_save():
 @app.route('/assistant/wizard/generate', methods=['POST'])
 @login_required
 def assistant_wizard_generate():
+    if session.get('user_role') != 'admin':
+        return jsonify({"error": "Admin role required"}), 403
     data = request.get_json() or {}
     docs = data.get('docs', [])
     weights_input = data.get('weights', {})

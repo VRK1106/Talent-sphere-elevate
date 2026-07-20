@@ -173,6 +173,16 @@
                     <div class="message-bubble">
                         <div class="message-text">{{ msg.content|safe }}</div>
                         
+                        {% if msg.role == 'assistant' %}
+                            {% set content_lower = msg.content|lower %}
+                            {% set is_not_found = ('do not know' in content_lower) or ('not found' in content_lower) or ('no matching document' in content_lower) or (not msg.sources and 'no matching' in content_lower) %}
+                            {% if is_not_found %}
+                                <div style="margin-top: 0.6rem; padding: 0.5rem 0.75rem; border-radius: 6px; background-color: rgba(239, 68, 68, 0.08); border: 1px dashed rgba(239, 68, 68, 0.25); color: #f87171; font-size: 0.8rem; display: flex; align-items: center; gap: 0.4rem; width: fit-content;">
+                                    ⚠️ Info not found in ingested document chunks.
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                        
                         {% if msg.sources %}
                             <div class="sources-box">
                                 <details style="font-size: 0.8rem; border: 1px solid var(--ts-border); border-radius: 6px; padding: 0.4rem;">
@@ -183,12 +193,14 @@
                                         {% for s in msg.sources %}
                                             <div style="padding: 0.4rem; background: rgba(255,255,255,0.02); border-radius: 4px; border: 1px solid var(--ts-border);">
                                                 <b>[{{ loop.index }}] {{ s.source }} (Page {{ s.page }})</b>
-                                                <div style="font-size: 0.75rem; color: var(--ts-text-secondary); margin-top: 0.2rem;">
-                                                    Similarity Score: {{ "%.1f"|format(s.score * 100) }}%
-                                                </div>
-                                                <blockquote style="margin: 0.3rem 0 0 0; padding-left: 0.5rem; border-left: 2px solid var(--ts-primary); color: var(--ts-text-muted); font-style: italic;">
-                                                    {{ s.text }}
-                                                </blockquote>
+                                                {% if session.get('user_role') == 'admin' %}
+                                                    <div style="font-size: 0.75rem; color: var(--ts-text-secondary); margin-top: 0.2rem;">
+                                                        Similarity Score: {{ "%.1f"|format(s.score * 100) }}%
+                                                    </div>
+                                                    <blockquote style="margin: 0.3rem 0 0 0; padding-left: 0.5rem; border-left: 2px solid var(--ts-primary); color: var(--ts-text-muted); font-style: italic;">
+                                                        {{ s.text }}
+                                                    </blockquote>
+                                                {% endif %}
                                             </div>
                                         {% endfor %}
                                     </div>
@@ -224,6 +236,7 @@
 </div>
 
 <script>
+    const USER_ROLE = "{{ session.get('user_role', 'trainee') }}";
     let activeStreamController = null;
     let isGenerating = false;
 
@@ -254,7 +267,7 @@
         if (!query || isGenerating) return;
 
         const queryLower = query.toLowerCase();
-        const isExamRequest = (queryLower.includes("create") || queryLower.includes("make") || queryLower.includes("generate") || queryLower.includes("setup") || queryLower.includes("new")) && (queryLower.includes("exam") || queryLower.includes("test") || queryLower.includes("assessment") || queryLower.includes("quiz"));
+        const isExamRequest = (USER_ROLE === 'admin') && (queryLower.includes("create") || queryLower.includes("make") || queryLower.includes("generate") || queryLower.includes("setup") || queryLower.includes("new")) && (queryLower.includes("exam") || queryLower.includes("test") || queryLower.includes("assessment") || queryLower.includes("quiz"));
         if (isExamRequest) {
             const modeGeneral = document.getElementById('modeGeneral');
             if (modeGeneral && modeGeneral.checked) {
@@ -276,7 +289,7 @@
             return; // Early return to prevent normal message sending
         }
 
-        const isAnnRequest = (queryLower.includes("create") || queryLower.includes("make") || queryLower.includes("generate") || queryLower.includes("post") || queryLower.includes("new")) && (queryLower.includes("announcement") || queryLower.includes("notice") || queryLower.includes("broadcast") || queryLower.includes("alert"));
+        const isAnnRequest = (USER_ROLE === 'admin') && (queryLower.includes("create") || queryLower.includes("make") || queryLower.includes("generate") || queryLower.includes("post") || queryLower.includes("new")) && (queryLower.includes("announcement") || queryLower.includes("notice") || queryLower.includes("broadcast") || queryLower.includes("alert"));
         if (isAnnRequest) {
             const modeGeneral = document.getElementById('modeGeneral');
             if (modeGeneral && modeGeneral.checked) {
@@ -327,6 +340,9 @@
             <div class="message-avatar">🤖</div>
             <div class="message-bubble">
                 <div class="message-text" id="activeResponseText"><i>Thinking...</i></div>
+                <div id="activeNotFoundNotice" style="display: none; margin-top: 0.6rem; padding: 0.5rem 0.75rem; border-radius: 6px; background-color: rgba(239, 68, 68, 0.08); border: 1px dashed rgba(239, 68, 68, 0.25); color: #f87171; font-size: 0.8rem; align-items: center; gap: 0.4rem; width: fit-content;">
+                    ⚠️ Info not found in ingested document chunks.
+                </div>
                 <div id="activeSourcesBox" style="display: none;" class="sources-box"></div>
             </div>
         `;
@@ -403,6 +419,20 @@
                 renderCitations(receivedSources);
             }
 
+            // Check if not found
+            const contentLower = assistantResponseText.toLowerCase();
+            const notFound = (mode === "RAG (Document Guided)") && (
+                (!receivedSources || receivedSources.length === 0) ||
+                contentLower.includes("do not know") ||
+                contentLower.includes("not found") ||
+                contentLower.includes("no matching document")
+            );
+            if (notFound) {
+                document.getElementById('activeNotFoundNotice').style.display = 'flex';
+            } else {
+                document.getElementById('activeNotFoundNotice').style.display = 'none';
+            }
+
             finishGeneration();
             // Refresh conversation in sidebar
             if (!skipReload) {
@@ -436,14 +466,18 @@
             detailsHtml += `
                 <div style="padding: 0.4rem; background: rgba(255,255,255,0.02); border-radius: 4px; border: 1px solid var(--ts-border);">
                     <b>[${idx + 1}] ${escapeHtml(s.source)} (Page ${s.page})</b>
+            `;
+            if (USER_ROLE === 'admin') {
+                detailsHtml += `
                     <div style="font-size: 0.75rem; color: var(--ts-text-secondary); margin-top: 0.2rem;">
                         Similarity Score: ${(s.score * 100).toFixed(1)}%
                     </div>
                     <blockquote style="margin: 0.3rem 0 0 0; padding-left: 0.5rem; border-left: 2px solid var(--ts-primary); color: var(--ts-text-muted); font-style: italic;">
                         ${escapeHtml(s.text)}
                     </blockquote>
-                </div>
-            `;
+                `;
+            }
+            detailsHtml += `</div>`;
         });
         
         detailsHtml += `</div></details>`;
