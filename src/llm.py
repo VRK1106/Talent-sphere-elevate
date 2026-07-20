@@ -358,7 +358,7 @@ def analyze_proctor_image(image_base64: str) -> str:
             
         url = "https://api.groq.com/openai/v1/chat/completions"
         payload = {
-            "model": "llama-3.2-11b-vision-preview",
+            "model": "qwen/qwen3.6-27b",
             "messages": [
                 {
                     "role": "user",
