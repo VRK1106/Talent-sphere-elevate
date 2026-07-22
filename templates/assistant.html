@@ -659,6 +659,11 @@
             } else {
                 uploadCard.style.display = "none";
             }
+            
+            // Reload chatbot suggestions for the selected mode
+            if (typeof loadInputSuggestions === 'function') {
+                loadInputSuggestions();
+            }
         }
         
         radios.forEach(radio => {
@@ -2781,6 +2786,7 @@
                     <a href="javascript:void(0)" onclick="deleteEphemeralFile('${data.filename}')" style="color: #ef4444; font-weight: bold; text-decoration: none; margin-left: 0.2rem; cursor: pointer;" title="Remove this document">×</a>
                 `;
                 listDiv.appendChild(docSpan);
+                loadInputSuggestions();
             } else {
                 statusDiv.style.backgroundColor = "rgba(239, 68, 68, 0.1)";
                 statusDiv.style.border = "1px solid rgba(239, 68, 68, 0.25)";
@@ -2837,6 +2843,9 @@
                 if (listDiv.children.length === 0) {
                     listDiv.innerHTML = `<span id="noEphemeralDocs" style="font-size: 0.8rem; color: var(--ts-text-muted); font-style: italic;">No ephemeral documents uploaded for this session yet.</span>`;
                 }
+                
+                // Reload suggestions back to fallbacks
+                loadInputSuggestions();
             } else {
                 statusDiv.textContent = `Error: ${data.message}`;
             }
@@ -2852,7 +2861,11 @@
         
         container.innerHTML = '<span style="font-size: 0.8rem; color: var(--ts-text-muted);">Loading personalized suggestions...</span>';
         
-        fetch('/assistant/suggestions')
+        const activeRadio = document.querySelector('input[name="chat_mode"]:checked');
+        const mode = activeRadio ? activeRadio.value : '';
+        const tabId = sessionStorage.getItem('ts_tab_id') || '';
+        
+        fetch(`/assistant/suggestions?mode=${encodeURIComponent(mode)}&tab_id=${encodeURIComponent(tabId)}`)
         .then(res => res.json())
         .then(data => {
             container.innerHTML = '';

@@ -198,3 +198,18 @@ def get_related_concepts(query: str) -> list[str]:
     # Exclude concepts already mentioned in query
     final_related = [r for r in related if r not in matched_concepts]
     return [r.title() for r in final_related[:3]]
+
+
+def get_ephemeral_document_text(session_id: str) -> str:
+    """Retrieve raw text from the ephemeral Chroma collection."""
+    from src.vectorstore import get_ephemeral_collection
+    try:
+        collection = get_ephemeral_collection(session_id)
+        if collection.count() == 0:
+            return ""
+        result = collection.get(limit=3, include=["documents"])
+        docs = result.get("documents") or []
+        return "\n\n".join(docs)
+    except Exception as e:
+        print(f"Error fetching ephemeral text: {e}")
+        return ""

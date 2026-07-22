@@ -63,7 +63,7 @@ from src.chats import (
 from src.config import EMBEDDING_MODEL, DOCUMENTS_DIR
 from src.vectorstore import stats, get_source_chunks, search, get_collection, add_ephemeral_chunks, search_ephemeral, delete_ephemeral_collection
 from src.llm import list_local_models, generate_chat_answer, generate_rag_answer, GROQ_API_KEY, analyze_proctor_image, transcribe_audio_whisper, generate_ephemeral_rag_answer_stream
-from src.concept_map import get_personalized_suggestions, get_related_concepts
+from src.concept_map import get_personalized_suggestions, get_related_concepts, get_ephemeral_document_text
 
 # Initialize databases
 init_db()
@@ -2036,6 +2036,37 @@ def assistant():
 def assistant_suggestions():
     user_info = session.get('user_info', {}) or {}
     emp_id = user_info.get('employee_id', 'demo')
+    mode = request.args.get('mode', 'RAG (Document Guided)')
+    tab_id = request.args.get('tab_id', '')
+    
+    if mode == "Ephemeral Doc Q&A" and tab_id:
+        text = get_ephemeral_document_text(tab_id)
+        if text:
+            prompt = (
+                f"Based on the following document content excerpt, generate exactly 3 short, direct study questions "
+                f"that a student might want to ask to explore or understand this document better.\n"
+                f"Keep each question short (under 12 words) and highly relevant to the text content.\n"
+                f"You MUST return ONLY a valid JSON array of strings (do not wrap in markdown or prefix text).\n"
+                f"Example format:\n"
+                f"[\"What is the main topic?\", \"Explain the compliance rules.\"]\n\n"
+                f"--- DOCUMENT CONTENT ---\n{text[:2500]}"
+            )
+            local_models = list_local_models()
+            model_name = local_models[0] if local_models else "llama3-8b-8192"
+            try:
+                resp = generate_chat_answer(
+                    prompt=prompt,
+                    model_name=model_name,
+                    system_instruction="You are a study suggestion assistant. You output ONLY valid JSON arrays of strings."
+                )
+                from src.llm import clean_json_response
+                cleaned = clean_json_response(resp)
+                prompts = json.loads(cleaned)
+                if isinstance(prompts, list) and len(prompts) > 0:
+                    return jsonify({"suggestions": prompts[:4]})
+            except Exception as e:
+                print(f"Failed to generate ephemeral suggestions: {e}")
+                
     prompts = get_personalized_suggestions(emp_id)
     return jsonify({"suggestions": prompts})
 
@@ -2096,7 +2127,7 @@ def chat_stream():
             from src.embeddings import embed_query
             query_vec = embed_query(query)
             tab_id = session.get('_tab_id')
-            results = search_ephemeral(tab_id, query_vec, top_k=4)
+            results = search_ephemeral(tab_id, query_vec, top_k=10)
             if results:
                 sources = results
         except Exception as e:
