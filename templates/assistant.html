@@ -302,43 +302,34 @@
 
 <!-- Config Bar -->
 <div class="ts-card" style="padding: 1rem; border-radius: 12px; margin-top: 0.5rem;">
-    <div style="display: grid; grid-template-columns: 3.5fr 2fr 1fr; gap: 1.5rem; align-items: center;">
-        <div style="display: flex; flex-direction: column; gap: 0.3rem;">
-            <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text-secondary);">Assistant Mode</label>
-            <div style="display: flex; gap: 0.5rem;">
-                <label class="btn-ts btn-ts-secondary" style="width: auto; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; padding: 0.4rem 0.8rem;">
-                    <input type="radio" name="chat_mode" id="modeRag" value="RAG (Document Guided)" checked style="accent-color: var(--ts-primary);">
-                    RAG Mode
-                </label>
-                <label class="btn-ts btn-ts-secondary" style="width: auto; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; padding: 0.4rem 0.8rem;">
-                    <input type="radio" name="chat_mode" id="modeGeneral" value="General Assistant" style="accent-color: var(--ts-primary);">
-                    General Mode
-                </label>
-                {% if session.get('user_role') != 'admin' %}
-                <label class="btn-ts btn-ts-secondary" style="width: auto; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; padding: 0.4rem 0.8rem;">
-                    <input type="radio" name="chat_mode" id="modeEphemeral" value="Ephemeral Doc Q&A" style="accent-color: var(--ts-primary);">
-                    Ephemeral Doc Q&A
-                </label>
+    <div style="display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+        <div style="display: flex; gap: 1.5rem; align-items: center; flex-grow: 1;">
+            <div style="display: flex; flex-direction: column; gap: 0.3rem; min-width: 200px;">
+                <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text-secondary);">Groq AI Model</label>
+                {% if not groq_api_key %}
+                    <div style="font-size: 0.85rem; color: #f87171;">⚠️ Groq API Key missing!</div>
+                {% else %}
+                    <select id="chatModel" style="padding: 0.45rem; border-radius: 6px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none; font-size: 0.88rem; width: 100%;">
+                        {% for m in ollama_models %}
+                            <option value="{{ m }}" {% if "llama" in m.lower() %}selected{% endif %}>{{ m }}</option>
+                        {% endfor %}
+                    </select>
                 {% endif %}
             </div>
-        </div>
-
-        <div style="display: flex; flex-direction: column; gap: 0.3rem;">
-            <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text-secondary);">Groq AI Model</label>
-            {% if not groq_api_key %}
-                <div style="font-size: 0.85rem; color: #f87171;">⚠️ Groq API Key missing!</div>
-            {% else %}
-                <select id="chatModel" style="padding: 0.45rem; border-radius: 6px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none; font-size: 0.88rem;">
-                    {% for m in ollama_models %}
-                        <option value="{{ m }}" {% if "llama" in m.lower() %}selected{% endif %}>{{ m }}</option>
-                    {% endfor %}
-                </select>
+            
+            {% if session.get('user_role') != 'admin' %}
+            <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text-secondary);">&nbsp;</label>
+                <button type="button" class="btn-ts btn-ts-secondary" onclick="toggleUploadCard()" style="padding: 0.45rem 1rem; font-size: 0.85rem; display: flex; align-items: center; gap: 0.3rem;">
+                    📎 Session Documents
+                </button>
+            </div>
             {% endif %}
         </div>
 
-        <div>
+        <div style="display: flex; align-items: flex-end; height: 100%;">
             <form action="/assistant/clear" method="POST" onsubmit="return confirm('Are you sure you want to clear this conversation history?')">
-                <button type="submit" class="btn-ts btn-ts-secondary" style="padding: 0.45rem 1rem; font-size: 0.85rem;">
+                <button type="submit" class="btn-ts btn-ts-secondary" style="padding: 0.45rem 1rem; font-size: 0.85rem; margin-top: auto;">
                     🧹 Clear Messages
                 </button>
             </form>
@@ -631,51 +622,34 @@
         await postRenderProcessing();
         
         // Show/hide ephemeral document manager card on mode changes
-        const radios = document.querySelectorAll('input[name="chat_mode"]');
         const uploadCard = document.getElementById('ephemeralUploadCard');
         
         // Auto-select mode based on query param or saved state in sessionStorage
         const urlParams = new URLSearchParams(window.location.search);
-        let desiredMode = sessionStorage.getItem('ts_chat_mode');
-        
-        if (urlParams.get('mode') === 'ephemeral') {
-            desiredMode = "Ephemeral Doc Q&A";
-        }
-        
-        if (USER_ROLE === 'admin' && desiredMode === "Ephemeral Doc Q&A") {
-            desiredMode = "RAG (Document Guided)";
-        }
-        
-        if (desiredMode) {
-            const radioToCheck = Array.from(radios).find(r => r.value === desiredMode);
-            if (radioToCheck) {
-                radioToCheck.checked = true;
+        // Toggle the Collapsible Session Documents Upload panel
+        window.toggleUploadCard = function() {
+            const card = document.getElementById('ephemeralUploadCard');
+            if (card) {
+                if (card.style.display === 'none') {
+                    card.style.display = 'block';
+                    sessionStorage.setItem('ts_upload_card_open', 'true');
+                } else {
+                    card.style.display = 'none';
+                    sessionStorage.setItem('ts_upload_card_open', 'false');
+                }
             }
-        }
-        
-        function updateModeUI() {
-            const activeRadio = document.querySelector('input[name="chat_mode"]:checked');
-            if (!activeRadio) return;
-            
-            const activeMode = activeRadio.value;
-            sessionStorage.setItem('ts_chat_mode', activeMode);
-            
-            if (activeMode === "Ephemeral Doc Q&A") {
-                uploadCard.style.display = "block";
+        };
+
+        // Initialize state on page load
+        const cardOpen = sessionStorage.getItem('ts_upload_card_open');
+        const uploadCard = document.getElementById('ephemeralUploadCard');
+        if (uploadCard && USER_ROLE !== 'admin') {
+            if (cardOpen === 'true') {
+                uploadCard.style.display = 'block';
             } else {
-                uploadCard.style.display = "none";
-            }
-            
-            // Reload chatbot suggestions for the selected mode
-            if (typeof loadInputSuggestions === 'function') {
-                loadInputSuggestions();
+                uploadCard.style.display = 'none';
             }
         }
-        
-        radios.forEach(radio => {
-            radio.addEventListener('change', updateModeUI);
-        });
-        updateModeUI(); // Initial run
     });
 
     function handleKeyPress(e) {
@@ -693,11 +667,6 @@
         const queryLower = query.toLowerCase();
         const isExamRequest = (USER_ROLE === 'admin') && (queryLower.includes("create") || queryLower.includes("make") || queryLower.includes("generate") || queryLower.includes("setup") || queryLower.includes("new")) && (queryLower.includes("exam") || queryLower.includes("test") || queryLower.includes("assessment") || queryLower.includes("quiz"));
         if (isExamRequest) {
-            const modeGeneral = document.getElementById('modeGeneral');
-            if (modeGeneral && modeGeneral.checked) {
-                document.getElementById('modeRag').checked = true;
-            }
-            
             // Clear query field
             queryField.value = '';
             
@@ -715,11 +684,6 @@
 
         const isAnnRequest = (USER_ROLE === 'admin') && (queryLower.includes("create") || queryLower.includes("make") || queryLower.includes("generate") || queryLower.includes("post") || queryLower.includes("new")) && (queryLower.includes("announcement") || queryLower.includes("notice") || queryLower.includes("broadcast") || queryLower.includes("alert"));
         if (isAnnRequest) {
-            const modeGeneral = document.getElementById('modeGeneral');
-            if (modeGeneral && modeGeneral.checked) {
-                document.getElementById('modeRag').checked = true;
-            }
-            
             // Clear query field
             queryField.value = '';
             
@@ -785,7 +749,7 @@
         document.getElementById('stopBtn').style.display = 'inline-flex';
         isGenerating = true;
 
-        const mode = document.querySelector('input[name="chat_mode"]:checked').value;
+        const mode = 'Unified';
         const modelSelect = document.getElementById('chatModel');
         const model = modelSelect ? modelSelect.value : '';
 
@@ -2867,11 +2831,9 @@
         
         container.innerHTML = '<span style="font-size: 0.8rem; color: var(--ts-text-muted);">Loading personalized suggestions...</span>';
         
-        const activeRadio = document.querySelector('input[name="chat_mode"]:checked');
-        const mode = activeRadio ? activeRadio.value : '';
         const tabId = sessionStorage.getItem('ts_tab_id') || '';
         
-        fetch(`/assistant/suggestions?mode=${encodeURIComponent(mode)}&tab_id=${encodeURIComponent(tabId)}`)
+        fetch(`/assistant/suggestions?tab_id=${encodeURIComponent(tabId)}`)
         .then(res => res.json())
         .then(data => {
             container.innerHTML = '';

@@ -64,6 +64,7 @@ from src.config import EMBEDDING_MODEL, DOCUMENTS_DIR
 from src.vectorstore import stats, get_source_chunks, search, get_collection, add_ephemeral_chunks, search_ephemeral, delete_ephemeral_collection
 from src.llm import list_local_models, generate_chat_answer, generate_rag_answer, GROQ_API_KEY, analyze_proctor_image, transcribe_audio_whisper, generate_ephemeral_rag_answer_stream
 from src.concept_map import get_personalized_suggestions, get_related_concepts, get_ephemeral_document_text
+from src.student_performance import detect_performance_query, get_student_performance_context
 
 # Initialize databases
 init_db()
@@ -2075,14 +2076,21 @@ def assistant():
 def assistant_suggestions():
     user_info = session.get('user_info', {}) or {}
     emp_id = user_info.get('employee_id', 'demo')
-    mode = request.args.get('mode', 'RAG (Document Guided)')
     tab_id = request.args.get('tab_id', '')
     
-    print(f"[SUGGESTIONS DEBUG] mode={mode}, tab_id={tab_id}, session_tab_id={session.get('_tab_id')}")
-    
-    if mode == "Ephemeral Doc Q&A" and tab_id:
+    # Check if there are active ephemeral documents loaded in Chroma for this tab session
+    has_ephemeral = False
+    if tab_id:
+        try:
+            from src.vectorstore import get_ephemeral_collection
+            coll = get_ephemeral_collection(tab_id)
+            if coll.count() > 0:
+                has_ephemeral = True
+        except Exception:
+            pass
+            
+    if has_ephemeral:
         text = get_ephemeral_document_text(tab_id)
-        print(f"[SUGGESTIONS DEBUG] text length={len(text) if text else 0}")
         if text:
             prompt = (
                 f"Based on the following document content excerpt, generate exactly 3 short, direct study questions "
@@ -2164,26 +2172,56 @@ def chat_stream():
         return Response(stream_with_context(wizard_event_generator()), mimetype='text/event-stream')
 
         
+    # 1. Performance Query Intent Classification
+    perf_target = detect_performance_query(query)
+    perf_context = None
+    if perf_target:
+        user_role = session.get('user_role', 'trainee')
+        perf_context = get_student_performance_context(perf_target, user_role, emp_id)
+        
+        # If unauthorized or not found, directly yield the message and exit
+        if "Unauthorized" in perf_context or "not found" in perf_context or "not registered" in perf_context:
+            def error_event_generator():
+                add_chat_message(active_session_id, "assistant", perf_context, [])
+                yield perf_context
+            return Response(stream_with_context(error_event_generator()), mimetype='text/event-stream')
+            
+    # 2. Document-Grounded Context Retrieval (if not a performance query)
     sources = []
-    if mode == "RAG (Document Guided)":
+    selected_mode = "General Assistant"
+    
+    if not perf_target:
         try:
             from src.embeddings import embed_query
             query_vec = embed_query(query)
-            results = search(query_vec, top_k=4, threshold=0.1)
-            if results:
-                sources = results
-        except Exception as e:
-            print(f"Retrieval error: {e}")
-    elif mode == "Ephemeral Doc Q&A":
-        try:
-            from src.embeddings import embed_query
-            query_vec = embed_query(query)
+            
+            # Check if there are active session documents
             tab_id = session.get('_tab_id')
-            results = search_ephemeral(tab_id, query_vec, top_k=10)
-            if results:
-                sources = results
+            has_ephemeral = False
+            if tab_id:
+                try:
+                    from src.vectorstore import get_ephemeral_collection
+                    coll = get_ephemeral_collection(tab_id)
+                    if coll.count() > 0:
+                        has_ephemeral = True
+                except Exception:
+                    pass
+            
+            # Try Ephemeral first
+            if has_ephemeral:
+                results = search_ephemeral(tab_id, query_vec, top_k=10)
+                if results:
+                    sources = results
+                    selected_mode = "Ephemeral Doc Q&A"
+                    
+            # Fall back to global doc store
+            if not sources:
+                results = search(query_vec, top_k=6, threshold=0.1)
+                if results:
+                    sources = results
+                    selected_mode = "RAG (Document Guided)"
         except Exception as e:
-            print(f"Ephemeral retrieval error: {e}")
+            print(f"Retrieval / Embedding error: {e}")
             
     active_generations[emp_id] = {
         "session_id": active_session_id,
@@ -2201,17 +2239,22 @@ def chat_stream():
             
         from src.llm import generate_rag_answer_stream, generate_chat_answer_stream, generate_ephemeral_rag_answer_stream
         
-        if mode == "RAG (Document Guided)":
-            if not sources:
-                chunk_stream = ["No matching document context was found to guide an answer. Please upload documents first or check search configurations."]
-            else:
-                chunk_stream = generate_rag_answer_stream(query, sources, model)
-        elif mode == "Ephemeral Doc Q&A":
+        if perf_target:
+            system_prompt = (
+                "You are an AI Coach for 'Talent Sphere Elevate' who has access to student reports. "
+                "You are talking to an Admin (or the trainee themselves about their own details).\n"
+                "Summarize the provided trainee performance context beautifully and clearly:\n"
+                "1. If presenting exam score lists or statistics, ALWAYS format them as a clean, styled markdown table.\n"
+                "2. Mention the student's name, email, specialization domain, estimated study hours, and proctoring log flags.\n"
+                "3. If proctoring flags/integrity violations are found in the report, highlight them clearly for the Admin (but maintain a coaching and objective tone).\n\n"
+                f"--- TRAINEE REPORT CONTEXT ---\n{perf_context}"
+            )
+            chunk_stream = generate_chat_answer_stream(query, model, system_prompt)
+        elif selected_mode == "Ephemeral Doc Q&A":
             is_admin = (session.get('user_role') == 'admin')
-            if not sources and not is_admin:
-                chunk_stream = ["I am sorry, but the answer to your question is not present in the provided document."]
-            else:
-                chunk_stream = generate_ephemeral_rag_answer_stream(query, sources, model, is_admin=is_admin)
+            chunk_stream = generate_ephemeral_rag_answer_stream(query, sources, model, is_admin=is_admin)
+        elif selected_mode == "RAG (Document Guided)":
+            chunk_stream = generate_rag_answer_stream(query, sources, model)
         else:
             system_prompt = (
                 "You are a helpful, encouraging learning coach for 'Talent Sphere Elevate', an advanced corporate training platform. "
