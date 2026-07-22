@@ -3,49 +3,218 @@
 
 {% block head %}
 <style>
-    .tabs-container {
+    /* ── Capsule Tab Bar ── */
+    .um-tabs {
         display: flex;
-        border-bottom: 1px solid var(--ts-border);
-        margin-bottom: 1.5rem;
-        gap: 1rem;
+        gap: 0.5rem;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 14px;
+        padding: 5px;
+        margin: 1.5rem 0;
+        width: fit-content;
     }
-    .tab-link {
+    .um-tab-btn {
         background: none;
         border: none;
         color: var(--ts-text-secondary);
-        padding: 0.75rem 1rem;
-        font-size: 0.95rem;
+        padding: 0.6rem 1.4rem;
+        font-size: 0.9rem;
         font-weight: 600;
         cursor: pointer;
-        border-bottom: 2px solid transparent;
+        border-radius: 10px;
         transition: all 0.2s ease;
+        font-family: 'Outfit', sans-serif;
     }
-    .tab-link:hover {
-        color: var(--ts-primary);
+    .um-tab-btn:hover { color: var(--ts-text); background: rgba(255,255,255,0.04); }
+    .um-tab-btn.active {
+        background: linear-gradient(135deg, var(--ts-primary), var(--ts-accent));
+        color: #fff;
+        box-shadow: 0 4px 14px rgba(99,102,241,0.35);
     }
-    .tab-link.active {
-        color: var(--ts-primary);
-        border-bottom-color: var(--ts-primary);
+    .tab-content { display: none; animation: fadeUp 0.3s ease; }
+    .tab-content.active { display: block; }
+    @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
     }
-    .tab-content {
-        display: none;
-        animation: fadeIn 0.3s ease;
-    }
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    
+
+    /* ── Form Elements ── */
     .form-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 1.2rem;
     }
-    .form-group {
+    .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .form-label {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--ts-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+    .form-control {
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        border: 1px solid var(--ts-border);
+        background: rgba(255,255,255,0.03);
+        color: var(--ts-text);
+        outline: none;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.92rem;
+        transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+    .form-control:focus {
+        border-color: var(--ts-primary);
+        background: rgba(99,102,241,0.06);
+        box-shadow: 0 0 0 3px rgba(99,102,241,0.18);
+    }
+    .form-control::placeholder { color: rgba(156,163,175,0.45); }
+
+    /* ── Alert Banners ── */
+    .alert-success {
+        background: rgba(16,185,129,0.1);
+        border: 1px solid rgba(16,185,129,0.25);
+        color: #34d399;
+        padding: 1rem 1.2rem;
+        border-radius: 12px;
+        margin-bottom: 1.2rem;
+        font-size: 0.88rem;
+    }
+    .alert-danger {
+        background: rgba(239,68,68,0.1);
+        border: 1px solid rgba(239,68,68,0.25);
+        color: #f87171;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        margin-bottom: 1.2rem;
+        font-size: 0.88rem;
+    }
+
+    /* ── User Row Card ── */
+    .user-row {
         display: flex;
-        flex-direction: column;
-        gap: 0.4rem;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.1rem 1.3rem;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.04);
+        background: rgba(255,255,255,0.02);
+        transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+        gap: 1rem;
     }
+    .user-row:hover {
+        border-color: rgba(99,102,241,0.2);
+        background: rgba(99,102,241,0.04);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+    .user-name {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--ts-text);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.25rem;
+    }
+    .user-meta {
+        font-size: 0.82rem;
+        color: var(--ts-text-secondary);
+        line-height: 1.6;
+    }
+    .user-cred {
+        margin-top: 0.4rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        color: var(--ts-primary);
+        font-weight: 500;
+        font-size: 0.82rem;
+    }
+    .cred-code {
+        background: rgba(99,102,241,0.1);
+        border: 1px solid rgba(99,102,241,0.2);
+        color: var(--ts-primary);
+        padding: 0.1rem 0.4rem;
+        border-radius: 5px;
+        font-size: 0.78rem;
+        font-family: 'Inter', monospace;
+    }
+    .role-badge {
+        display: inline-block;
+        padding: 0.15rem 0.55rem;
+        border-radius: 99px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(168,85,247,0.2));
+        color: var(--ts-primary);
+        border: 1px solid rgba(99,102,241,0.25);
+    }
+    .user-actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
+
+    /* ── Modal ── */
+    .modal-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.65);
+        backdrop-filter: blur(6px);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-box {
+        width: 100%;
+        max-width: 500px;
+        background: rgba(13,17,23,0.95);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 20px;
+        padding: 2rem;
+        max-height: 92vh;
+        overflow-y: auto;
+        box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+        animation: modalIn 0.25s ease;
+    }
+    @keyframes modalIn {
+        from { opacity: 0; transform: scale(0.96) translateY(10px); }
+        to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .modal-title {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: var(--ts-text);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* ── Password mode radio pills ── */
+    .radio-pills { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .radio-pill {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.5rem 1rem;
+        border-radius: 99px;
+        border: 1px solid var(--ts-border);
+        background: rgba(255,255,255,0.02);
+        color: var(--ts-text-secondary);
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: all 0.2s;
+        user-select: none;
+    }
+    .radio-pill:has(input:checked) {
+        border-color: var(--ts-primary);
+        background: rgba(99,102,241,0.1);
+        color: var(--ts-primary);
+    }
+    .radio-pill input { display: none; }
 </style>
 {% endblock %}
 
@@ -57,66 +226,64 @@
     </div>
 </div>
 
-<div class="tabs-container" style="margin-top: 1.5rem;">
-    <button class="tab-link {% if active_tab == 'create' %}active{% endif %}" onclick="openTab(event, 'create-user')">Create User</button>
-    <button class="tab-link {% if active_tab == 'manage' %}active{% endif %}" onclick="openTab(event, 'manage-users')">Manage Users</button>
+<div class="um-tabs">
+    <button class="um-tab-btn {% if active_tab != 'manage' %}active{% endif %}" id="tabBtnCreate" onclick="switchTab('create-user','tabBtnCreate')">
+        ✦ Create User
+    </button>
+    <button class="um-tab-btn {% if active_tab == 'manage' %}active{% endif %}" id="tabBtnManage" onclick="switchTab('manage-users','tabBtnManage')">
+        👥 Manage Users
+    </button>
 </div>
 
-<!-- Tab 1: Create User -->
-<div id="create-user" class="tab-content" style="{% if active_tab == 'create' %}display: block;{% endif %}">
-    <!-- Success Banner showing credentials -->
+<!-- ─── Tab 1: Create User ─── -->
+<div id="create-user" class="tab-content {% if active_tab != 'manage' %}active{% endif %}">
+
     {% if last_created_user %}
-        <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; border-color: rgba(52, 211, 153, 0.3); background-color: rgba(52, 211, 153, 0.02); margin-bottom: 1.5rem;">
-            <div style="font-size: 1.1rem; font-weight: 700; color: #34d399; margin-bottom: 0.5rem;">User Created Successfully</div>
-            <div style="font-size: 0.9rem; color: var(--ts-text); margin-bottom: 1rem;">
-                Share these credentials with the user now — the password is not stored in plain text and cannot be shown again.
+        <div class="alert-success" style="padding: 1.3rem; margin-bottom: 1.5rem;">
+            <div style="font-size: 1rem; font-weight: 700; margin-bottom: 0.4rem;">✅ User Created Successfully</div>
+            <div style="font-size: 0.88rem; color: rgba(52,211,153,0.85); margin-bottom: 0.8rem;">
+                Share these credentials now — the password cannot be retrieved again.
             </div>
-            <ul style="color: var(--ts-text); font-size: 0.95rem; margin-left: 1.2rem; line-height: 1.6;">
-                <li>Email: <b>{{ last_created_user.email }}</b></li>
-                <li>Password: <b>{{ last_created_user.password }}</b></li>
-            </ul>
-            <a href="/user_management" class="btn-ts btn-ts-secondary" style="width: auto; padding: 0.5rem 1.5rem; margin-top: 0.5rem; display: inline-flex;">
+            <div style="font-size: 0.92rem; line-height: 1.7;">
+                Email: <strong>{{ last_created_user.email }}</strong><br>
+                Password: <strong>{{ last_created_user.password }}</strong>
+            </div>
+            <a href="/user_management" class="btn-ts btn-ts-secondary" style="margin-top: 0.8rem; display: inline-flex; width: auto; padding: 0.45rem 1.2rem;">
                 Dismiss / Create Another
             </a>
         </div>
     {% endif %}
 
-    <!-- Flash message alerts -->
     {% with messages = get_flashed_messages(category_filter=["create_user_error"]) %}
         {% if messages %}
             {% for message in messages %}
-                <div style="background-color: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; padding: 0.75rem; border-radius: 8px; margin-bottom: 1.2rem; font-size: 0.88rem;">
-                    {{ message }}
-                </div>
+                <div class="alert-danger">{{ message }}</div>
             {% endfor %}
         {% endif %}
     {% endwith %}
 
-    <div class="ts-card" style="padding: 1.5rem; border-radius: 12px;">
-        <form action="/user_management/create" method="POST" style="display: flex; flex-direction: column; gap: 1.5rem;">
+    <div class="ts-card" style="padding: 1.8rem; border-radius: 16px;">
+        <form action="/user_management/create" method="POST" style="display: flex; flex-direction: column; gap: 1.4rem;">
             <div class="form-grid">
                 <div class="form-group">
-                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Employee ID</label>
-                    <input type="text" name="employee_id" id="create_employee_id" placeholder="EMP-1024" required
-                           style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
-                    <div id="employee_id_error" style="color: #ef4444; font-size: 0.8rem; display: none; margin-top: 0.2rem;">This Employee ID is already registered.</div>
+                    <label class="form-label">Employee ID</label>
+                    <input type="text" name="employee_id" id="create_employee_id" class="form-control" placeholder="EMP-1024" required>
+                    <div id="employee_id_error" style="color: #f87171; font-size: 0.78rem; display: none; margin-top: 0.15rem;">⚠ This Employee ID is already registered.</div>
                 </div>
                 <div class="form-group">
-                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Full Name</label>
-                    <input type="text" name="full_name" placeholder="Priya Sharma" required
-                           style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" name="full_name" class="form-control" placeholder="Priya Sharma" required>
                 </div>
             </div>
-            
+
             <div class="form-grid">
                 <div class="form-group">
-                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Email</label>
-                    <input type="email" name="email" placeholder="priya@company.com" required
-                           style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" name="email" class="form-control" placeholder="priya@company.com" required>
                 </div>
                 <div class="form-group">
-                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Training Domain</label>
-                    <select name="domain" style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                    <label class="form-label">Training Domain</label>
+                    <select name="domain" class="form-control">
                         <option value="general">General</option>
                         <option value="development">Development</option>
                         <option value="testing">Testing</option>
@@ -126,117 +293,113 @@
                 </div>
             </div>
 
-            <!-- Password setup selection -->
             <div class="form-group">
-                <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Password Option</label>
-                <div style="display: flex; gap: 0.5rem;">
-                    <label class="btn-ts btn-ts-secondary" style="width: auto; cursor: pointer; display: flex; align-items: center; gap: 0.4rem;">
+                <label class="form-label">Password Option</label>
+                <div class="radio-pills">
+                    <label class="radio-pill">
                         <input type="radio" name="password_mode" value="auto" checked onchange="togglePasswordInput(true)">
-                        Auto-generate
+                        🔀 Auto-generate
                     </label>
-                    <label class="btn-ts btn-ts-secondary" style="width: auto; cursor: pointer; display: flex; align-items: center; gap: 0.4rem;">
+                    <label class="radio-pill">
                         <input type="radio" name="password_mode" value="manual" onchange="togglePasswordInput(false)">
-                        Set manually
+                        ✏️ Set manually
                     </label>
                 </div>
             </div>
 
             <div class="form-group" id="manualPasswordGroup" style="display: none;">
-                <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Manual password (min 8 chars)</label>
-                <input type="password" name="manual_password" placeholder="Leave blank if auto-generating" id="manualPasswordInput"
-                       style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                <label class="form-label">Manual Password (min 8 chars)</label>
+                <input type="password" name="manual_password" id="manualPasswordInput" class="form-control" placeholder="Leave blank if auto-generating">
             </div>
 
-            <button type="submit" id="create_user_btn" class="btn-ts btn-ts-primary" style="padding: 0.85rem; font-size: 1rem;">
+            <button type="submit" id="create_user_btn" class="btn-ts btn-ts-primary" style="padding: 0.9rem; font-size: 1rem;">
                 👤 Create User
             </button>
         </form>
     </div>
 </div>
 
-<!-- Tab 2: Manage Users -->
-<div id="manage-users" class="tab-content" style="{% if active_tab == 'manage' %}display: block;{% endif %}">
-    <!-- Success delete flashes -->
+<!-- ─── Tab 2: Manage Users ─── -->
+<div id="manage-users" class="tab-content {% if active_tab == 'manage' %}active{% endif %}">
+
     {% with messages = get_flashed_messages(category_filter=["manage_user_info"]) %}
         {% if messages %}
             {% for message in messages %}
-                <div style="background-color: rgba(52, 211, 153, 0.1); border: 1px solid rgba(52, 211, 153, 0.2); color: #34d399; padding: 0.75rem; border-radius: 8px; margin-bottom: 1.2rem; font-size: 0.88rem;">
-                    {{ message }}
-                </div>
+                <div class="alert-success">{{ message }}</div>
             {% endfor %}
         {% endif %}
     {% endwith %}
 
-    <div class="ts-card" style="padding: 1.5rem; border-radius: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.25rem;">
         {% if not users %}
-            <div style="padding: 1rem; color: var(--ts-text-muted);">No registered users found in the system.</div>
+            <div class="ts-info-banner" style="padding: 1.2rem; border-radius: 12px;">
+                <div class="ts-info-body">No registered users found in the system.</div>
+            </div>
         {% else %}
-            <div style="display: flex; flex-direction: column; gap: 1rem;">
-                {% for u in users %}
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--ts-border); padding-bottom: 1rem; margin-bottom: 0.5rem; {% if loop.last %}border-bottom: none; margin-bottom: 0; padding-bottom: 0;{% endif %}">
-                    <div>
-                        <div style="margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <span style="font-size: 1.05rem; font-weight: 600; color: var(--ts-text);">👤 {{ u.full_name }}</span>
-                            <span class="ts-profile-badge" style="padding: 0.1rem 0.4rem; font-size: 0.7rem;">{{ u.role|upper }}</span>
-                        </div>
-                        <div style="font-size: 0.85rem; color: var(--ts-text-secondary); line-height: 1.5;">
-                            ID: <b>{{ u.employee_id }}</b> &nbsp;·&nbsp; 
-                            Email: <b>{{ u.email }}</b> &nbsp;·&nbsp; 
-                            Domain: <b>{{ u.domain }}</b>
-                            <br>
-                            <span style="margin-top: 0.4rem; display: inline-block; color: var(--ts-primary); font-weight: 500;">
-                                🔑 Credentials: &nbsp;Username: <code style="background: rgba(255,255,255,0.05); padding: 0.1rem 0.3rem; border-radius: 4px; border: 1px solid var(--ts-border)">{{ u.employee_id }}</code> &nbsp;·&nbsp; 
-                                Password: <code style="background: rgba(255,255,255,0.05); padding: 0.1rem 0.3rem; border-radius: 4px; border: 1px solid var(--ts-border)">{{ u.password_plain if u.password_plain else 'demo123' }}</code>
-                            </span>
-                            <br>
-                            <label style="display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.6rem; font-size: 0.85rem; color: var(--ts-text); cursor: pointer;">
-                                <input type="checkbox" class="accommodation-toggle" data-emp-id="{{ u.employee_id }}" {% if u.accommodation_proctoring %}checked{% endif %} style="accent-color: var(--ts-primary);">
-                                <span>Accommodation (Skip presence check)</span>
-                            </label>
-                        </div>
+            {% for u in users %}
+            <div class="user-row">
+                <div style="flex: 1; min-width: 0;">
+                    <div class="user-name">
+                        👤 {{ u.full_name }}
+                        <span class="role-badge">{{ u.role }}</span>
                     </div>
-                    <div style="width: auto; display: flex; gap: 0.5rem; align-items: center;">
-                        <button type="button" class="btn-ts btn-ts-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="openEditModal('{{ u.employee_id }}', '{{ u.full_name|replace('\'', '\\\'') }}', '{{ u.email }}', '{{ u.domain }}', '{{ u.role }}')">
-                            ✏️ Edit
-                        </button>
-                        {% if u.employee_id == 'admin' %}
-                            <span style="font-size: 0.85rem; color: var(--ts-text-muted);">Protected</span>
-                        {% else %}
-                            <form action="/user_management/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete user {{ u.full_name }}?')">
-                                <input type="hidden" name="employee_id" value="{{ u.employee_id }}">
-                                <button type="submit" class="btn-ts btn-ts-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; color: #f87171; border-color: rgba(248, 113, 113, 0.2);">
-                                    🗑️ Delete
-                                </button>
-                            </form>
-                        {% endif %}
+                    <div class="user-meta">
+                        ID: <strong>{{ u.employee_id }}</strong> &nbsp;·&nbsp;
+                        {{ u.email }} &nbsp;·&nbsp;
+                        Domain: <strong>{{ u.domain }}</strong>
+                    </div>
+                    <div class="user-cred">
+                        🔑 <span class="cred-code">{{ u.employee_id }}</span>
+                        /
+                        <span class="cred-code">{{ u.password_plain if u.password_plain else 'demo123' }}</span>
+                    </div>
+                    <div style="margin-top: 0.5rem;">
+                        <label style="display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; color: var(--ts-text-secondary); cursor: pointer;">
+                            <input type="checkbox" class="accommodation-toggle" data-emp-id="{{ u.employee_id }}" {% if u.accommodation_proctoring %}checked{% endif %} style="accent-color: var(--ts-primary);">
+                            <span>Accommodation (skip presence check)</span>
+                        </label>
                     </div>
                 </div>
-                {% endfor %}
+                <div class="user-actions">
+                    <button type="button" class="btn-ts btn-ts-secondary" style="padding: 0.4rem 0.85rem; font-size: 0.8rem;"
+                        onclick="openEditModal('{{ u.employee_id }}', '{{ u.full_name|replace("'", "\\'") }}', '{{ u.email }}', '{{ u.domain }}', '{{ u.role }}')">
+                        ✏️ Edit
+                    </button>
+                    {% if u.employee_id == 'admin' %}
+                        <span style="font-size: 0.8rem; color: var(--ts-text-muted); padding: 0 0.4rem;">Protected</span>
+                    {% else %}
+                        <form action="/user_management/delete" method="POST" onsubmit="return confirm('Delete user {{ u.full_name }}?')" style="margin: 0;">
+                            <input type="hidden" name="employee_id" value="{{ u.employee_id }}">
+                            <button type="submit" class="btn-ts btn-ts-secondary" style="padding: 0.4rem 0.85rem; font-size: 0.8rem; color: #f87171; border-color: rgba(248,113,113,0.25);">
+                                🗑️
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
             </div>
+            {% endfor %}
         {% endif %}
     </div>
 </div>
 
-<!-- Edit User Modal -->
-<div id="editUserModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
-    <div class="ts-card" style="width: 100%; max-width: 500px; padding: 2rem; border-radius: 12px; max-height: 90vh; overflow-y: auto;">
-        <h3 style="margin-bottom: 1.5rem; color: var(--ts-text-heading);">Edit User</h3>
+<!-- ─── Edit User Modal ─── -->
+<div id="editUserModal" class="modal-backdrop">
+    <div class="modal-box">
+        <div class="modal-title">✏️ Edit User</div>
         <form action="/user_management/edit" method="POST" style="display: flex; flex-direction: column; gap: 1rem;">
             <input type="hidden" name="employee_id" id="edit_employee_id">
-            
+
             <div class="form-group">
-                <label style="font-size: 0.85rem; font-weight: 600;">Full Name</label>
-                <input type="text" name="full_name" id="edit_full_name" required style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                <label class="form-label">Full Name</label>
+                <input type="text" name="full_name" id="edit_full_name" class="form-control" required>
             </div>
-            
             <div class="form-group">
-                <label style="font-size: 0.85rem; font-weight: 600;">Email</label>
-                <input type="email" name="email" id="edit_email" required style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                <label class="form-label">Email</label>
+                <input type="email" name="email" id="edit_email" class="form-control" required>
             </div>
-            
             <div class="form-group">
-                <label style="font-size: 0.85rem; font-weight: 600;">Domain</label>
-                <select name="domain" id="edit_domain" style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                <label class="form-label">Domain</label>
+                <select name="domain" id="edit_domain" class="form-control">
                     <option value="general">General</option>
                     <option value="development">Development</option>
                     <option value="testing">Testing</option>
@@ -244,99 +407,41 @@
                     <option value="security">Security</option>
                 </select>
             </div>
-            
             <div class="form-group">
-                <label style="font-size: 0.85rem; font-weight: 600;">Role</label>
-                <select name="role" id="edit_role" style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                <label class="form-label">Role</label>
+                <select name="role" id="edit_role" class="form-control">
                     <option value="trainee">Trainee</option>
                     <option value="admin">Admin</option>
                 </select>
             </div>
-            
             <div class="form-group">
-                <label style="font-size: 0.85rem; font-weight: 600;">New Password (Optional)</label>
-                <input type="text" name="password" placeholder="Leave blank to keep current password" style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                <label class="form-label">New Password (optional)</label>
+                <input type="text" name="password" class="form-control" placeholder="Leave blank to keep current">
             </div>
-            
-            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                <button type="submit" class="btn-ts btn-ts-primary" style="flex: 1; padding: 0.75rem;">Save Changes</button>
-                <button type="button" class="btn-ts btn-ts-secondary" style="flex: 1; padding: 0.75rem;" onclick="document.getElementById('editUserModal').style.display='none'">Cancel</button>
+
+            <div style="display: flex; gap: 0.75rem; margin-top: 0.5rem;">
+                <button type="submit" class="btn-ts btn-ts-primary" style="flex: 1; padding: 0.8rem;">Save Changes</button>
+                <button type="button" class="btn-ts btn-ts-secondary" style="flex: 1; padding: 0.8rem;" onclick="closeEditModal()">Cancel</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-    function openTab(evt, tabId) {
-        var i, tabcontent, tablinks;
-        tabcontent = document.getElementsByClassName("tab-content");
-        for (i = 0; i < tabcontent.length; i++) {
-            tabcontent[i].style.display = "none";
-        }
-        tablinks = document.getElementsByClassName("tab-link");
-        for (i = 0; i < tablinks.length; i++) {
-            tablinks[i].classList.remove("active");
-        }
-        document.getElementById(tabId).style.display = "block";
-        evt.currentTarget.classList.add("active");
-        
-        // Save state in URL hash if desired
-        if(tabId === 'create-user') {
-            window.location.hash = 'create';
-        } else {
-            window.location.hash = 'manage';
-        }
+    function switchTab(tabId, btnId) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.um-tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        document.getElementById(btnId).classList.add('active');
+        window.location.hash = tabId === 'create-user' ? 'create' : 'manage';
     }
-    
+
     function togglePasswordInput(auto) {
         const group = document.getElementById('manualPasswordGroup');
         const input = document.getElementById('manualPasswordInput');
-        if (auto) {
-            group.style.display = 'none';
-            input.required = false;
-        } else {
-            group.style.display = 'flex';
-            input.required = true;
-        }
+        group.style.display = auto ? 'none' : 'flex';
+        input.required = !auto;
     }
-    
-    // Check URL hash on page load
-    document.addEventListener("DOMContentLoaded", function() {
-        if(window.location.hash === '#manage') {
-            openTab({currentTarget: document.querySelectorAll('.tab-link')[1]}, 'manage-users');
-        } else if(window.location.hash === '#create') {
-            openTab({currentTarget: document.querySelectorAll('.tab-link')[0]}, 'create-user');
-        }
-        
-        // Setup inline validation for employee_id
-        const empInput = document.getElementById('create_employee_id');
-        const errDiv = document.getElementById('employee_id_error');
-        const createBtn = document.getElementById('create_user_btn');
-        
-        if (empInput) {
-            let timeout = null;
-            empInput.addEventListener('input', () => {
-                clearTimeout(timeout);
-                errDiv.style.display = 'none';
-                createBtn.disabled = false;
-                
-                const val = empInput.value.trim();
-                if (!val) return;
-                
-                timeout = setTimeout(() => {
-                    fetch('/api/check_user?employee_id=' + encodeURIComponent(val))
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.exists) {
-                                errDiv.style.display = 'block';
-                                createBtn.disabled = true;
-                            }
-                        })
-                        .catch(err => console.error(err));
-                }, 400);
-            });
-        }
-    });
 
     function openEditModal(empId, fullName, email, domain, role) {
         document.getElementById('edit_employee_id').value = empId;
@@ -344,37 +449,69 @@
         document.getElementById('edit_email').value = email;
         document.getElementById('edit_domain').value = domain;
         document.getElementById('edit_role').value = role;
-        document.getElementById('editUserModal').style.display = 'flex';
+        document.getElementById('editUserModal').classList.add('open');
     }
 
-    // Setup Accommodation checkbox listeners
-    document.addEventListener("DOMContentLoaded", function() {
-        const checkboxes = document.querySelectorAll('.accommodation-toggle');
-        checkboxes.forEach(cb => {
+    function closeEditModal() {
+        document.getElementById('editUserModal').classList.remove('open');
+    }
+
+    // Close modal on backdrop click
+    document.getElementById('editUserModal').addEventListener('click', function(e) {
+        if (e.target === this) closeEditModal();
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Hash-based tab restoration
+        if (window.location.hash === '#manage') {
+            switchTab('manage-users', 'tabBtnManage');
+        }
+
+        // Employee ID live validation
+        const empInput = document.getElementById('create_employee_id');
+        const errDiv   = document.getElementById('employee_id_error');
+        const createBtn = document.getElementById('create_user_btn');
+        if (empInput) {
+            let timeout = null;
+            empInput.addEventListener('input', () => {
+                clearTimeout(timeout);
+                errDiv.style.display = 'none';
+                createBtn.disabled = false;
+                const val = empInput.value.trim();
+                if (!val) return;
+                timeout = setTimeout(() => {
+                    fetch('/api/check_user?employee_id=' + encodeURIComponent(val))
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.exists) {
+                                errDiv.style.display = 'block';
+                                createBtn.disabled = true;
+                            }
+                        }).catch(err => console.error(err));
+                }, 400);
+            });
+        }
+
+        // Accommodation toggles
+        document.querySelectorAll('.accommodation-toggle').forEach(cb => {
             cb.addEventListener('change', function() {
                 const empId = this.getAttribute('data-emp-id');
                 const isChecked = this.checked;
-                
                 const formData = new FormData();
                 formData.append('employee_id', empId);
                 formData.append('enabled', isChecked ? 'true' : 'false');
-                
                 const tabId = sessionStorage.getItem('ts_tab_id') || '';
-                fetch('/user_management/toggle_accommodation?tab_id=' + tabId, {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status !== 'success') {
-                        alert('Error toggling accommodation: ' + (data.error || 'unknown'));
-                        this.checked = !isChecked; // revert
-                    }
-                })
-                .catch(err => {
-                    alert('Network error toggling accommodation.');
-                    this.checked = !isChecked; // revert
-                });
+                fetch('/user_management/toggle_accommodation?tab_id=' + tabId, { method: 'POST', body: formData })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status !== 'success') {
+                            alert('Error: ' + (data.error || 'unknown'));
+                            this.checked = !isChecked;
+                        }
+                    }).catch(() => {
+                        alert('Network error toggling accommodation.');
+                        this.checked = !isChecked;
+                    });
             });
         });
     });

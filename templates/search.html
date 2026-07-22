@@ -1,6 +1,210 @@
 {% extends "base.html" %}
 {% block title %}Search Laboratory - Talent Sphere Elevate{% endblock %}
 
+{% block head %}
+<style>
+    .form-label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--ts-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        display: block;
+        margin-bottom: 0.4rem;
+    }
+    .form-control {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        border: 1px solid var(--ts-border);
+        background: rgba(255,255,255,0.03);
+        color: var(--ts-text);
+        outline: none;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.92rem;
+        transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+    .form-control:focus {
+        border-color: var(--ts-primary);
+        background: rgba(99,102,241,0.05);
+        box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    }
+    .form-control::placeholder { color: rgba(156,163,175,0.4); }
+
+    /* ── Advanced filter panel ── */
+    .filter-panel {
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 12px;
+        overflow: hidden;
+        margin-top: 1rem;
+    }
+    .filter-panel summary {
+        padding: 0.85rem 1.1rem;
+        font-size: 0.88rem;
+        font-weight: 600;
+        cursor: pointer;
+        color: var(--ts-text-secondary);
+        outline: none;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: rgba(255,255,255,0.02);
+        transition: background 0.15s, color 0.15s;
+        list-style: none;
+        user-select: none;
+    }
+    .filter-panel summary:hover { background: rgba(255,255,255,0.04); color: var(--ts-text); }
+    .filter-panel summary::-webkit-details-marker { display: none; }
+    .filter-panel[open] summary { color: var(--ts-primary); border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .filter-body {
+        padding: 1.2rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.5rem;
+    }
+    .slider-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.83rem;
+        font-weight: 600;
+        color: var(--ts-text-secondary);
+        margin-bottom: 0.3rem;
+    }
+    .slider-val { color: var(--ts-primary); }
+    input[type=range] { width: 100%; accent-color: var(--ts-primary); }
+
+    /* ── Result section heading ── */
+    .result-section-title {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--ts-primary);
+        margin-bottom: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    /* ── RAG Answer Card ── */
+    .rag-answer-card {
+        background: rgba(99,102,241,0.06);
+        border: 1px solid rgba(99,102,241,0.2);
+        border-radius: 16px;
+        padding: 1.4rem 1.5rem;
+    }
+    .rag-model-tag {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 700;
+        color: var(--ts-primary);
+        margin-bottom: 0.75rem;
+        opacity: 0.8;
+    }
+    .rag-body {
+        font-size: 1rem;
+        color: var(--ts-text);
+        line-height: 1.7;
+        white-space: pre-line;
+    }
+
+    /* ── Score bar ── */
+    .score-bar-row { margin-bottom: 0.9rem; }
+    .score-bar-row:last-child { margin-bottom: 0; }
+    .score-meta {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        margin-bottom: 0.3rem;
+        color: var(--ts-text-secondary);
+        font-weight: 500;
+    }
+    .score-num { color: var(--ts-secondary); font-weight: 700; }
+    .score-track {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 8px;
+        height: 10px;
+        overflow: hidden;
+        width: 100%;
+    }
+    .score-fill {
+        height: 100%;
+        border-radius: 8px;
+        background: linear-gradient(90deg, var(--ts-primary), var(--ts-accent));
+        transition: width 0.6s ease;
+    }
+
+    /* ── Passage cards ── */
+    .passage-card {
+        background: rgba(255,255,255,0.02);
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 12px;
+        padding: 1.2rem 1.4rem;
+        transition: border-color 0.2s, background 0.2s;
+    }
+    .passage-card:hover {
+        border-color: rgba(99,102,241,0.2);
+        background: rgba(99,102,241,0.03);
+    }
+    .passage-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        padding-bottom: 0.6rem;
+        margin-bottom: 0.8rem;
+        font-size: 0.82rem;
+    }
+    .passage-source { font-weight: 700; color: var(--ts-primary); }
+    .passage-score { color: var(--ts-text-muted); }
+    .passage-score strong { color: var(--ts-secondary); }
+    .passage-body {
+        font-size: 0.93rem;
+        color: var(--ts-text);
+        line-height: 1.65;
+        word-break: break-word;
+    }
+
+    /* ── Spinner ── */
+    .search-spinner {
+        display: none;
+        padding: 2.5rem 0;
+        text-align: center;
+    }
+    .spinner-ring {
+        display: inline-block;
+        width: 40px; height: 40px;
+        border: 3px solid rgba(255,255,255,0.06);
+        border-top-color: var(--ts-primary);
+        border-radius: 50%;
+        animation: spin 0.9s linear infinite;
+        margin-bottom: 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .search-query-bar {
+        display: flex;
+        gap: 0.6rem;
+        margin-bottom: 0;
+    }
+    .search-query-bar .form-control {
+        flex-grow: 1;
+        font-size: 1rem;
+        padding: 0.85rem 1.1rem;
+    }
+
+    .api-notice {
+        background: rgba(96,165,250,0.07);
+        border: 1px solid rgba(96,165,250,0.15);
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        font-size: 0.82rem;
+        color: var(--ts-text-secondary);
+        line-height: 1.5;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="ts-hero">
     <div class="ts-hero-title">🔍 Semantic Search Laboratory</div>
@@ -9,17 +213,17 @@
     </div>
 </div>
 
-<div class="ts-info-banner" style="margin-top: 1.5rem; margin-bottom: 1.5rem; border-radius: 8px;">
-    <div class="ts-info-title" style="font-weight: 600;">Intelligent Knowledge Search</div>
-    <div class="ts-info-body" style="font-size: 0.9rem; margin-top: 0.2rem;">
-        Enter a search query. Chunks matching the semantics are retrieved, scores are plotted, and matching keywords are highlighted. Enable local Qwen to compile a response.
+<div class="ts-info-banner" style="margin-top: 1.5rem; margin-bottom: 1.5rem; border-radius: 12px;">
+    <div class="ts-info-title" style="font-weight: 700; margin-bottom: 0.2rem;">Intelligent Knowledge Search</div>
+    <div class="ts-info-body" style="font-size: 0.9rem;">
+        Enter a natural language query. Matching chunks are retrieved by semantic similarity, scores plotted, and keywords highlighted. Enable Groq to compile a synthesized answer.
     </div>
 </div>
 
 {% if stats.total_chunks == 0 %}
-    <div class="ts-info-banner" style="padding: 1.5rem; border-radius: 12px; margin-top: 1rem;">
-        <div class="ts-info-title" style="font-weight: 600;">Your Index is Empty</div>
-        <div class="ts-info-body" style="margin-top: 0.3rem;">
+    <div class="ts-info-banner" style="padding: 1.5rem; border-radius: 14px; margin-top: 1rem;">
+        <div class="ts-info-title" style="font-weight: 700; margin-bottom: 0.3rem;">Your Index is Empty</div>
+        <div class="ts-info-body">
             {% if session.get('user_role') == 'admin' %}
                 Head to the <a href="/ingest" style="color: var(--ts-primary); font-weight: 600;">Ingest page</a> to upload documents and build the vector index before searching.
             {% else %}
@@ -28,76 +232,72 @@
         </div>
     </div>
 {% else %}
-    <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
+    <div class="ts-card" style="padding: 1.5rem; border-radius: 18px; margin-bottom: 2rem;">
         <form method="GET" action="/search" id="searchForm">
-            <!-- Query text box -->
-            <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
-                <input type="text" name="query" value="{{ query }}" placeholder="e.g. What is the company onboarding process?" required
-                       style="flex-grow: 1; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg, #0f172a); color: var(--ts-text); outline: none; font-size: 1rem;">
-                <button type="submit" class="btn-ts btn-ts-primary" style="width: auto; padding: 0 2rem;">
-                    🔍 Run Search
+            <!-- Search bar -->
+            <div class="search-query-bar">
+                <input type="text" name="query" value="{{ query }}" class="form-control"
+                       placeholder="e.g. What is the company onboarding process?" required>
+                <button type="submit" class="btn-ts btn-ts-primary" style="width: auto; padding: 0 2rem; white-space: nowrap;">
+                    🔍 Search
                 </button>
             </div>
-            
-            <!-- Collapsible expander details -->
-            <details open style="border: 1px solid var(--ts-border); border-radius: 8px; padding: 1rem;">
-                <summary style="font-size: 0.9rem; font-weight: 600; cursor: pointer; color: var(--ts-text-secondary); outline: none; margin-bottom: 0.5rem;">
-                    🛠️ Advanced Search Filters & RAG Settings
-                </summary>
-                
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
-                    <!-- Filter by source -->
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Filter by Source Files</label>
-                        <select name="selected_sources" multiple size="4"
-                                style="padding: 0.5rem; border-radius: 6px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+
+            <!-- Collapsible filters -->
+            <details class="filter-panel" {% if query %}open{% endif %}>
+                <summary>🛠️ Advanced Filters &amp; RAG Settings</summary>
+                <div class="filter-body">
+                    <!-- Source filter -->
+                    <div>
+                        <label class="form-label">Filter by Source Files</label>
+                        <select name="selected_sources" multiple size="4" class="form-control" style="height: auto;">
                             {% for name in stats.source_names %}
                                 <option value="{{ name }}" {% if name in selected_sources %}selected{% endif %}>{{ name }}</option>
                             {% endfor %}
                         </select>
-                        <span style="font-size: 0.72rem; color: var(--ts-text-secondary);">Hold Ctrl (or Cmd) to select multiple files. Leave empty to search all.</span>
+                        <div style="font-size: 0.72rem; color: var(--ts-text-muted); margin-top: 0.3rem;">
+                            Hold Ctrl / Cmd to select multiple. Leave empty to search all.
+                        </div>
                     </div>
-                    
+
                     <!-- Sliders -->
-                    <div style="display: flex; flex-direction: column; gap: 1rem;">
-                        <div style="display: flex; flex-direction: column; gap: 0.25rem;">
-                            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">
+                    <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                        <div>
+                            <div class="slider-row">
                                 <span>Similarity Threshold</span>
-                                <span id="thresholdVal" style="color: var(--ts-primary);">{{ threshold }}</span>
+                                <span id="thresholdVal" class="slider-val">{{ threshold }}</span>
                             </div>
                             <input type="range" name="threshold" min="0" max="1" step="0.05" value="{{ threshold }}"
-                                   oninput="document.getElementById('thresholdVal').innerText = this.value"
-                                   style="width: 100%; accent-color: var(--ts-primary);">
+                                   oninput="document.getElementById('thresholdVal').innerText=this.value">
                         </div>
-                        
-                        <div style="display: flex; flex-direction: column; gap: 0.25rem;">
-                            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">
+                        <div>
+                            <div class="slider-row">
                                 <span>Retrieve Top-K Chunks</span>
-                                <span id="topKVal" style="color: var(--ts-primary);">{{ top_k }}</span>
+                                <span id="topKVal" class="slider-val">{{ top_k }}</span>
                             </div>
                             <input type="range" name="top_k" min="1" max="15" step="1" value="{{ top_k }}"
-                                   oninput="document.getElementById('topKVal').innerText = this.value"
-                                   style="width: 100%; accent-color: var(--ts-primary);">
+                                   oninput="document.getElementById('topKVal').innerText=this.value">
                         </div>
                     </div>
-                    
-                    <!-- RAG Switch and model -->
+
+                    <!-- RAG switch -->
                     <div style="display: flex; flex-direction: column; gap: 1rem;">
                         {% if not groq_api_key %}
-                            <div style="background-color: rgba(96, 165, 250, 0.08); border: 1px solid rgba(96, 165, 250, 0.15); padding: 0.75rem; border-radius: 6px; font-size: 0.8rem; color: var(--ts-text-secondary);">
-                                Groq API Key not detected. Please add GROQ_API_KEY to your .env file to enable Groq RAG generation.
+                            <div class="api-notice">
+                                Groq API key not detected. Add <strong>GROQ_API_KEY</strong> to your .env file to enable RAG generation.
                             </div>
                         {% else %}
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                <input type="checkbox" name="enable_rag" id="enableRag" value="true" {% if enable_rag %}checked{% endif %}
-                                       style="width: 1rem; height: 1rem; accent-color: var(--ts-primary);">
-                                <label for="enableRag" style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text); cursor: pointer;">Enable Groq RAG Answer</label>
+                            <div>
+                                <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; font-size: 0.88rem; font-weight: 600; color: var(--ts-text);">
+                                    <input type="checkbox" name="enable_rag" id="enableRag" value="true"
+                                           {% if enable_rag %}checked{% endif %}
+                                           style="width: 1rem; height: 1rem; accent-color: var(--ts-primary);">
+                                    Enable Groq RAG Answer
+                                </label>
                             </div>
-                            
-                            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
-                                <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Groq LLM Model</label>
-                                <select name="selected_model"
-                                        style="padding: 0.5rem; border-radius: 6px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                            <div>
+                                <label class="form-label">Groq LLM Model</label>
+                                <select name="selected_model" class="form-control">
                                     {% for m in ollama_models %}
                                         <option value="{{ m }}" {% if m == selected_model %}selected{% endif %}>{{ m }}</option>
                                     {% endfor %}
@@ -110,72 +310,65 @@
         </form>
     </div>
 
-    <!-- Loading Screen (shown during form submission) -->
-    <div id="searchingIndicator" style="display: none; padding: 2rem 0; text-align: center;">
-        <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1); border-top-color: var(--ts-primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem;"></div>
-        <div style="font-weight: 600; color: var(--ts-text);">Embedding query and matching vectors…</div>
+    <!-- Loading indicator -->
+    <div class="search-spinner" id="searchingIndicator">
+        <div class="spinner-ring"></div>
+        <div style="font-weight: 600; color: var(--ts-text-secondary);">Embedding query and matching vectors…</div>
     </div>
 
-    <!-- Search Results Output -->
+    <!-- Results -->
     {% if results is not none %}
         {% if results|length == 0 %}
-            <div class="ts-info-banner" style="padding: 1.5rem; border-radius: 12px; margin-top: 1rem;">
+            <div class="ts-info-banner" style="padding: 1.3rem; border-radius: 12px;">
                 <div class="ts-info-body">No matching passages found. Try rephrasing your query, selecting different sources, or lowering the similarity threshold.</div>
             </div>
         {% else %}
-            
-            <!-- 1. Groq RAG Response -->
+
+            <!-- 1. Groq RAG Answer -->
             {% if enable_rag and answer %}
-                <div style="margin-top: 2rem; margin-bottom: 2rem;">
-                    <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 0.8rem;'>🤖 Groq RAG Response</div>
-                    <div style='background: var(--ts-badge-bg); border: 1px solid var(--ts-badge-border); border-radius: 12px; padding: 1.4rem; box-shadow: var(--ts-shadow);'>
-                        <div style='font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; color: var(--ts-secondary); margin-bottom: 0.6rem;'>
-                            🤖 Groq RAG Assistant (Compiled using {{ selected_model }})
-                        </div>
-                        <div style='color: var(--ts-text); font-size: 1.02rem; line-height: 1.6; font-family: sans-serif; white-space: pre-line;'>
-                            {{ answer }}
-                        </div>
-                    </div>
+            <div style="margin-bottom: 2rem;">
+                <div class="result-section-title">🤖 Groq RAG Response</div>
+                <div class="rag-answer-card">
+                    <div class="rag-model-tag">🤖 Groq RAG · {{ selected_model }}</div>
+                    <div class="rag-body">{{ answer }}</div>
                 </div>
+            </div>
             {% endif %}
 
             <!-- 2. Relevance Score Spectrum -->
-            <div style="margin-top: 2rem; margin-bottom: 2rem;">
-                <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 0.8rem;'>📊 Relevance Score Spectrum</div>
-                <div class="ts-card" style="padding: 1.5rem; border-radius: 12px;">
+            <div style="margin-bottom: 2rem;">
+                <div class="result-section-title">📊 Relevance Score Spectrum</div>
+                <div class="ts-card" style="padding: 1.4rem; border-radius: 14px;">
                     {% for hit in results %}
-                        {% set score_pct = hit.score * 100 %}
-                        <div style="margin-bottom: 1rem; {% if loop.last %}margin-bottom: 0;{% endif %}">
-                            <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 0.3rem;">
-                                <span style="font-weight: 600;">Match {{ loop.index }} · 📄 {{ hit.source }} (Page {{ hit.page }})</span>
-                                <span style="font-weight: 700; color: var(--ts-secondary);">{{ "%.3f"|format(hit.score) }}</span>
-                            </div>
-                            <div style="background: var(--ts-inner-bg); border-radius: 8px; height: 12px; overflow: hidden; width: 100%; border: 1px solid var(--ts-border);">
-                                <div style="background: var(--ts-gradient); width: {{ score_pct }}%; height: 100%; border-radius: 8px;"></div>
-                            </div>
+                    <div class="score-bar-row">
+                        <div class="score-meta">
+                            <span>Match {{ loop.index }} · 📄 {{ hit.source }} (Page {{ hit.page }})</span>
+                            <span class="score-num">{{ "%.3f"|format(hit.score) }}</span>
                         </div>
+                        <div class="score-track">
+                            <div class="score-fill" style="width: {{ hit.score * 100 }}%;"></div>
+                        </div>
+                    </div>
                     {% endfor %}
                 </div>
             </div>
 
             <!-- 3. Retrieved Passages -->
-            <div style="margin-top: 2rem; margin-bottom: 3rem;">
-                <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 0.8rem;'>📄 Retrieved Text Passages</div>
-                <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <div style="margin-bottom: 3rem;">
+                <div class="result-section-title">📄 Retrieved Text Passages</div>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                     {% for hit in results %}
-                        <div class="ts-card" style="padding: 1.2rem; border-radius: 12px;">
-                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--ts-border); padding-bottom: 0.6rem; margin-bottom: 0.8rem; font-size: 0.82rem; color: var(--ts-text-secondary);">
-                                <span style="font-weight: 600; color: var(--ts-primary);">📄 {{ hit.source }} · Page {{ hit.page }}</span>
-                                <span>Similarity Score: <b style="color: var(--ts-secondary);">{{ "%.3f"|format(hit.score) }}</b></span>
-                            </div>
-                            <div style="font-size: 0.95rem; color: var(--ts-text); line-height: 1.6; word-break: break-word; font-family: sans-serif;">
-                                {{ hit.highlighted_text|safe }}
-                            </div>
+                    <div class="passage-card">
+                        <div class="passage-header">
+                            <span class="passage-source">📄 {{ hit.source }} · Page {{ hit.page }}</span>
+                            <span class="passage-score">Similarity: <strong>{{ "%.3f"|format(hit.score) }}</strong></span>
                         </div>
+                        <div class="passage-body">{{ hit.highlighted_text|safe }}</div>
+                    </div>
                     {% endfor %}
                 </div>
             </div>
-            
+
         {% endif %}
     {% endif %}
 {% endif %}

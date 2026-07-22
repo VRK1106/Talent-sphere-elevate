@@ -1,155 +1,247 @@
 {% extends "base.html" %}
 {% block title %}Document Explorer - Talent Sphere Elevate{% endblock %}
 
+{% block head %}
+<style>
+    .form-label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--ts-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        display: block;
+        margin-bottom: 0.4rem;
+    }
+    .form-control {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        border: 1px solid var(--ts-border);
+        background: rgba(255,255,255,0.03);
+        color: var(--ts-text);
+        outline: none;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.92rem;
+        transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+    .form-control:focus {
+        border-color: var(--ts-primary);
+        background: rgba(99,102,241,0.05);
+        box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    }
+    .form-control::placeholder { color: rgba(156,163,175,0.4); }
+
+    /* Metric mini cards */
+    .doc-metric {
+        background: rgba(255,255,255,0.025);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 14px;
+        padding: 1.2rem;
+        text-align: center;
+    }
+    .doc-metric-value {
+        font-size: 2rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, var(--ts-primary), var(--ts-accent));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        line-height: 1.1;
+    }
+    .doc-metric-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--ts-text-muted);
+        margin-top: 0.4rem;
+    }
+
+    /* Chunk card */
+    .chunk-card {
+        background: rgba(255,255,255,0.02);
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 12px;
+        padding: 1.2rem 1.4rem;
+        transition: border-color 0.2s, background 0.2s;
+    }
+    .chunk-card:hover {
+        border-color: rgba(99,102,241,0.2);
+        background: rgba(99,102,241,0.03);
+    }
+    .chunk-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.6rem;
+        font-size: 0.82rem;
+    }
+    .chunk-page {
+        font-weight: 700;
+        color: var(--ts-primary);
+    }
+    .chunk-index {
+        color: var(--ts-text-muted);
+        font-size: 0.78rem;
+    }
+    .chunk-body {
+        font-size: 0.92rem;
+        color: var(--ts-text);
+        line-height: 1.65;
+        word-break: break-word;
+    }
+
+    .section-heading {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--ts-primary);
+        margin-bottom: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="ts-hero" style="margin-bottom: 1.5rem;">
     <div class="ts-hero-title">📄 Document Explorer</div>
-    <div class="ts-hero-subtitle">
-        Browse active learning materials and document text chunks.
-    </div>
+    <div class="ts-hero-subtitle">Browse active learning materials and document text chunks.</div>
 </div>
 
 {% if not source_names %}
-    <div class="ts-info-banner" style="padding: 1.5rem; border-radius: 12px; margin-top: 1rem;">
-        <div class="ts-info-title" style="font-weight: 600;">No Documents Available</div>
-        <div class="ts-info-body" style="margin-top: 0.3rem;">No documents have been ingested yet. Please contact an administrator to upload PDF training documents.</div>
+    <div class="ts-info-banner" style="padding: 1.5rem; border-radius: 14px; margin-top: 1rem;">
+        <div class="ts-info-title" style="font-weight: 700; margin-bottom: 0.3rem;">No Documents Available</div>
+        <div class="ts-info-body">No documents have been ingested yet. Please contact an administrator to upload PDF training documents.</div>
     </div>
 {% else %}
-    <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
+    <!-- Document Selector -->
+    <div class="ts-card" style="padding: 1.5rem; border-radius: 16px; margin-bottom: 2rem;">
         <form id="docSelectorForm" method="GET" action="/documents">
-            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
-                <label style="font-size: 0.9rem; font-weight: 600; color: var(--ts-text);">Select Document to Browse</label>
-                <select name="selected_doc" onchange="this.form.submit()" 
-                        style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg, #0f172a); color: var(--ts-text); outline: none; font-size: 0.95rem;">
-                    {% for name in source_names %}
-                        <option value="{{ name }}" {% if name == selected_doc %}selected{% endif %}>{{ name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+            <label class="form-label">Select Document to Browse</label>
+            <select name="selected_doc" class="form-control" onchange="this.form.submit()">
+                {% for name in source_names %}
+                    <option value="{{ name }}" {% if name == selected_doc %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
         </form>
     </div>
 
     {% if selected_doc %}
         {% if session.get('user_role') == 'trainee' %}
-            <!-- TRAINEE VIEW -->
-            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; align-items: center; margin-bottom: 2rem;">
-                <div class="ts-metric ts-metric-card" style="padding: 1.2rem; border-radius: 12px; text-align: center; margin-bottom: 0;">
-                    <div class="ts-metric-value" style="font-size: 2.2rem; font-weight: 700;">{{ doc_details.pages }}</div>
-                    <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem;">Total Pages</div>
-                </div>
-                <div>
-                    {% if pdf_exists %}
-                        <a href="/documents/download/{{ selected_doc }}" class="btn-ts btn-ts-primary" style="padding: 1rem; font-size: 1rem;">
-                            📥 Open / Download PDF Document
-                        </a>
-                    {% else %}
-                        <div class="ts-info-banner" style="padding: 1rem; border-radius: 8px; margin: 0;">
-                            <div class="ts-info-body" style="font-size: 0.88rem;">
-                                ℹ️ The original PDF file copy is not available in the server's 'documents/' directory. Please copy the PDF file to that folder to enable downloading.
-                            </div>
-                        </div>
-                    {% endif %}
-                </div>
+        <!-- ── TRAINEE VIEW ── -->
+        <div style="display: grid; grid-template-columns: 160px 1fr; gap: 1.2rem; align-items: center; margin-bottom: 2rem;">
+            <div class="doc-metric">
+                <div class="doc-metric-value">{{ doc_details.pages }}</div>
+                <div class="doc-metric-label">Total Pages</div>
             </div>
-        {% else %}
-            <!-- ADMIN VIEW -->
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
-                <div class="ts-metric ts-metric-card" style="padding: 1.2rem; border-radius: 12px; text-align: center; margin-bottom: 0;">
-                    <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ doc_details.chunks }}</div>
-                    <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem;">Total Indexed Chunks</div>
-                </div>
-                <div class="ts-metric ts-metric-card" style="padding: 1.2rem; border-radius: 12px; text-align: center; margin-bottom: 0;">
-                    <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ doc_details.pages }}</div>
-                    <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem;">Document Pages</div>
-                </div>
-                <div class="ts-metric ts-metric-card" style="padding: 1.2rem; border-radius: 12px; text-align: center; margin-bottom: 0;">
-                    {% set avg_chunks = (doc_details.chunks / doc_details.pages) if doc_details.pages > 0 else 0 %}
-                    <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ "%.1f"|format(avg_chunks) }}</div>
-                    <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem;">Average Chunks / Page</div>
-                </div>
-            </div>
-
-            <div style="margin-bottom: 2rem;">
+            <div>
                 {% if pdf_exists %}
-                    <a href="/documents/download/{{ selected_doc }}" class="btn-ts btn-ts-secondary" style="width: auto; padding: 0.6rem 1.2rem; display: inline-flex;">
-                        📥 Open / Download PDF Document
+                    <a href="/documents/download/{{ selected_doc }}" class="btn-ts btn-ts-primary" style="padding: 1rem 1.5rem; font-size: 1rem;">
+                        📥 Open / Download PDF
                     </a>
                 {% else %}
-                    <div class="ts-info-banner" style="padding: 1rem; border-radius: 8px; margin: 0;">
+                    <div class="ts-info-banner" style="padding: 1rem; border-radius: 10px; margin: 0;">
                         <div class="ts-info-body" style="font-size: 0.88rem;">
-                            ℹ️ The original PDF file copy is not available in the server's 'documents/' directory. Please copy the PDF file to that folder to enable downloading.
+                            ℹ️ Original PDF is not available. Ask an admin to copy the file to the server's documents/ folder.
                         </div>
                     </div>
                 {% endif %}
             </div>
+        </div>
 
-            <!-- Chunk Browser -->
-            <div style="margin-top: 2rem;">
-                <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 0.6rem;'>Search & Browse Chunks</div>
-                
-                <form method="GET" action="/documents" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
-                    <input type="hidden" name="selected_doc" value="{{ selected_doc }}">
-                    <input type="text" name="query" value="{{ query }}" placeholder="Type a keyword to highlight matches..."
-                           style="flex-grow: 1; padding: 0.60rem 0.80rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg, #0f172a); color: var(--ts-text); outline: none;">
-                    <button type="submit" class="btn-ts btn-ts-primary" style="width: auto; padding: 0 1.5rem;">Filter</button>
-                    {% if query %}
-                        <a href="/documents?selected_doc={{ selected_doc }}" class="btn-ts btn-ts-secondary" style="width: auto; padding: 0 1.2rem; display: flex; align-items: center; justify-content: center; text-decoration: none;">Clear</a>
-                    {% endif %}
-                </form>
+        {% else %}
+        <!-- ── ADMIN VIEW ── -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="doc-metric">
+                <div class="doc-metric-value">{{ doc_details.chunks }}</div>
+                <div class="doc-metric-label">Indexed Chunks</div>
+            </div>
+            <div class="doc-metric">
+                <div class="doc-metric-value">{{ doc_details.pages }}</div>
+                <div class="doc-metric-label">Document Pages</div>
+            </div>
+            <div class="doc-metric">
+                {% set avg_chunks = (doc_details.chunks / doc_details.pages) if doc_details.pages > 0 else 0 %}
+                <div class="doc-metric-value">{{ "%.1f"|format(avg_chunks) }}</div>
+                <div class="doc-metric-label">Avg Chunks / Page</div>
+            </div>
+        </div>
 
+        <div style="margin-bottom: 2rem;">
+            {% if pdf_exists %}
+                <a href="/documents/download/{{ selected_doc }}" class="btn-ts btn-ts-secondary" style="width: auto; padding: 0.6rem 1.3rem; display: inline-flex;">
+                    📥 Open / Download PDF
+                </a>
+            {% else %}
+                <div class="ts-info-banner" style="padding: 1rem; border-radius: 10px; margin: 0;">
+                    <div class="ts-info-body" style="font-size: 0.88rem;">
+                        ℹ️ PDF file is not in the server's documents/ directory. Copy the file there to enable downloading.
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Chunk Browser -->
+        <div style="margin-top: 1.5rem;">
+            <div class="section-heading">🔍 Search & Browse Chunks</div>
+
+            <form method="GET" action="/documents" style="display: flex; gap: 0.6rem; margin-bottom: 1.5rem;">
+                <input type="hidden" name="selected_doc" value="{{ selected_doc }}">
+                <input type="text" name="query" value="{{ query }}" class="form-control" placeholder="Type a keyword to highlight matches…" style="flex-grow: 1; width: auto;">
+                <button type="submit" class="btn-ts btn-ts-primary" style="width: auto; padding: 0 1.4rem; white-space: nowrap;">Filter</button>
                 {% if query %}
-                    <div style="font-size: 1rem; margin-bottom: 1rem;">🔍 Found <b>{{ filtered_chunks|length }}</b> matching chunks out of {{ all_chunks|length }} total:</div>
-                    <div style="display: flex; flex-direction: column; gap: 1rem;">
-                        {% for c in filtered_chunks[:15] %}
-                        <div class="ts-card" style="padding: 1.2rem; border-radius: 12px; border: 1px solid var(--ts-border);">
-                            <div style="margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
-                                <span style="font-weight: 600; color: var(--ts-primary); font-size: 0.9rem;">📄 Page {{ c.page }}</span>
-                                <span style="font-size: 0.8rem; color: var(--ts-text-secondary);">Chunk Index: #{{ c.chunk_index }}</span>
-                            </div>
-                            <div style="font-size: 0.92rem; color: var(--ts-text); line-height: 1.6; word-break: break-word; font-family: sans-serif;">
-                                {{ c.highlighted_text|safe }}
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% if filtered_chunks|length > 15 %}
-                        <div class="ts-info-banner" style="padding: 1rem; border-radius: 8px; margin-top: 1rem;">
-                            <div class="ts-info-body">Showing first 15 matches. Refine your keyword filter to see other specific content chunks.</div>
-                        </div>
-                    {% endif %}
-                {% else %}
-                    <!-- Page browser when no filter query -->
-                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
-                        <form method="GET" action="/documents" style="display: flex; align-items: center; gap: 1rem;">
-                            <input type="hidden" name="selected_doc" value="{{ selected_doc }}">
-                            <span style="font-size: 0.9rem; color: var(--ts-text);">Select Page to Browse</span>
-                            <select name="page" onchange="this.form.submit()" 
-                                    style="padding: 0.5rem; border-radius: 6px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
-                                {% for p in page_list %}
-                                    <option value="{{ p }}" {% if p == selected_page %}selected{% endif %}>Page {{ p }}</option>
-                                {% endfor %}
-                            </select>
-                        </form>
-                        <div style="font-size: 0.9rem; color: var(--ts-text-secondary);">
-                            Page <b>{{ selected_page }}</b> contains <b>{{ page_chunks|length }}</b> indexed chunks.
-                        </div>
-                    </div>
+                    <a href="/documents?selected_doc={{ selected_doc }}" class="btn-ts btn-ts-secondary" style="width: auto; padding: 0 1.2rem; display: flex; align-items: center; text-decoration: none; white-space: nowrap;">Clear</a>
+                {% endif %}
+            </form>
 
-                    <div style="display: flex; flex-direction: column; gap: 1rem;">
-                        {% for c in page_chunks %}
-                        <div class="ts-card" style="padding: 1.2rem; border-radius: 12px; border: 1px solid var(--ts-border);">
-                            <div style="margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
-                                <span style="font-weight: 600; color: var(--ts-primary); font-size: 0.9rem;">📄 Page {{ c.page }}</span>
-                                <span style="font-size: 0.8rem; color: var(--ts-text-secondary);">Chunk Index: #{{ c.chunk_index }}</span>
-                            </div>
-                            <div style="font-size: 0.92rem; color: var(--ts-text); line-height: 1.6; word-break: break-word; font-family: sans-serif;">
-                                {{ c.formatted_text|safe }}
-                            </div>
+            {% if query %}
+                <div style="font-size: 0.92rem; margin-bottom: 1rem; color: var(--ts-text-secondary);">
+                    🔍 <strong style="color: var(--ts-text);">{{ filtered_chunks|length }}</strong> matching chunks out of {{ all_chunks|length }} total
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    {% for c in filtered_chunks[:15] %}
+                    <div class="chunk-card">
+                        <div class="chunk-header">
+                            <span class="chunk-page">📄 Page {{ c.page }}</span>
+                            <span class="chunk-index">Chunk #{{ c.chunk_index }}</span>
                         </div>
-                        {% endfor %}
+                        <div class="chunk-body">{{ c.highlighted_text|safe }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if filtered_chunks|length > 15 %}
+                    <div class="ts-info-banner" style="padding: 0.9rem; border-radius: 10px; margin-top: 1rem;">
+                        <div class="ts-info-body">Showing first 15 matches. Refine your filter to see more specific content.</div>
                     </div>
                 {% endif %}
-            </div>
+            {% else %}
+                <!-- Page browser -->
+                <form method="GET" action="/documents" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.2rem;">
+                    <input type="hidden" name="selected_doc" value="{{ selected_doc }}">
+                    <span style="font-size: 0.88rem; color: var(--ts-text-secondary); white-space: nowrap;">Select Page</span>
+                    <select name="page" class="form-control" onchange="this.form.submit()" style="width: auto; min-width: 130px;">
+                        {% for p in page_list %}
+                            <option value="{{ p }}" {% if p == selected_page %}selected{% endif %}>Page {{ p }}</option>
+                        {% endfor %}
+                    </select>
+                    <span style="font-size: 0.85rem; color: var(--ts-text-muted); white-space: nowrap;">
+                        → <strong>{{ page_chunks|length }}</strong> indexed chunks
+                    </span>
+                </form>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    {% for c in page_chunks %}
+                    <div class="chunk-card">
+                        <div class="chunk-header">
+                            <span class="chunk-page">📄 Page {{ c.page }}</span>
+                            <span class="chunk-index">Chunk #{{ c.chunk_index }}</span>
+                        </div>
+                        <div class="chunk-body">{{ c.formatted_text|safe }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
         {% endif %}
     {% endif %}
 {% endif %}

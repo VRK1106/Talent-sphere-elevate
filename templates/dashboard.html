@@ -13,31 +13,39 @@
     }
     
     .tabs-container {
-        display: flex;
-        border-bottom: 1px solid var(--ts-border);
+        display: inline-flex;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--ts-border);
+        padding: 5px;
+        border-radius: var(--ts-radius, 12px);
         margin-top: 1.5rem;
         margin-bottom: 1.5rem;
-        gap: 1rem;
+        gap: 0.25rem;
+        width: max-content;
+        max-width: 100%;
+        box-sizing: border-box;
         overflow-x: auto;
     }
     .tab-link {
         background: none;
         border: none;
         color: var(--ts-text-secondary);
-        padding: 0.75rem 1rem;
-        font-size: 0.95rem;
+        padding: 0.6rem 1.25rem;
+        font-size: 0.88rem;
         font-weight: 600;
         cursor: pointer;
-        border-bottom: 2px solid transparent;
-        transition: all 0.2s ease;
+        border-radius: calc(var(--ts-radius, 12px) - 6px);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         white-space: nowrap;
     }
     .tab-link:hover {
-        color: var(--ts-primary);
+        color: var(--ts-text);
+        background: rgba(255,255,255,0.03);
     }
     .tab-link.active {
-        color: var(--ts-primary);
-        border-bottom-color: var(--ts-primary);
+        color: #FFFFFF !important;
+        background: var(--ts-gradient) !important;
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2);
     }
     .tab-content {
         display: none;
@@ -51,27 +59,54 @@
     /* Directory tables styling */
     .ts-table {
         width: 100%;
-        border-collapse: collapse;
+        border-collapse: separate;
+        border-spacing: 0;
         margin-top: 0.5rem;
         font-size: 0.9rem;
     }
     .ts-table th {
         text-align: left;
-        padding: 0.75rem 1rem;
+        padding: 0.85rem 1rem;
         color: var(--ts-text-secondary);
+        background: rgba(255, 255, 255, 0.01);
         border-bottom: 2px solid var(--ts-border);
         font-weight: 600;
     }
     .ts-table td {
-        padding: 0.75rem 1rem;
+        padding: 0.85rem 1rem;
         border-bottom: 1px solid var(--ts-border);
         color: var(--ts-text);
+        transition: background-color 0.2s ease;
     }
-    .ts-table tr:hover {
-        background-color: rgba(255, 255, 255, 0.02);
+    .ts-table tr:last-child td {
+        border-bottom: none;
     }
-    body.ts-light-mode .ts-table tr:hover {
-        background-color: rgba(0, 0, 0, 0.01);
+    .ts-table tr:hover td {
+        background-color: rgba(99, 102, 241, 0.03);
+    }
+    body.ts-light-mode .tabs-container {
+        background: rgba(0, 0, 0, 0.02);
+        border-color: rgba(0, 0, 0, 0.08);
+    }
+    body.ts-light-mode .tab-link:hover {
+        background: rgba(0, 0, 0, 0.02);
+    }
+    body.ts-light-mode .ts-table tr:hover td {
+        background-color: rgba(99, 102, 241, 0.01);
+    }
+    .ts-metric-card {
+        text-align: center !important;
+        cursor: pointer !important;
+        background: var(--ts-surface) !important;
+        border: 1px solid var(--ts-border) !important;
+        border-radius: var(--ts-radius, 16px) !important;
+        padding: 1.2rem 1rem !important;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    .ts-metric-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--ts-border-hover) !important;
+        box-shadow: var(--ts-shadow-hover), var(--ts-shadow-glow) !important;
     }
 </style>
 {% endblock %}
@@ -109,38 +144,38 @@
 
     <!-- 8 Metrics Grid -->
     <div class="ts-metrics-grid">
-        <div class="ts-metric ts-metric-card" onclick="switchTabDirectly('directory')" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+        <div class="ts-metric-card" onclick="switchTabDirectly('directory')">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.trainees_count }}</div>
             <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">Trainees</div>
         </div>
-        <div class="ts-metric ts-metric-card" onclick="switchTabDirectly('directory')" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+        <div class="ts-metric-card" onclick="switchTabDirectly('directory')">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.active_now }}</div>
             <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-secondary);">Active Now</div>
         </div>
-        <div class="ts-metric ts-metric-card" onclick="window.location.href='/documents'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+        <div class="ts-metric-card" onclick="window.location.href='/documents'">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.doc_count }}</div>
             <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-accent);">Documents</div>
         </div>
-        <div class="ts-metric ts-metric-card" onclick="window.location.href='/documents'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+        <div class="ts-metric-card" onclick="window.location.href='/documents'">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.chunk_count }}</div>
             <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">Knowledge Chunks</div>
         </div>
     </div>
     
     <div class="ts-metrics-grid">
-        <div class="ts-metric ts-metric-card" onclick="window.location.href='/assistant'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+        <div class="ts-metric-card" onclick="window.location.href='/assistant'">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.total_sessions }}</div>
             <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-secondary);">Chat Sessions</div>
         </div>
-        <div class="ts-metric ts-metric-card" onclick="window.location.href='/assistant'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+        <div class="ts-metric-card" onclick="window.location.href='/assistant'">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.total_messages }}</div>
             <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-accent);">Total Messages</div>
         </div>
-        <div class="ts-metric ts-metric-card" onclick="window.location.href='/exams'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+        <div class="ts-metric-card" onclick="window.location.href='/exams'">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.exams_count }}</div>
             <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">Exams Created</div>
         </div>
-        <div class="ts-metric ts-metric-card" onclick="switchTabDirectly('performance')" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+        <div class="ts-metric-card" onclick="switchTabDirectly('performance')">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ "%.1f"|format(admin_stats.avg_score_pct) }}%</div>
             <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-secondary);">Avg Exam Score</div>
         </div>
@@ -340,19 +375,19 @@
 
     <!-- 4 Metrics Grid -->
     <div class="ts-metrics-grid">
-        <div class="ts-metric ts-metric-card" onclick="window.location.href='/exams'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+        <div class="ts-metric-card" onclick="window.location.href='/exams'">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ trainee_stats.pending_count }}</div>
             <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">Pending Exams</div>
         </div>
-        <div class="ts-metric ts-metric-card" onclick="window.location.href='/exams'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+        <div class="ts-metric-card" onclick="window.location.href='/exams'">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ trainee_stats.completed_count }}</div>
             <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-secondary);">Completed Exams</div>
         </div>
-        <div class="ts-metric ts-metric-card" onclick="switchTabDirectly('trainee-progress')" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+        <div class="ts-metric-card" onclick="switchTabDirectly('trainee-progress')">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ "%.1f"|format(trainee_stats.personal_avg) }}%</div>
             <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-accent);">My Average Score</div>
         </div>
-        <div class="ts-metric ts-metric-card" onclick="window.location.href='/assistant'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+        <div class="ts-metric-card" onclick="window.location.href='/assistant'">
             <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ trainee_stats.chat_count }}</div>
             <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">AI Chat Sessions</div>
         </div>

@@ -389,12 +389,12 @@
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-            padding: 0.5rem 1rem;
+            padding: 0.55rem 1.25rem;
             font-size: 0.875rem;
-            font-weight: 500;
-            border-radius: 8px;
+            font-weight: 600;
+            border-radius: var(--ts-radius, 12px);
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             border: 1px solid var(--ts-border);
             background-color: transparent;
             color: var(--ts-text);
@@ -402,29 +402,38 @@
             width: 100%;
             box-sizing: border-box;
         }
+        .btn-ts:hover {
+            transform: translateY(-1px);
+        }
         .btn-ts-primary {
-            background-color: var(--ts-primary, #4F46E5);
-            border-color: var(--ts-primary, #4F46E5);
+            background: var(--ts-gradient);
+            border-color: transparent;
             color: #FFFFFF !important;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.25);
         }
         .btn-ts-primary:hover {
-            background-color: var(--ts-primary-hover, #4338CA);
-            border-color: var(--ts-primary-hover, #4338CA);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+            filter: brightness(1.1);
         }
         .btn-ts-secondary {
-            background-color: rgba(255, 255, 255, 0.05);
+            background-color: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--ts-border);
             color: var(--ts-text);
         }
         .btn-ts-secondary:hover {
-            background-color: rgba(255, 255, 255, 0.1);
+            background-color: rgba(255, 255, 255, 0.08);
+            border-color: var(--ts-border-hover);
+            box-shadow: var(--ts-shadow-glow);
         }
         
         body.ts-light-mode .btn-ts-secondary {
-            background-color: rgba(0, 0, 0, 0.05);
+            background-color: rgba(0, 0, 0, 0.03);
+            border-color: rgba(0, 0, 0, 0.08);
             color: var(--ts-text);
         }
         body.ts-light-mode .btn-ts-secondary:hover {
-            background-color: rgba(0, 0, 0, 0.1);
+            background-color: rgba(0, 0, 0, 0.06);
+            border-color: rgba(99, 102, 241, 0.3);
         }
         
         /* Section Dividers */
