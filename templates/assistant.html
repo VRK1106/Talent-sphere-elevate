@@ -411,19 +411,37 @@
                     </div>
                     {% endif %}
                     
-                    <!-- Card 2: Performance Summary -->
+                    {% if session.get('user_role') != 'admin' %}
+                    <!-- Card 2: Performance Summary (Trainee only) -->
                     <div class="welcome-action-card" onclick="sendFollowupText('How is my performance?')" style="cursor: pointer; background: var(--ts-card-bg); border: 1px solid var(--ts-border); padding: 1.5rem; border-radius: 12px; transition: all 0.3s ease; text-align: left; display: flex; flex-direction: column; gap: 0.5rem; height: 100%;">
                         <div style="font-size: 1.5rem;">📊</div>
                         <div style="font-size: 0.92rem; font-weight: 700; color: var(--ts-text-heading);">My Progress</div>
                         <div style="font-size: 0.78rem; color: var(--ts-text-secondary); line-height: 1.4;">Review your study actions, session stats, and overall exam completion.</div>
                     </div>
+                    {% else %}
+                    <!-- Card 2: Create Exam Assessment (Admin only) -->
+                    <div class="welcome-action-card" onclick="sendFollowupText('Help me create a new exam.')" style="cursor: pointer; background: var(--ts-card-bg); border: 1px solid var(--ts-border); padding: 1.5rem; border-radius: 12px; transition: all 0.3s ease; text-align: left; display: flex; flex-direction: column; gap: 0.5rem; height: 100%;">
+                        <div style="font-size: 1.5rem;">📝</div>
+                        <div style="font-size: 0.92rem; font-weight: 700; color: var(--ts-text-heading);">Create Exam</div>
+                        <div style="font-size: 0.78rem; color: var(--ts-text-secondary); line-height: 1.4;">Design and compile a new exam using our structured, interactive AI wizard.</div>
+                    </div>
+                    {% endif %}
                     
-                    <!-- Card 3: Weakness analysis -->
+                    {% if session.get('user_role') != 'admin' %}
+                    <!-- Card 3: Weakness analysis (Trainee only) -->
                     <div class="welcome-action-card" onclick="sendFollowupText('What are my weakest areas and how do I study them?')" style="cursor: pointer; background: var(--ts-card-bg); border: 1px solid var(--ts-border); padding: 1.5rem; border-radius: 12px; transition: all 0.3s ease; text-align: left; display: flex; flex-direction: column; gap: 0.5rem; height: 100%;">
                         <div style="font-size: 1.5rem;">💡</div>
                         <div style="font-size: 0.92rem; font-weight: 700; color: var(--ts-text-heading);">Weak Area Review</div>
                         <div style="font-size: 0.78rem; color: var(--ts-text-secondary); line-height: 1.4;">Identify subjects where you scored under 70% in exams.</div>
                     </div>
+                    {% else %}
+                    <!-- Card 3: Create Announcement (Admin only) -->
+                    <div class="welcome-action-card" onclick="sendFollowupText('Help me write a new announcement.')" style="cursor: pointer; background: var(--ts-card-bg); border: 1px solid var(--ts-border); padding: 1.5rem; border-radius: 12px; transition: all 0.3s ease; text-align: left; display: flex; flex-direction: column; gap: 0.5rem; height: 100%;">
+                        <div style="font-size: 1.5rem;">📢</div>
+                        <div style="font-size: 0.92rem; font-weight: 700; color: var(--ts-text-heading);">Write Announcement</div>
+                        <div style="font-size: 0.78rem; color: var(--ts-text-secondary); line-height: 1.4;">Draft custom announcements with targeted distributions for specific courses.</div>
+                    </div>
+                    {% endif %}
                 </div>
                 
                 <!-- Hover effect styles -->
