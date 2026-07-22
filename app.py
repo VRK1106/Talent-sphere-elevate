@@ -2110,7 +2110,7 @@ def assistant_suggestions():
                     model_name=model_name,
                     system_instruction="You are a study suggestion assistant. You output ONLY valid JSON arrays of strings."
                 )
-                from src.llm import clean_json_response
+                # clean_json_response is defined locally in app.py
                 cleaned = clean_json_response(resp)
                 prompts = []
                 try:
@@ -2297,7 +2297,7 @@ def chat_stream():
             followups = []
             if not gen_state.get("stop") and final_text:
                 try:
-                    from src.llm import generate_chat_answer, list_local_models, clean_json_response
+                    from src.llm import generate_chat_answer, list_local_models
                     local_models = list_local_models()
                     model_name = local_models[0] if local_models else "llama3-8b-8192"
                     followup_prompt = (

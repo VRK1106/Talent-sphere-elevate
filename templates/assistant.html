@@ -300,84 +300,110 @@
     <span style="font-size: 0.85rem; color: var(--ts-text-secondary); font-weight: 500;">Interactive Learning Coach</span>
 </div>
 
-<!-- Config Bar -->
-<div class="ts-card" style="padding: 1rem; border-radius: 12px; margin-top: 0.5rem;">
-    <div style="display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
-        <div style="display: flex; gap: 1.5rem; align-items: center; flex-grow: 1;">
-            <div style="display: flex; flex-direction: column; gap: 0.3rem; min-width: 200px;">
-                <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text-secondary);">Groq AI Model</label>
-                {% if not groq_api_key %}
-                    <div style="font-size: 0.85rem; color: #f87171;">⚠️ Groq API Key missing!</div>
-                {% else %}
-                    <select id="chatModel" style="padding: 0.45rem; border-radius: 6px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none; font-size: 0.88rem; width: 100%;">
-                        {% for m in ollama_models %}
-                            <option value="{{ m }}" {% if "llama" in m.lower() %}selected{% endif %}>{{ m }}</option>
-                        {% endfor %}
-                    </select>
-                {% endif %}
-            </div>
-            
-            {% if session.get('user_role') != 'admin' %}
-            <div style="display: flex; flex-direction: column; gap: 0.3rem;">
-                <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text-secondary);">&nbsp;</label>
-                <button type="button" class="btn-ts btn-ts-secondary" onclick="toggleUploadCard()" style="padding: 0.45rem 1rem; font-size: 0.85rem; display: flex; align-items: center; gap: 0.3rem;">
-                    📎 Session Documents
-                </button>
-            </div>
-            {% endif %}
-        </div>
+<!-- ── Slim Top Strip: model selector + actions ── -->
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+            padding: 0.45rem 0.75rem; border-radius: 10px; margin-top: 0.4rem; flex-shrink: 0;
+            background: rgba(255,255,255,0.03); border: 1px solid var(--ts-border);">
 
-        <div style="display: flex; align-items: flex-end; height: 100%;">
-            <form action="/assistant/clear" method="POST" onsubmit="return confirm('Are you sure you want to clear this conversation history?')">
-                <button type="submit" class="btn-ts btn-ts-secondary" style="padding: 0.45rem 1rem; font-size: 0.85rem; margin-top: auto;">
-                    🧹 Clear Messages
-                </button>
-            </form>
-        </div>
+    <!-- Left: model picker -->
+    <div style="display: flex; align-items: center; gap: 0.6rem; min-width: 0; flex: 1;">
+        <span style="font-size: 0.78rem; font-weight: 600; color: var(--ts-text-secondary); white-space: nowrap;">🤖 Model</span>
+        {% if not groq_api_key %}
+            <span style="font-size: 0.78rem; color: #f87171;">⚠️ Groq API key missing</span>
+        {% else %}
+            <select id="chatModel"
+                    style="padding: 0.28rem 0.5rem; border-radius: 6px; border: 1px solid var(--ts-border);
+                           background: var(--ts-input-bg); color: var(--ts-text); font-size: 0.82rem;
+                           outline: none; max-width: 240px; flex: 1;">
+                {% for m in ollama_models %}
+                    <option value="{{ m }}" {% if "llama" in m.lower() %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+            </select>
+        {% endif %}
+    </div>
+
+    <!-- Right: action buttons -->
+    <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
+        {% if session.get('user_role') != 'admin' %}
+        <button type="button" id="ephemeralToggleBtn" onclick="toggleEphemeralDrawer()"
+                style="display: flex; align-items: center; gap: 0.4rem; padding: 0.28rem 0.7rem;
+                       border-radius: 6px; border: 1px solid rgba(99,102,241,0.4);
+                       background: rgba(99,102,241,0.08); color: var(--ts-primary,#6366f1);
+                       font-size: 0.8rem; font-weight: 600; cursor: pointer; white-space: nowrap;">
+            📎 <span id="ephemeralBtnLabel">Session Docs</span>
+            <span id="ephemeralChevron" style="transition: transform 0.25s ease;">▾</span>
+        </button>
+        {% endif %}
+        <form action="/assistant/clear" method="POST"
+              onsubmit="return confirm('Clear this conversation?')" style="margin: 0;">
+            <button type="submit"
+                    style="display: flex; align-items: center; gap: 0.3rem; padding: 0.28rem 0.7rem;
+                           border-radius: 6px; border: 1px solid var(--ts-border);
+                           background: transparent; color: var(--ts-text-secondary); font-size: 0.8rem;
+                           cursor: pointer; white-space: nowrap;">
+                🧹 Clear
+            </button>
+        </form>
     </div>
 </div>
 
 {% if session.get('user_role') != 'admin' %}
-<!-- Ephemeral Document Uploader Card (Visible only in Ephemeral Doc Q&A Mode) -->
-<div id="ephemeralUploadCard" class="ts-card" style="display: none; padding: 1.2rem; border-radius: 12px; margin-top: 0.5rem; border-color: rgba(99, 102, 241, 0.35);">
-    <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-        <div style="flex-grow: 1;">
-            <div style="font-size: 0.95rem; font-weight: 700; color: var(--ts-text-heading); display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem;">
-                📎 <span>Upload Ephemeral Session Document</span>
+<!-- ── Ephemeral Collapsible Drawer ── -->
+<div id="ephemeralDrawer"
+     style="overflow: hidden; max-height: 0; transition: max-height 0.3s cubic-bezier(0.4,0,0.2,1),
+            opacity 0.25s ease; opacity: 0; flex-shrink: 0;">
+    <div style="margin-top: 0.35rem; padding: 0.85rem 1rem; border-radius: 10px;
+                border: 1px solid rgba(99,102,241,0.3); background: rgba(99,102,241,0.05);">
+
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.6rem;">
+            <div>
+                <div style="font-size: 0.88rem; font-weight: 700; color: var(--ts-text-heading); display: flex; align-items: center; gap: 0.4rem;">
+                    📎 Ephemeral Session Documents
+                </div>
+                <p style="font-size: 0.75rem; color: var(--ts-text-secondary); margin: 0.15rem 0 0;">
+                    Uploaded PDFs are embedded in-memory for this session only — deleted on logout.
+                </p>
             </div>
-            <p style="font-size: 0.8rem; color: var(--ts-text-secondary); margin: 0;">
-                These documents are embedded exclusively in-memory for your current session, and are permanently deleted when you log out or close the session.
-            </p>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <input type="file" id="ephemeralFileInput" accept=".pdf" style="display: none;" onchange="uploadEphemeralFile()">
+                <button type="button"
+                        onclick="document.getElementById('ephemeralFileInput').click()"
+                        style="display: flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.9rem;
+                               border-radius: 7px; border: none; background: var(--ts-primary,#4f46e5);
+                               color: #fff; font-size: 0.82rem; font-weight: 600; cursor: pointer;">
+                    📤 Upload PDF
+                </button>
+            </div>
         </div>
-        <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <input type="file" id="ephemeralFileInput" accept=".pdf" style="display: none;" onchange="uploadEphemeralFile()">
-            <button type="button" class="btn-ts btn-ts-primary" style="width: auto; padding: 0.5rem 1.2rem; font-size: 0.85rem;" onclick="document.getElementById('ephemeralFileInput').click()">
-                📤 Upload PDF
-            </button>
-        </div>
-    </div>
-    
-    <!-- Upload Status Overlay / Banner -->
-    <div id="ephemeralUploadStatus" style="display: none; margin-top: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.82rem;"></div>
-    
-    <!-- Active documents list -->
-    <div style="margin-top: 0.75rem; border-top: 1px dashed var(--ts-border); padding-top: 0.75rem;">
-        <div style="font-size: 0.8rem; font-weight: 600; color: var(--ts-text-secondary); margin-bottom: 0.4rem;">Session Active Documents:</div>
-        <div id="ephemeralDocsList" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-            {% if not ephemeral_docs %}
-                <span id="noEphemeralDocs" style="font-size: 0.8rem; color: var(--ts-text-muted); font-style: italic;">No ephemeral documents uploaded for this session yet.</span>
-            {% else %}
-                {% for doc in ephemeral_docs %}
-                    <span class="ts-profile-badge" style="font-size: 0.75rem; padding: 0.2rem 0.5rem; background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.25); display: inline-flex; align-items: center; gap: 0.3rem;">
-                        📄 {{ doc }}
-                        <a href="javascript:void(0)" onclick="deleteEphemeralFile('{{ doc }}')" style="color: #ef4444; font-weight: bold; text-decoration: none; margin-left: 0.2rem; cursor: pointer;" title="Remove this document">×</a>
-                    </span>
-                {% endfor %}
-            {% endif %}
+
+        <!-- Upload status -->
+        <div id="ephemeralUploadStatus" style="display: none; margin-bottom: 0.5rem; padding: 0.4rem 0.65rem;
+             border-radius: 6px; font-size: 0.8rem;"></div>
+
+        <!-- Active docs list -->
+        <div style="border-top: 1px dashed var(--ts-border); padding-top: 0.5rem;">
+            <div style="font-size: 0.72rem; font-weight: 600; color: var(--ts-text-secondary); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.04em;">Active in this session</div>
+            <div id="ephemeralDocsList" style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+                {% if not ephemeral_docs %}
+                    <span id="noEphemeralDocs" style="font-size: 0.78rem; color: var(--ts-text-muted); font-style: italic;">No PDFs uploaded yet.</span>
+                {% else %}
+                    {% for doc in ephemeral_docs %}
+                        <span style="display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem;
+                                     padding: 0.2rem 0.5rem; border-radius: 5px;
+                                     background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25);
+                                     color: var(--ts-text);">
+                            📄 {{ doc }}
+                            <a href="javascript:void(0)" onclick="deleteEphemeralFile('{{ doc }}')"
+                               style="color: #ef4444; font-weight: bold; text-decoration: none; cursor: pointer; margin-left: 2px;">×</a>
+                        </span>
+                    {% endfor %}
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
 {% endif %}
+
 
 <!-- Chat Window -->
 <div class="chat-container">
@@ -706,35 +732,40 @@
         });
         await postRenderProcessing();
         
-        // Show/hide ephemeral document manager card on mode changes
-        const uploadCard = document.getElementById('ephemeralUploadCard');
-        
-        // Auto-select mode based on query param or saved state in sessionStorage
-        const urlParams = new URLSearchParams(window.location.search);
-        // Toggle the Collapsible Session Documents Upload panel
-        window.toggleUploadCard = function() {
-            const card = document.getElementById('ephemeralUploadCard');
-            if (card) {
-                if (card.style.display === 'none') {
-                    card.style.display = 'block';
-                    sessionStorage.setItem('ts_upload_card_open', 'true');
-                } else {
-                    card.style.display = 'none';
-                    sessionStorage.setItem('ts_upload_card_open', 'false');
-                }
+        // ── Ephemeral Drawer toggle ──
+        let _ephemeralOpen = false;
+
+        window.toggleEphemeralDrawer = function() {
+            const drawer  = document.getElementById('ephemeralDrawer');
+            const chevron = document.getElementById('ephemeralChevron');
+            if (!drawer) return;
+            _ephemeralOpen = !_ephemeralOpen;
+            if (_ephemeralOpen) {
+                drawer.style.maxHeight  = '320px';
+                drawer.style.opacity    = '1';
+                if (chevron) chevron.style.transform = 'rotate(180deg)';
+                sessionStorage.setItem('ts_ephemeral_open', 'true');
+            } else {
+                drawer.style.maxHeight  = '0';
+                drawer.style.opacity    = '0';
+                if (chevron) chevron.style.transform = 'rotate(0deg)';
+                sessionStorage.setItem('ts_ephemeral_open', 'false');
             }
         };
 
-        // Initialize state on page load
-        const cardOpen = sessionStorage.getItem('ts_upload_card_open');
-        if (uploadCard && USER_ROLE !== 'admin') {
-            if (cardOpen === 'true') {
-                uploadCard.style.display = 'block';
-            } else {
-                uploadCard.style.display = 'none';
+        // Restore drawer state on page load
+        if (sessionStorage.getItem('ts_ephemeral_open') === 'true') {
+            const drawer  = document.getElementById('ephemeralDrawer');
+            const chevron = document.getElementById('ephemeralChevron');
+            if (drawer) {
+                _ephemeralOpen = true;
+                drawer.style.maxHeight = '320px';
+                drawer.style.opacity   = '1';
+                if (chevron) chevron.style.transform = 'rotate(180deg)';
             }
         }
     });
+
 
     function handleKeyPress(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
