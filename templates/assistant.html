@@ -499,6 +499,17 @@
                 let codeText = codeEl.textContent;
                 codeText = codeText.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').trim();
                 
+                // Client-side automatic Mermaid syntax repair:
+                // 1. Fix invalid link labels with double arrows like "-->|Text|>" to "-->|Text|"
+                codeText = codeText.replace(/-->\s*\|([^|]+)\|\s*>/g, '-->|$1|');
+                codeText = codeText.replace(/--\s*\|([^|]+)\|\s*>/g, '-->|$1|');
+                codeText = codeText.replace(/->\s*\|([^|]+)\|\s*>/g, '-->|$1|');
+                
+                // 2. Wrap unquoted node labels in double quotes (e.g. A[Label Text] to A["Label Text"])
+                codeText = codeText.replace(/([A-Za-z0-9_]+)\[([^"\]]+)\]/g, '$1["$2"]');
+                codeText = codeText.replace(/([A-Za-z0-9_]+)\(([^"\/)]+)\)/g, '$1("$2")');
+                codeText = codeText.replace(/([A-Za-z0-9_]+)\{\{([^"\}]+)\}\}/g, '$1{{"$2"}}');
+
                 // If it doesn't start with a valid Mermaid keyword, prepend graph TD as a default
                 const firstWord = codeText.split(/\s+/)[0];
                 const validKeywords = ['graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 'stateDiagram', 'erDiagram', 'gantt', 'pie', 'gitGraph', 'journey', 'mindmap', 'timeline', 'quadrantChart', 'sankey-beta', 'xychart-beta', 'block-beta'];
