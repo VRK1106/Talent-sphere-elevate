@@ -2068,7 +2068,8 @@ def assistant():
         active_messages=active_messages,
         user_sessions=user_sessions,
         active_chat_session_id=active_id,
-        ephemeral_docs=session.get('ephemeral_docs', [])
+        ephemeral_docs=session.get('ephemeral_docs', []),
+        groq_api_key=GROQ_API_KEY
     )
 
 @app.route('/assistant/suggestions', methods=['GET'])
