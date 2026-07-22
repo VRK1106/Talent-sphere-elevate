@@ -248,14 +248,43 @@
 
     /* Mermaid SVG scaling and responsiveness */
     .mermaid {
-        display: flex;
-        justify-content: center;
+        display: block;
         width: 100%;
+        max-height: 380px;
+        overflow: auto;
+        border: 1px solid var(--ts-border);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.015);
+        padding: 0.75rem;
+        margin-bottom: 1rem;
     }
     .mermaid svg {
         max-width: 100% !important;
         height: auto !important;
+        max-height: 350px !important;
         background: transparent !important;
+    }
+
+    /* Table styling with high-visibility borders */
+    .message-text table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-top: 0.75rem;
+        margin-bottom: 0.75rem;
+        font-size: 0.88rem;
+    }
+    .message-text th, .message-text td {
+        border: 1.5px solid rgba(255, 255, 255, 0.25) !important;
+        padding: 0.5rem 0.75rem;
+        text-align: left;
+    }
+    .message-text th {
+        background-color: rgba(99, 102, 241, 0.15);
+        color: var(--ts-text-heading);
+        font-weight: 700;
+    }
+    .message-text tr:nth-child(even) {
+        background-color: rgba(255, 255, 255, 0.02);
     }
 </style>
 <!-- Markdown Parser CDN for client-side streaming rendering -->
@@ -519,12 +548,6 @@
 
                 const container = document.createElement('div');
                 container.className = 'mermaid';
-                container.style.background = 'rgba(255,255,255,0.02)';
-                container.style.padding = '1rem';
-                container.style.borderRadius = '8px';
-                container.style.border = '1px solid var(--ts-border)';
-                container.style.overflowX = 'auto';
-                container.style.marginBottom = '1rem';
                 
                 const id = 'mermaid-render-' + Math.floor(Math.random() * 1000000);
                 
