@@ -190,7 +190,9 @@ def generate_rag_answer_stream(query: str, chunks: list[dict[str, Any]], model_n
         "If the answer cannot be found in the context, state that you do not know based on the provided documents. "
         "Do not make up facts. "
         "Do NOT include any code blocks, programming snippets, or code examples in your response unless the user explicitly asks for code or programming implementation.\n\n"
-        "Cite your sources using bracketed numbers corresponding to the context passages (e.g. [1], [2]) where appropriate."
+        "Cite your sources using bracketed numbers corresponding to the context passages (e.g. [1], [2]) where appropriate.\n"
+        "When presenting tabular or structured list data, always format it as a markdown table.\n"
+        "When presenting sequential, process, workflow, or step-by-step data, always format/render it as a Mermaid.js flowchart (enclosed in a '```mermaid' code block, e.g. using 'graph TD' or 'flowchart LR')."
     )
 
     try:
@@ -475,10 +477,18 @@ def transcribe_audio_whisper(audio_bytes: bytes, mime_type: str = "audio/webm") 
         raise RuntimeError(f"Whisper transcription failed: {exc}") from exc
 
 
-def generate_ephemeral_rag_answer_stream(query: str, chunks: list[dict[str, Any]], model_name: str):
-    """Yield chunks of text generated using retrieved document contexts, strictly retrieval-only (no fallback)."""
+def generate_ephemeral_rag_answer_stream(query: str, chunks: list[dict[str, Any]], model_name: str, is_admin: bool = False):
+    """Yield chunks of text generated using retrieved document contexts, strictly retrieval-only (no fallback) unless is_admin is True."""
     if not chunks:
-        yield "I am sorry, but the answer to your question is not present in the provided document."
+        if is_admin:
+            # Fall back to general chat answer
+            system_prompt = (
+                "You are a helpful learning coach. Provide clear, professional explanations or advice. "
+                "You may fall back to your general model knowledge because no document context is currently available."
+            )
+            yield from generate_chat_answer_stream(query, model_name, system_prompt)
+        else:
+            yield "I am sorry, but the answer to your question is not present in the provided document."
         return
 
     if not GROQ_API_KEY:
@@ -495,11 +505,24 @@ def generate_ephemeral_rag_answer_stream(query: str, chunks: list[dict[str, Any]
 
     context_str = "\n\n".join(context_parts)
 
-    system_instruction = (
-        "You are a strict retrieval-only Q&A assistant for 'Talent Sphere Elevate'. Your task is to answer the user's query using ONLY the provided document context below.\n"
-        "If the answer cannot be found in the context, you MUST respond exactly with: 'I am sorry, but the answer to your question is not present in the provided document.'\n"
-        "Do NOT make up facts, and do NOT fall back to your general model knowledge under any circumstances. Keep your answer factual, direct, and fully based on the context."
-    )
+    if is_admin:
+        system_instruction = (
+            "You are a helpful learning coach for 'Talent Sphere Elevate'. Answer the user's query. "
+            "Use the provided context passages below to guide your answer, but you are allowed to supplement "
+            "it or fall back to your general model knowledge if the context is insufficient or if the query requires it.\n"
+            "Cite your sources using bracketed numbers corresponding to the context passages (e.g. [1], [2]) where appropriate.\n"
+            "When presenting tabular or structured list data, always format it as a markdown table.\n"
+            "When presenting sequential, process, workflow, or step-by-step data, always format/render it as a Mermaid.js flowchart (enclosed in a '```mermaid' code block, e.g. using 'graph TD' or 'flowchart LR')."
+        )
+    else:
+        system_instruction = (
+            "You are a strict retrieval-only Q&A assistant for 'Talent Sphere Elevate'. Your task is to answer the user's query using ONLY the provided document context below.\n"
+            "If the answer cannot be found in the context, you MUST respond exactly with: 'I am sorry, but the answer to your question is not present in the provided document.'\n"
+            "Do NOT make up facts, and do NOT fall back to your general model knowledge under any circumstances. Keep your answer factual, direct, and fully based on the context.\n"
+            "Cite your sources using bracketed numbers corresponding to the context passages (e.g. [1], [2]) where appropriate.\n"
+            "When presenting tabular or structured list data, always format it as a markdown table.\n"
+            "When presenting sequential, process, workflow, or step-by-step data, always format/render it as a Mermaid.js flowchart (enclosed in a '```mermaid' code block, e.g. using 'graph TD' or 'flowchart LR')."
+        )
 
     try:
         url = "https://api.groq.com/openai/v1/chat/completions"

@@ -204,9 +204,52 @@
         border-top: 1px dashed var(--ts-border);
         padding-top: 0.5rem;
     }
+
+    /* Citation Markers */
+    .citation-marker {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(99, 102, 241, 0.15);
+        color: var(--ts-primary);
+        border: 1px solid rgba(99, 102, 241, 0.3);
+        border-radius: 4px;
+        padding: 0 0.25rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        cursor: pointer;
+        margin: 0 0.15rem;
+        transition: all 0.2s ease;
+        user-select: none;
+        vertical-align: middle;
+    }
+    .citation-marker:hover {
+        background: var(--ts-primary);
+        color: #FFFFFF;
+        border-color: var(--ts-primary);
+    }
+
+    /* Modal styling */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 10000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(11, 15, 25, 0.6);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        justify-content: center;
+        align-items: center;
+    }
 </style>
 <!-- Markdown Parser CDN for client-side streaming rendering -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<!-- Mermaid.js CDN for flowchart rendering -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -335,8 +378,9 @@
                                     </summary>
                                     <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.4rem;">
                                         {% for s in msg.sources %}
-                                            <div style="padding: 0.4rem; background: rgba(255,255,255,0.02); border-radius: 4px; border: 1px solid var(--ts-border);">
-                                                <b>[{{ loop.index }}] {{ s.source }} (Page {{ s.page }})</b>
+                                            <div class="source-item" data-index="{{ loop.index }}" style="padding: 0.4rem; background: rgba(255,255,255,0.02); border-radius: 4px; border: 1px solid var(--ts-border);">
+                                                <b>[{{ loop.index }}] <span class="source-filename">{{ s.source }}</span> (Page <span class="source-page">{{ s.page }}</span>)</b>
+                                                <blockquote class="source-text" style="display: none;">{{ s.text }}</blockquote>
                                                 {% if session.get('user_role') == 'admin' %}
                                                     <div style="font-size: 0.75rem; color: var(--ts-text-secondary); margin-top: 0.2rem;">
                                                         Similarity Score: {{ "%.1f"|format(s.score * 100) }}%
@@ -389,6 +433,22 @@
             <span id="voiceStatusText">🎙️ Recording… click mic again to stop &amp; transcribe</span>
         </div>
     </div>
+<!-- Citation Modal -->
+<div id="citationModal" class="modal" onclick="if(event.target === this) closeCitationModal();">
+  <div class="ts-card" style="max-width: 500px; width: 90%; background: var(--ts-inner-bg); border-radius: 12px; padding: 1.5rem; box-shadow: var(--ts-shadow); position: relative; margin: auto;">
+    <span onclick="closeCitationModal()" style="position: absolute; right: 1rem; top: 1rem; font-size: 1.5rem; font-weight: bold; cursor: pointer; color: var(--ts-text-muted); line-height: 1;">&times;</span>
+    <h3 style="margin-top: 0; display: flex; align-items: center; gap: 0.5rem; color: var(--ts-primary); font-size: 1.15rem; font-weight: 700;">
+        📚 Source Citation <span id="citationNum"></span>
+    </h3>
+    <div style="font-size: 0.85rem; margin-bottom: 0.75rem; color: var(--ts-text-secondary); line-height: 1.4; border-bottom: 1px dashed var(--ts-border); padding-bottom: 0.5rem;">
+        <b>Source:</b> <span id="citationSource" style="word-break: break-all;"></span><br>
+        <b>Page:</b> <span id="citationPage"></span>
+    </div>
+    <blockquote id="citationText" style="margin: 0; font-style: italic; color: var(--ts-text); font-size: 0.88rem; max-height: 250px; overflow-y: auto; background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 6px; line-height: 1.5; border-left: 3px solid var(--ts-primary);">
+    </blockquote>
+  </div>
+</div>
+
 </div>
 </div>
 
@@ -397,18 +457,107 @@
     let activeStreamController = null;
     let isGenerating = false;
 
+    // Initialize mermaid
+    if (typeof mermaid !== 'undefined') {
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'dark',
+            securityLevel: 'loose'
+        });
+    }
+
+    // Keep track of active sources for the currently streaming message
+    window.activeSources = null;
+
+    function parseAndFormatMessage(text) {
+        let html = marked.parse(text);
+        // Replace [1], [2] with clickable marker links/badges
+        html = html.replace(/\[([0-9]+)\]/g, '<span class="citation-marker" onclick="showCitation(this, $1)">[$1]</span>');
+        return html;
+    }
+
+    async function postRenderProcessing() {
+        const codeElements = document.querySelectorAll('code.language-mermaid');
+        let processed = false;
+        codeElements.forEach(codeEl => {
+            const preEl = codeEl.parentElement;
+            if (preEl && preEl.tagName === 'PRE') {
+                const container = document.createElement('div');
+                container.className = 'mermaid';
+                container.style.background = 'rgba(255,255,255,0.02)';
+                container.style.padding = '1rem';
+                container.style.borderRadius = '8px';
+                container.style.border = '1px solid var(--ts-border)';
+                container.style.overflowX = 'auto';
+                container.style.marginBottom = '1rem';
+                container.textContent = codeEl.textContent;
+                preEl.replaceWith(container);
+                processed = true;
+            }
+        });
+        
+        if (processed && typeof mermaid !== 'undefined') {
+            try {
+                await mermaid.run({
+                    nodes: document.querySelectorAll('.mermaid')
+                });
+            } catch (e) {
+                console.error("Mermaid rendering error:", e);
+            }
+        }
+    }
+
+    function showCitation(markerEl, index) {
+        let filename = "";
+        let page = "";
+        let text = "";
+        
+        const messageRow = markerEl.closest('.message-row');
+        if (messageRow.querySelector('#activeResponseText')) {
+            if (window.activeSources && window.activeSources[index - 1]) {
+                const s = window.activeSources[index - 1];
+                filename = s.source;
+                page = s.page;
+                text = s.text;
+            }
+        } else {
+            const sourceItem = messageRow.querySelector(`.source-item[data-index="${index}"]`);
+            if (sourceItem) {
+                filename = sourceItem.querySelector('.source-filename').textContent;
+                page = sourceItem.querySelector('.source-page').textContent;
+                const textEl = sourceItem.querySelector('.source-text');
+                text = textEl ? textEl.textContent : "";
+            }
+        }
+        
+        if (!filename) return;
+        
+        document.getElementById('citationNum').textContent = `[${index}]`;
+        document.getElementById('citationSource').textContent = filename;
+        document.getElementById('citationPage').textContent = page;
+        document.getElementById('citationText').textContent = text;
+        
+        document.getElementById('citationModal').style.display = 'flex';
+    }
+
+    function closeCitationModal() {
+        document.getElementById('citationModal').style.display = 'none';
+    }
+
     // Scroll chat window to bottom
     function scrollToBottom() {
         const box = document.getElementById('chatMessages');
         box.scrollTop = box.scrollHeight;
     }
     
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", async function() {
         scrollToBottom();
         // Parse all markdown messages in initial render
-        document.querySelectorAll('.message-row.assistant .message-text').forEach(el => {
-            el.innerHTML = marked.parse(el.textContent);
+        const messageElList = document.querySelectorAll('.message-row.assistant .message-text');
+        messageElList.forEach(el => {
+            el.innerHTML = parseAndFormatMessage(el.textContent);
         });
+        await postRenderProcessing();
         
         // Show/hide ephemeral document manager card on mode changes
         const radios = document.querySelectorAll('input[name="chat_mode"]');
@@ -602,18 +751,19 @@
                 if (chunk.includes('[SOURCES_JSON_START]')) {
                     const parts = chunk.split('[SOURCES_JSON_START]');
                     assistantResponseText += parts[0];
-                    activeTextEl.innerHTML = marked.parse(assistantResponseText);
+                    activeTextEl.innerHTML = parseAndFormatMessage(assistantResponseText);
                     
                     const sourcesStr = parts[1].replace('[SOURCES_JSON_END]', '').trim();
                     try {
                         receivedSources = JSON.parse(sourcesStr);
+                        window.activeSources = receivedSources;
                     } catch(e) {
                         console.error("Failed to parse sources", e);
                     }
                     break;
                 } else {
                     assistantResponseText += chunk;
-                    activeTextEl.innerHTML = marked.parse(assistantResponseText);
+                    activeTextEl.innerHTML = parseAndFormatMessage(assistantResponseText);
                     scrollToBottom();
                 }
             }
@@ -622,6 +772,9 @@
             if (receivedSources && receivedSources.length > 0) {
                 renderCitations(receivedSources);
             }
+
+            // Post render processing (Mermaid diagrams)
+            await postRenderProcessing();
 
             // Check if not found
             const contentLower = assistantResponseText.toLowerCase();
@@ -675,8 +828,9 @@
         
         sources.forEach((s, idx) => {
             detailsHtml += `
-                <div style="padding: 0.4rem; background: rgba(255,255,255,0.02); border-radius: 4px; border: 1px solid var(--ts-border);">
-                    <b>[${idx + 1}] ${escapeHtml(s.source)} (Page ${s.page})</b>
+                <div class="source-item" data-index="${idx + 1}" style="padding: 0.4rem; background: rgba(255,255,255,0.02); border-radius: 4px; border: 1px solid var(--ts-border);">
+                    <b>[${idx + 1}] <span class="source-filename">${escapeHtml(s.source)}</span> (Page <span class="source-page">${s.page}</span>)</b>
+                    <blockquote class="source-text" style="display: none;">${escapeHtml(s.text)}</blockquote>
             `;
             if (USER_ROLE === 'admin') {
                 detailsHtml += `

@@ -1969,10 +1969,11 @@ def chat_stream():
             else:
                 chunk_stream = generate_rag_answer_stream(query, sources, model)
         elif mode == "Ephemeral Doc Q&A":
-            if not sources:
+            is_admin = (session.get('user_role') == 'admin')
+            if not sources and not is_admin:
                 chunk_stream = ["I am sorry, but the answer to your question is not present in the provided document."]
             else:
-                chunk_stream = generate_ephemeral_rag_answer_stream(query, sources, model)
+                chunk_stream = generate_ephemeral_rag_answer_stream(query, sources, model, is_admin=is_admin)
         else:
             system_prompt = (
                 "You are a helpful, encouraging learning coach for 'Talent Sphere Elevate', an advanced corporate training platform. "
