@@ -2646,4 +2646,15 @@ def admin_kill_overall():
 
 
 if __name__ == '__main__':
+    import threading
+    def preload_model_bg():
+        try:
+            print("Preloading embedding model in background...")
+            from src.embeddings import get_model
+            get_model()
+            print("Embedding model preloaded successfully.")
+        except Exception as e:
+            print(f"Warning: Failed to preload embedding model: {e}")
+
+    threading.Thread(target=preload_model_bg, daemon=True).start()
     app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=True)

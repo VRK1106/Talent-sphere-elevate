@@ -2,12 +2,28 @@
 {% block title %}AI Assistant - Talent Sphere Elevate{% endblock %}
 
 {% block head %}
-<style>
+    /* Lock the viewport for the assistant page */
+    .main-content {
+        overflow-y: hidden !important;
+        height: 100vh !important;
+        display: flex !important;
+        flex-direction: column !important;
+        padding-bottom: 1rem !important;
+    }
+    .main-container {
+        height: 100% !important;
+        max-height: calc(100vh - 3.5rem) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        min-height: 0 !important;
+    }
+
     .chat-container {
         display: flex;
         flex-direction: column;
-        height: 60vh;
-        min-height: 400px;
+        flex-grow: 1;
+        height: 0;
+        min-height: 250px;
         background: rgba(255, 255, 255, 0.01);
         border: 1px solid var(--ts-border);
         border-radius: 12px;
@@ -186,6 +202,7 @@
 {% endblock %}
 
 {% block content %}
+<div style="display: flex; flex-direction: column; height: 100%; min-height: 0;">
 <div class="ts-hero">
     <div class="ts-hero-title">🤖 AI Study Assistant</div>
     <div class="ts-hero-subtitle">
@@ -365,6 +382,7 @@
             <span id="voiceStatusText">🎙️ Recording… click mic again to stop &amp; transcribe</span>
         </div>
     </div>
+</div>
 </div>
 
 <script>
