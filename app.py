@@ -210,6 +210,11 @@ def clean_json_response(raw_resp: str) -> str:
             resp = resp[match.end():]
         if resp.endswith("```"):
             resp = resp[:-3]
+    resp = resp.strip()
+    start_idx = resp.find('[')
+    end_idx = resp.rfind(']')
+    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+        resp = resp[start_idx:end_idx+1]
     return resp.strip()
 
 def login_required(f):
@@ -2073,8 +2078,11 @@ def assistant_suggestions():
     mode = request.args.get('mode', 'RAG (Document Guided)')
     tab_id = request.args.get('tab_id', '')
     
+    print(f"[SUGGESTIONS DEBUG] mode={mode}, tab_id={tab_id}, session_tab_id={session.get('_tab_id')}")
+    
     if mode == "Ephemeral Doc Q&A" and tab_id:
         text = get_ephemeral_document_text(tab_id)
+        print(f"[SUGGESTIONS DEBUG] text length={len(text) if text else 0}")
         if text:
             prompt = (
                 f"Based on the following document content excerpt, generate exactly 3 short, direct study questions "
@@ -2095,9 +2103,19 @@ def assistant_suggestions():
                 )
                 from src.llm import clean_json_response
                 cleaned = clean_json_response(resp)
-                prompts = json.loads(cleaned)
+                prompts = []
+                try:
+                    prompts = json.loads(cleaned)
+                except Exception:
+                    # Fallback regex extraction of double-quoted strings
+                    prompts = re.findall(r'"([^"]+)"', cleaned)
+                    if not prompts:
+                        prompts = re.findall(r"'([^']+)'", cleaned)
+                
                 if isinstance(prompts, list) and len(prompts) > 0:
-                    return jsonify({"suggestions": prompts[:4]})
+                    prompts = [p.strip() for p in prompts if p.strip()]
+                    if prompts:
+                        return jsonify({"suggestions": prompts[:4]})
             except Exception as e:
                 print(f"Failed to generate ephemeral suggestions: {e}")
                 
