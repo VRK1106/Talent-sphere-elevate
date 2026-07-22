@@ -192,7 +192,8 @@ def generate_rag_answer_stream(query: str, chunks: list[dict[str, Any]], model_n
         "Do NOT include any code blocks, programming snippets, or code examples in your response unless the user explicitly asks for code or programming implementation.\n\n"
         "Cite your sources using bracketed numbers corresponding to the context passages (e.g. [1], [2]) where appropriate.\n"
         "When presenting tabular or structured list data, always format it as a markdown table.\n"
-        "When presenting sequential, process, workflow, or step-by-step data, always format/render it as a Mermaid.js flowchart (enclosed in a '```mermaid' code block, e.g. using 'graph TD' or 'flowchart LR')."
+        "When presenting sequential, process, workflow, or step-by-step data, always format/render it as a Mermaid.js flowchart (enclosed in a '```mermaid' code block, e.g. using 'graph TD' or 'flowchart LR').\n"
+        "CRITICAL FOR MERMAID: To avoid syntax errors, you MUST wrap all node labels in double quotes (e.g., A[\"User Request\"] --> B[\"Process File\"]). Do not use parentheses or special characters outside of quotes. Keep the Mermaid code block extremely simple and standard."
     )
 
     try:
@@ -512,7 +513,8 @@ def generate_ephemeral_rag_answer_stream(query: str, chunks: list[dict[str, Any]
             "it or fall back to your general model knowledge if the context is insufficient or if the query requires it.\n"
             "Cite your sources using bracketed numbers corresponding to the context passages (e.g. [1], [2]) where appropriate.\n"
             "When presenting tabular or structured list data, always format it as a markdown table.\n"
-            "When presenting sequential, process, workflow, or step-by-step data, always format/render it as a Mermaid.js flowchart (enclosed in a '```mermaid' code block, e.g. using 'graph TD' or 'flowchart LR')."
+            "When presenting sequential, process, workflow, or step-by-step data, always format/render it as a Mermaid.js flowchart (enclosed in a '```mermaid' code block, e.g. using 'graph TD' or 'flowchart LR').\n"
+            "CRITICAL FOR MERMAID: To avoid syntax errors, you MUST wrap all node labels in double quotes (e.g., A[\"User Request\"] --> B[\"Process File\"]). Do not use parentheses or special characters outside of quotes. Keep the Mermaid code block extremely simple and standard."
         )
     else:
         system_instruction = (
@@ -521,7 +523,8 @@ def generate_ephemeral_rag_answer_stream(query: str, chunks: list[dict[str, Any]
             "Do NOT make up facts, and do NOT fall back to your general model knowledge under any circumstances. Keep your answer factual, direct, and fully based on the context.\n"
             "Cite your sources using bracketed numbers corresponding to the context passages (e.g. [1], [2]) where appropriate.\n"
             "When presenting tabular or structured list data, always format it as a markdown table.\n"
-            "When presenting sequential, process, workflow, or step-by-step data, always format/render it as a Mermaid.js flowchart (enclosed in a '```mermaid' code block, e.g. using 'graph TD' or 'flowchart LR')."
+            "When presenting sequential, process, workflow, or step-by-step data, always format/render it as a Mermaid.js flowchart (enclosed in a '```mermaid' code block, e.g. using 'graph TD' or 'flowchart LR').\n"
+            "CRITICAL FOR MERMAID: To avoid syntax errors, you MUST wrap all node labels in double quotes (e.g., A[\"User Request\"] --> B[\"Process File\"]). Do not use parentheses or special characters outside of quotes. Keep the Mermaid code block extremely simple and standard."
         )
 
     try:
