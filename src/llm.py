@@ -473,3 +473,74 @@ def transcribe_audio_whisper(audio_bytes: bytes, mime_type: str = "audio/webm") 
         )
     except Exception as exc:
         raise RuntimeError(f"Whisper transcription failed: {exc}") from exc
+
+
+def generate_ephemeral_rag_answer_stream(query: str, chunks: list[dict[str, Any]], model_name: str):
+    """Yield chunks of text generated using retrieved document contexts, strictly retrieval-only (no fallback)."""
+    if not chunks:
+        yield "I am sorry, but the answer to your question is not present in the provided document."
+        return
+
+    if not GROQ_API_KEY:
+        yield "Error: Groq API Key is not configured. Please set GROQ_API_KEY in your environment."
+        return
+
+    # Construct context block
+    context_parts = []
+    for i, chunk in enumerate(chunks, start=1):
+        source = chunk.get("source", "Uploaded Document")
+        page = chunk.get("page", "?")
+        text = chunk.get("text", "")
+        context_parts.append(f"Content from page {page}:\n{text}")
+
+    context_str = "\n\n".join(context_parts)
+
+    system_instruction = (
+        "You are a strict retrieval-only Q&A assistant for 'Talent Sphere Elevate'. Your task is to answer the user's query using ONLY the provided document context below.\n"
+        "If the answer cannot be found in the context, you MUST respond exactly with: 'I am sorry, but the answer to your question is not present in the provided document.'\n"
+        "Do NOT make up facts, and do NOT fall back to your general model knowledge under any circumstances. Keep your answer factual, direct, and fully based on the context."
+    )
+
+    try:
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        payload = {
+            "model": model_name,
+            "messages": [
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": f"--- CONTEXT PASSAGES ---\n{context_str}\n\n--- USER QUERY ---\n{query}"}
+            ],
+            "temperature": 0.0,
+            "max_tokens": 1024,
+            "top_p": 0.9,
+            "stream": True
+        }
+
+        req_headers = HEADERS.copy()
+        req_headers["Authorization"] = f"Bearer {GROQ_API_KEY}"
+
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers=req_headers,
+            method="POST",
+        )
+
+        with urllib.request.urlopen(req, timeout=180.0) as resp:
+            for line in resp:
+                line_str = line.decode("utf-8").strip()
+                if line_str.startswith("data: "):
+                    data_content = line_str[6:]
+                    if data_content == "[DONE]":
+                        break
+                    try:
+                        chunk_data = json.loads(data_content)
+                        delta = chunk_data["choices"][0]["delta"].get("content", "")
+                        if delta:
+                            yield delta
+                    except Exception:
+                        pass
+    except urllib.error.URLError as e:
+        yield f"Error: Connecting to Groq API failed: {e.reason}."
+    except Exception as e:
+        yield f"Error: An unexpected error occurred while generating answer: {e}"
+

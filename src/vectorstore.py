@@ -8,6 +8,7 @@ known hashes to skip files that were already indexed.
 
 from __future__ import annotations
 
+import re
 import chromadb
 from chromadb.api import ClientAPI
 from chromadb.api.models.Collection import Collection
@@ -233,3 +234,112 @@ def reset_collection() -> None:
         name=CHROMA_COLLECTION,
         metadata={"hnsw:space": "cosine"},
     )
+
+
+_ephemeral_client_instance = None
+
+def get_ephemeral_client() -> ClientAPI:
+    """Return a cached, in-memory ephemeral Chroma client."""
+    global _ephemeral_client_instance
+    if _ephemeral_client_instance is None:
+        _ephemeral_client_instance = chromadb.EphemeralClient()
+    return _ephemeral_client_instance
+
+
+def _sanitize_collection_name(session_id: str) -> str:
+    """Sanitize the session_id to conform to Chroma collection naming constraints."""
+    sanitized = re.sub(r'[^a-zA-Z0-9_-]', '_', session_id)
+    if not sanitized:
+        sanitized = "session_collection"
+    if not sanitized[0].isalnum():
+        sanitized = 's_' + sanitized[1:]
+    if not sanitized[-1].isalnum():
+        sanitized = sanitized[:-1] + 'x'
+    return sanitized[:63]
+
+
+def get_ephemeral_collection(session_id: str) -> Collection:
+    """Return (creating if needed) the session-scoped ephemeral collection."""
+    client = get_ephemeral_client()
+    coll_name = _sanitize_collection_name(f"ephemeral_{session_id}")
+    return client.get_or_create_collection(
+        name=coll_name,
+        metadata={"hnsw:space": "cosine"},
+    )
+
+
+def add_ephemeral_chunks(session_id: str, chunks: list[dict], embeddings: list[list[float]], file_hash: str) -> int:
+    """Upsert chunks and their embeddings into the session's ephemeral collection."""
+    if not chunks:
+        return 0
+
+    ids = [chunk["id"] for chunk in chunks]
+    documents = [chunk["text"] for chunk in chunks]
+    metadatas = []
+    for chunk in chunks:
+        meta = dict(chunk["metadata"])
+        meta["file_hash"] = file_hash
+        metadatas.append(meta)
+
+    collection = get_ephemeral_collection(session_id)
+    collection.upsert(
+        ids=ids,
+        documents=documents,
+        metadatas=metadatas,
+        embeddings=embeddings,
+    )
+    return len(ids)
+
+
+def search_ephemeral(
+    session_id: str,
+    query_embedding: list[float],
+    top_k: int,
+    threshold: float = 0.0,
+) -> list[dict]:
+    """Run similarity search on the ephemeral collection and return sorted results."""
+    collection = get_ephemeral_collection(session_id)
+    total_count = collection.count()
+    if total_count == 0:
+        return []
+
+    query_k = min(max(top_k * 2, 20), total_count)
+
+    result = collection.query(
+        query_embeddings=[query_embedding],
+        n_results=query_k,
+        include=["documents", "metadatas", "distances"],
+    )
+
+    documents = (result.get("documents") or [[]])[0]
+    metadatas = (result.get("metadatas") or [[]])[0]
+    distances = (result.get("distances") or [[]])[0]
+
+    hits: list[dict] = []
+    for text, meta, distance in zip(documents, metadatas, distances):
+        meta = meta or {}
+        score = 1.0 - float(distance)
+        if score >= threshold:
+            hits.append(
+                {
+                    "text": text,
+                    "source": meta.get("source", "Uploaded Document"),
+                    "page": meta.get("page", "—"),
+                    "chunk_index": meta.get("chunk_index", 0),
+                    "score": score,
+                }
+            )
+
+    hits.sort(key=lambda hit: hit["score"], reverse=True)
+    return hits[:top_k]
+
+
+def delete_ephemeral_collection(session_id: str) -> None:
+    """Explicitly delete the ephemeral session-scoped collection from memory."""
+    client = get_ephemeral_client()
+    coll_name = _sanitize_collection_name(f"ephemeral_{session_id}")
+    try:
+        client.delete_collection(coll_name)
+    except Exception:
+        pass
+

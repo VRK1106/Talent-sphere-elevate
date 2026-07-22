@@ -46,6 +46,19 @@ def init_db() -> None:
         cursor.execute("ALTER TABLE users ADD COLUMN face_descriptor TEXT")
     if "accommodation_proctoring" not in columns:
         cursor.execute("ALTER TABLE users ADD COLUMN accommodation_proctoring INTEGER DEFAULT 0")
+        
+    # Create activity_logs table
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS activity_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            employee_id TEXT NOT NULL,
+            method TEXT NOT NULL,
+            path TEXT NOT NULL,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
     
     # Delete demo user if it exists (clean migration)
     cursor.execute("DELETE FROM users WHERE employee_id = 'demo'")
@@ -278,3 +291,72 @@ def clear_all_trainee_users() -> bool:
     except Exception as e:
         print(f"Error clearing trainees: {e}")
         return False
+
+
+def check_user_exists(employee_id: str) -> bool:
+    """Check if a user with the given employee_id exists."""
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1 FROM users WHERE LOWER(employee_id) = ?", (employee_id.strip().lower(),))
+        exists = cursor.fetchone() is not None
+        conn.close()
+        return exists
+    except Exception:
+        return False
+
+
+def log_activity(employee_id: str, method: str, path: str) -> None:
+    """Log an activity request for an authenticated user."""
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO activity_logs (employee_id, method, path) VALUES (?, ?, ?)",
+            (employee_id, method, path)
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Failed to log activity: {e}")
+
+
+def update_user(employee_id: str, full_name: str, email: str, domain: str, role: str, password_plain: str = None) -> tuple[bool, str]:
+    """Update an existing user's details, including optional password change."""
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        cursor = conn.cursor()
+        
+        if password_plain and password_plain.strip():
+            cursor.execute(
+                """
+                UPDATE users 
+                SET full_name = ?, email = ?, domain = ?, role = ?, password_hash = ?, password_plain = ?
+                WHERE employee_id = ?
+                """,
+                (full_name.strip(), email.strip().lower(), domain.strip().lower(), role, _hash_password(password_plain), password_plain.strip(), employee_id)
+            )
+        else:
+            cursor.execute(
+                """
+                UPDATE users 
+                SET full_name = ?, email = ?, domain = ?, role = ?
+                WHERE employee_id = ?
+                """,
+                (full_name.strip(), email.strip().lower(), domain.strip().lower(), role, employee_id)
+            )
+            
+        rows_affected = cursor.rowcount
+        conn.commit()
+        conn.close()
+        
+        if rows_affected > 0:
+            return True, "User updated successfully."
+        else:
+            return False, "User not found."
+    except sqlite3.IntegrityError as e:
+        if "email" in str(e).lower():
+            return False, f"Email '{email}' is already registered to another user."
+        return False, f"Update failed: {e}"
+    except Exception as e:
+        return False, f"Database error: {e}"

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Activity Logs - Talent Sphere Elevate{% endblock %}
+
+{% block content %}
+<div class="ts-hero">
+    <div class="ts-hero-title">📋 Activity Logs</div>
+    <div class="ts-hero-subtitle">
+        Unified audit interface showing authenticated user activity across the system.
+    </div>
+</div>
+
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem;">
+            {% for message in messages %}
+                <div style="background-color: rgba(52, 211, 153, 0.1); border: 1px solid rgba(52, 211, 153, 0.2); color: #34d399; padding: 0.75rem; border-radius: 8px; font-size: 0.88rem;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+<!-- Search and Clear actions -->
+<div class="ts-card" style="padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+    <form action="/admin/logs" method="GET" style="display: flex; gap: 0.5rem; flex-grow: 1; max-width: 500px;">
+        <input type="text" name="search" placeholder="Search by Employee ID or Path..." value="{{ search_query or '' }}" 
+               style="flex-grow: 1; padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none; font-size: 0.9rem;">
+        <button type="submit" class="btn-ts btn-ts-primary" style="width: auto; padding: 0.6rem 1.2rem; font-size: 0.9rem;">Search</button>
+        {% if search_query %}
+            <a href="/admin/logs" class="btn-ts btn-ts-secondary" style="width: auto; padding: 0.6rem 1.2rem; font-size: 0.9rem; display: flex; align-items: center; text-decoration: none;">Reset</a>
+        {% endif %}
+    </form>
+    
+    <form action="/admin/logs/clear" method="POST" onsubmit="return confirm('Are you sure you want to delete ALL activity logs? This cannot be undone.')">
+        <button type="submit" class="btn-ts" style="background: rgba(239, 68, 68, 0.1); border: 1.5px solid rgba(239, 68, 68, 0.35); color: #ef4444; width: auto; font-weight: 700; cursor: pointer; padding: 0.6rem 1.2rem; border-radius: 8px; transition: background 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.2)'" onmouseout="this.style.background='rgba(239,68,68,0.1)'">
+            🗑️ Clear All Logs
+        </button>
+    </form>
+</div>
+
+<!-- Logs list -->
+<div class="ts-card" style="padding: 1.5rem; border-radius: 12px; overflow-x: auto;">
+    {% if not logs %}
+        <div style="padding: 2rem; text-align: center; color: var(--ts-text-muted);">
+            No activity logs found.
+        </div>
+    {% else %}
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; line-height: 1.5;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--ts-border); color: var(--ts-text-heading); font-weight: 700;">
+                    <th style="padding: 0.75rem 0.5rem;">User (Employee ID)</th>
+                    <th style="padding: 0.75rem 0.5rem;">Method</th>
+                    <th style="padding: 0.75rem 0.5rem;">Path</th>
+                    <th style="padding: 0.75rem 0.5rem;">Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for l in logs %}
+                    <tr style="border-bottom: 1px solid var(--ts-border);">
+                        <td style="padding: 0.75rem 0.5rem; font-weight: 600;">👤 {{ l.employee_id }}</td>
+                        <td style="padding: 0.75rem 0.5rem;">
+                            <span style="display: inline-block; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; 
+                                       {% if l.method == 'GET' %} background: rgba(52, 211, 153, 0.1); color: #34d399;
+                                       {% elif l.method == 'POST' %} background: rgba(96, 165, 250, 0.1); color: #60a5fa;
+                                       {% else %} background: rgba(251, 191, 36, 0.1); color: #fbbf24; {% endif %}">
+                                {{ l.method }}
+                            </span>
+                        </td>
+                        <td style="padding: 0.75rem 0.5rem;"><code style="background: rgba(255,255,255,0.05); padding: 0.15rem 0.3rem; border-radius: 4px; border: 1px solid var(--ts-border); font-size: 0.85rem;">{{ l.path }}</code></td>
+                        <td style="padding: 0.75rem 0.5rem; color: var(--ts-text-muted);">{{ l.timestamp }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div style="margin-top: 1rem; font-size: 0.8rem; color: var(--ts-text-muted); text-align: right;">
+            Showing up to 500 recent activity logs.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

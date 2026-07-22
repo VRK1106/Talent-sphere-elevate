@@ -195,7 +195,7 @@
 
 <!-- Config Bar -->
 <div class="ts-card" style="padding: 1rem; border-radius: 12px; margin-top: 1.5rem;">
-    <div style="display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 1.5rem; align-items: center;">
+    <div style="display: grid; grid-template-columns: 3.5fr 2fr 1fr; gap: 1.5rem; align-items: center;">
         <div style="display: flex; flex-direction: column; gap: 0.3rem;">
             <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text-secondary);">Assistant Mode</label>
             <div style="display: flex; gap: 0.5rem;">
@@ -206,6 +206,10 @@
                 <label class="btn-ts btn-ts-secondary" style="width: auto; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; padding: 0.4rem 0.8rem;">
                     <input type="radio" name="chat_mode" id="modeGeneral" value="General Assistant" style="accent-color: var(--ts-primary);">
                     General Mode
+                </label>
+                <label class="btn-ts btn-ts-secondary" style="width: auto; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                    <input type="radio" name="chat_mode" id="modeEphemeral" value="Ephemeral Doc Q&A" style="accent-color: var(--ts-primary);">
+                    Ephemeral Doc Q&A
                 </label>
             </div>
         </div>
@@ -229,6 +233,45 @@
                     🧹 Clear Messages
                 </button>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Ephemeral Document Uploader Card (Visible only in Ephemeral Doc Q&A Mode) -->
+<div id="ephemeralUploadCard" class="ts-card" style="display: none; padding: 1.2rem; border-radius: 12px; margin-top: 1rem; border-color: rgba(99, 102, 241, 0.35);">
+    <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+        <div style="flex-grow: 1;">
+            <div style="font-size: 0.95rem; font-weight: 700; color: var(--ts-text-heading); display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem;">
+                📎 <span>Upload Ephemeral Session Document</span>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--ts-text-secondary); margin: 0;">
+                These documents are embedded exclusively in-memory for your current session, and are permanently deleted when you log out or close the session.
+            </p>
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <input type="file" id="ephemeralFileInput" accept=".pdf" style="display: none;" onchange="uploadEphemeralFile()">
+            <button type="button" class="btn-ts btn-ts-primary" style="width: auto; padding: 0.5rem 1.2rem; font-size: 0.85rem;" onclick="document.getElementById('ephemeralFileInput').click()">
+                📤 Upload PDF
+            </button>
+        </div>
+    </div>
+    
+    <!-- Upload Status Overlay / Banner -->
+    <div id="ephemeralUploadStatus" style="display: none; margin-top: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.82rem;"></div>
+    
+    <!-- Active documents list -->
+    <div style="margin-top: 0.75rem; border-top: 1px dashed var(--ts-border); padding-top: 0.75rem;">
+        <div style="font-size: 0.8rem; font-weight: 600; color: var(--ts-text-secondary); margin-bottom: 0.4rem;">Session Active Documents:</div>
+        <div id="ephemeralDocsList" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+            {% if not ephemeral_docs %}
+                <span id="noEphemeralDocs" style="font-size: 0.8rem; color: var(--ts-text-muted); font-style: italic;">No ephemeral documents uploaded for this session yet.</span>
+            {% else %}
+                {% for doc in ephemeral_docs %}
+                    <span class="ts-profile-badge" style="font-size: 0.75rem; padding: 0.2rem 0.5rem; background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.25);">
+                        📄 {{ doc }}
+                    </span>
+                {% endfor %}
+            {% endif %}
         </div>
     </div>
 </div>
@@ -341,6 +384,24 @@
         document.querySelectorAll('.message-row.assistant .message-text').forEach(el => {
             el.innerHTML = marked.parse(el.textContent);
         });
+        
+        // Show/hide ephemeral document manager card on mode changes
+        const radios = document.querySelectorAll('input[name="chat_mode"]');
+        const uploadCard = document.getElementById('ephemeralUploadCard');
+        
+        function updateModeUI() {
+            const activeMode = document.querySelector('input[name="chat_mode"]:checked').value;
+            if (activeMode === "Ephemeral Doc Q&A") {
+                uploadCard.style.display = "block";
+            } else {
+                uploadCard.style.display = "none";
+            }
+        }
+        
+        radios.forEach(radio => {
+            radio.addEventListener('change', updateModeUI);
+        });
+        updateModeUI(); // Initial run
     });
 
     function handleKeyPress(e) {
@@ -510,14 +571,21 @@
 
             // Check if not found
             const contentLower = assistantResponseText.toLowerCase();
-            const notFound = (mode === "RAG (Document Guided)") && (
+            const notFound = (mode === "RAG (Document Guided)" || mode === "Ephemeral Doc Q&A") && (
                 (!receivedSources || receivedSources.length === 0) ||
                 contentLower.includes("do not know") ||
                 contentLower.includes("not found") ||
-                contentLower.includes("no matching document")
+                contentLower.includes("no matching document") ||
+                contentLower.includes("is not present in the provided document")
             );
             if (notFound) {
                 document.getElementById('activeNotFoundNotice').style.display = 'flex';
+                // Adjust text if ephemeral
+                if (mode === "Ephemeral Doc Q&A") {
+                    document.getElementById('activeNotFoundNotice').innerText = "⚠️ Info not found in ephemeral session document.";
+                } else {
+                    document.getElementById('activeNotFoundNotice').innerText = "⚠️ Info not found in ingested document chunks.";
+                }
             } else {
                 document.getElementById('activeNotFoundNotice').style.display = 'none';
             }
@@ -2327,6 +2395,68 @@
             setVoiceMicState('idle');
             alert('Voice transcription failed. Please check your connection and try again.');
         }
+    }
+
+    function uploadEphemeralFile() {
+        const fileInput = document.getElementById('ephemeralFileInput');
+        const statusDiv = document.getElementById('ephemeralUploadStatus');
+        const listDiv = document.getElementById('ephemeralDocsList');
+        const noDocsSpan = document.getElementById('noEphemeralDocs');
+        
+        const file = fileInput.files[0];
+        if (!file) return;
+        
+        statusDiv.style.display = "block";
+        statusDiv.style.backgroundColor = "rgba(99, 102, 241, 0.1)";
+        statusDiv.style.border = "1px solid rgba(99, 102, 241, 0.25)";
+        statusDiv.style.color = "var(--ts-primary)";
+        statusDiv.textContent = `Processing and embedding ${file.name}...`;
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const tabId = sessionStorage.getItem('ts_tab_id') || '';
+        
+        fetch('/assistant/upload_ephemeral?tab_id=' + tabId, {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            fileInput.value = ''; // clear input
+            if (data.status === 'success') {
+                statusDiv.style.backgroundColor = "rgba(52, 211, 153, 0.1)";
+                statusDiv.style.border = "1px solid rgba(52, 211, 153, 0.25)";
+                statusDiv.style.color = "#34d399";
+                statusDiv.textContent = data.message;
+                
+                if (noDocsSpan) {
+                    noDocsSpan.remove();
+                }
+                
+                // Add new document tag to UI
+                const docSpan = document.createElement('span');
+                docSpan.className = "ts-profile-badge";
+                docSpan.style.fontSize = "0.75rem";
+                docSpan.style.padding = "0.2rem 0.5rem";
+                docSpan.style.background = "rgba(99, 102, 241, 0.1)";
+                docSpan.style.borderColor = "rgba(99, 102, 241, 0.25)";
+                docSpan.textContent = `📄 ${data.filename}`;
+                listDiv.appendChild(docSpan);
+            } else {
+                statusDiv.style.backgroundColor = "rgba(239, 68, 68, 0.1)";
+                statusDiv.style.border = "1px solid rgba(239, 68, 68, 0.25)";
+                statusDiv.style.color = "#ef4444";
+                statusDiv.textContent = `Error: ${data.message}`;
+            }
+        })
+        .catch(err => {
+            fileInput.value = '';
+            statusDiv.style.backgroundColor = "rgba(239, 68, 68, 0.1)";
+            statusDiv.style.border = "1px solid rgba(239, 68, 68, 0.25)";
+            statusDiv.style.color = "#ef4444";
+            statusDiv.textContent = `Network error during upload: ${err}`;
+        });
     }
 </script>
 {% endblock %}

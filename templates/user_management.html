@@ -97,8 +97,9 @@
             <div class="form-grid">
                 <div class="form-group">
                     <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Employee ID</label>
-                    <input type="text" name="employee_id" placeholder="EMP-1024" required
+                    <input type="text" name="employee_id" id="create_employee_id" placeholder="EMP-1024" required
                            style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                    <div id="employee_id_error" style="color: #ef4444; font-size: 0.8rem; display: none; margin-top: 0.2rem;">This Employee ID is already registered.</div>
                 </div>
                 <div class="form-group">
                     <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text);">Full Name</label>
@@ -146,7 +147,7 @@
                        style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
             </div>
 
-            <button type="submit" class="btn-ts btn-ts-primary" style="width: auto; padding: 0.75rem 2rem;">
+            <button type="submit" id="create_user_btn" class="btn-ts btn-ts-primary" style="padding: 0.85rem; font-size: 1rem;">
                 👤 Create User
             </button>
         </form>
@@ -194,7 +195,10 @@
                             </label>
                         </div>
                     </div>
-                    <div style="width: auto;">
+                    <div style="width: auto; display: flex; gap: 0.5rem; align-items: center;">
+                        <button type="button" class="btn-ts btn-ts-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="openEditModal('{{ u.employee_id }}', '{{ u.full_name|replace('\'', '\\\'') }}', '{{ u.email }}', '{{ u.domain }}', '{{ u.role }}')">
+                            ✏️ Edit
+                        </button>
                         {% if u.employee_id == 'admin' %}
                             <span style="font-size: 0.85rem; color: var(--ts-text-muted);">Protected</span>
                         {% else %}
@@ -210,6 +214,55 @@
                 {% endfor %}
             </div>
         {% endif %}
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div id="editUserModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div class="ts-card" style="width: 100%; max-width: 500px; padding: 2rem; border-radius: 12px; max-height: 90vh; overflow-y: auto;">
+        <h3 style="margin-bottom: 1.5rem; color: var(--ts-text-heading);">Edit User</h3>
+        <form action="/user_management/edit" method="POST" style="display: flex; flex-direction: column; gap: 1rem;">
+            <input type="hidden" name="employee_id" id="edit_employee_id">
+            
+            <div class="form-group">
+                <label style="font-size: 0.85rem; font-weight: 600;">Full Name</label>
+                <input type="text" name="full_name" id="edit_full_name" required style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+            </div>
+            
+            <div class="form-group">
+                <label style="font-size: 0.85rem; font-weight: 600;">Email</label>
+                <input type="email" name="email" id="edit_email" required style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+            </div>
+            
+            <div class="form-group">
+                <label style="font-size: 0.85rem; font-weight: 600;">Domain</label>
+                <select name="domain" id="edit_domain" style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                    <option value="general">General</option>
+                    <option value="development">Development</option>
+                    <option value="testing">Testing</option>
+                    <option value="design">Design</option>
+                    <option value="security">Security</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label style="font-size: 0.85rem; font-weight: 600;">Role</label>
+                <select name="role" id="edit_role" style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+                    <option value="trainee">Trainee</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label style="font-size: 0.85rem; font-weight: 600;">New Password (Optional)</label>
+                <input type="text" name="password" placeholder="Leave blank to keep current password" style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
+            </div>
+            
+            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <button type="submit" class="btn-ts btn-ts-primary" style="flex: 1; padding: 0.75rem;">Save Changes</button>
+                <button type="button" class="btn-ts btn-ts-secondary" style="flex: 1; padding: 0.75rem;" onclick="document.getElementById('editUserModal').style.display='none'">Cancel</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -250,14 +303,52 @@
     // Check URL hash on page load
     document.addEventListener("DOMContentLoaded", function() {
         if(window.location.hash === '#manage') {
-            const btn = document.querySelector("button[onclick*='manage-users']");
-            if(btn) btn.click();
+            openTab({currentTarget: document.querySelectorAll('.tab-link')[1]}, 'manage-users');
         } else if(window.location.hash === '#create') {
-            const btn = document.querySelector("button[onclick*='create-user']");
-            if(btn) btn.click();
+            openTab({currentTarget: document.querySelectorAll('.tab-link')[0]}, 'create-user');
         }
+        
+        // Setup inline validation for employee_id
+        const empInput = document.getElementById('create_employee_id');
+        const errDiv = document.getElementById('employee_id_error');
+        const createBtn = document.getElementById('create_user_btn');
+        
+        if (empInput) {
+            let timeout = null;
+            empInput.addEventListener('input', () => {
+                clearTimeout(timeout);
+                errDiv.style.display = 'none';
+                createBtn.disabled = false;
+                
+                const val = empInput.value.trim();
+                if (!val) return;
+                
+                timeout = setTimeout(() => {
+                    fetch('/api/check_user?employee_id=' + encodeURIComponent(val))
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.exists) {
+                                errDiv.style.display = 'block';
+                                createBtn.disabled = true;
+                            }
+                        })
+                        .catch(err => console.error(err));
+                }, 400);
+            });
+        }
+    });
 
-        // Setup Accommodation checkbox listeners
+    function openEditModal(empId, fullName, email, domain, role) {
+        document.getElementById('edit_employee_id').value = empId;
+        document.getElementById('edit_full_name').value = fullName;
+        document.getElementById('edit_email').value = email;
+        document.getElementById('edit_domain').value = domain;
+        document.getElementById('edit_role').value = role;
+        document.getElementById('editUserModal').style.display = 'flex';
+    }
+
+    // Setup Accommodation checkbox listeners
+    document.addEventListener("DOMContentLoaded", function() {
         const checkboxes = document.querySelectorAll('.accommodation-toggle');
         checkboxes.forEach(cb => {
             cb.addEventListener('change', function() {

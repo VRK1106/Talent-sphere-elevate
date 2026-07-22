@@ -29,7 +29,7 @@ from flask import (
 # Ensure the project root is importable
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from src.users import init_db, verify_user, get_all_users, get_active_users_count, _DB_PATH, set_user_face_descriptor, get_user_face_descriptor, set_user_accommodation
+from src.users import init_db, verify_user, get_all_users, get_active_users_count, _DB_PATH, set_user_face_descriptor, get_user_face_descriptor, set_user_accommodation, update_user, log_activity, check_user_exists
 from src.exams import (
     init_exams_db,
     get_all_exams,
@@ -61,8 +61,8 @@ from src.chats import (
     get_global_chat_stats
 )
 from src.config import EMBEDDING_MODEL, DOCUMENTS_DIR
-from src.vectorstore import stats, get_source_chunks, search, get_collection
-from src.llm import list_local_models, generate_chat_answer, generate_rag_answer, GROQ_API_KEY, analyze_proctor_image, transcribe_audio_whisper
+from src.vectorstore import stats, get_source_chunks, search, get_collection, add_ephemeral_chunks, search_ephemeral, delete_ephemeral_collection
+from src.llm import list_local_models, generate_chat_answer, generate_rag_answer, GROQ_API_KEY, analyze_proctor_image, transcribe_audio_whisper, generate_ephemeral_rag_answer_stream
 
 # Initialize databases
 init_db()
@@ -93,6 +93,32 @@ def _init_sessions_table():
     conn.close()
 
 _init_sessions_table()
+
+def cleanup_orphaned_collections():
+    """Scan and clean up in-memory vector collections for expired/deleted sessions."""
+    try:
+        # Delete tab sessions older than 2 hours (expiration logic)
+        conn = sqlite3.connect(str(_SESSIONS_DB))
+        conn.execute("DELETE FROM tab_sessions WHERE updated_at < datetime('now', '-2 hours')")
+        conn.commit()
+        
+        # Query active session tab IDs
+        rows = conn.execute("SELECT tab_id FROM tab_sessions").fetchall()
+        conn.close()
+        active_tabs = {row[0] for row in rows}
+        
+        # Get all ephemeral collections and delete active ones that are orphaned
+        from src.vectorstore import get_ephemeral_client, _sanitize_collection_name
+        client = get_ephemeral_client()
+        collections = client.list_collections()
+        for col in collections:
+            if col.name.startswith("ephemeral_"):
+                active_sanitized = {_sanitize_collection_name(f"ephemeral_{t}") for t in active_tabs}
+                if col.name not in active_sanitized:
+                    client.delete_collection(col.name)
+    except Exception as e:
+        print(f"Error cleaning up orphaned ephemeral collections: {e}")
+
 
 class TabSessionInterface(SessionInterface):
     """SQLite-backed per-tab session store. Survives server restarts."""
@@ -150,6 +176,7 @@ class TabSessionInterface(SessionInterface):
         return tab_id
 
     def open_session(self, app, request):
+        cleanup_orphaned_collections()
         tab_id = self._resolve_tab_id(request)
         sess = self._load(tab_id) or DictSession()
         sess['_tab_id'] = tab_id
@@ -168,6 +195,7 @@ class TabSessionInterface(SessionInterface):
         if tab_id:
             self._save(tab_id, session)
             response.set_cookie('fallback_tab_id', tab_id, samesite='Lax')
+        cleanup_orphaned_collections()
 
 app.session_interface = TabSessionInterface()
 
@@ -217,6 +245,15 @@ def redirect(location, code=302):
         pass
     return flask_redirect(location, code=code)
 
+@app.before_request
+def log_user_activity():
+    if request.path.startswith('/assets') or request.path.startswith('/static') or request.path.startswith('/api/check_user'):
+        return
+    if session.get('authenticated'):
+        emp_id = session.get('user_info', {}).get('employee_id')
+        if emp_id:
+            log_activity(emp_id, request.method, request.path)
+
 @app.after_request
 def add_header(r):
     if request.path.startswith('/api/'):
@@ -247,6 +284,10 @@ def inject_global_data():
         active_page = 'exams'
     elif path.startswith('/announcements'):
         active_page = 'announcements'
+    elif path.startswith('/admin/logs'):
+        active_page = 'activity_logs'
+    elif path.startswith('/admin/maintenance'):
+        active_page = 'maintenance'
         
     sqlite_ok = False
     try:
@@ -394,6 +435,7 @@ def logout():
     tab_id = session.get('_tab_id')
     if tab_id:
         try:
+            delete_ephemeral_collection(tab_id)
             conn = sqlite3.connect(str(_SESSIONS_DB))
             conn.execute("DELETE FROM tab_sessions WHERE tab_id = ?", (tab_id,))
             conn.commit()
@@ -964,15 +1006,13 @@ def user_management_create():
     password_mode = request.form.get('password_mode', 'auto')
     manual_password = request.form.get('manual_password', '').strip()
     
+    errors = []
     if not employee_id:
-        flash("Please enter an Employee ID.", "create_user_error")
-        return redirect(url_for('user_management', tab='create'))
+        errors.append("Please enter an Employee ID.")
     if not full_name:
-        flash("Please enter a Full Name.", "create_user_error")
-        return redirect(url_for('user_management', tab='create'))
+        errors.append("Please enter a Full Name.")
     if not email:
-        flash("Please enter an Email address.", "create_user_error")
-        return redirect(url_for('user_management', tab='create'))
+        errors.append("Please enter an Email address.")
         
     if password_mode == 'auto':
         first_part = full_name.split()[0].capitalize() if full_name.split() else "User"
@@ -980,8 +1020,14 @@ def user_management_create():
     else:
         generated_password = manual_password
         
-    if len(generated_password) < 8:
-        flash("Password must be at least 8 characters long.", "create_user_error")
+    if not generated_password:
+        errors.append("Please enter a Password.")
+    elif len(generated_password) < 8:
+        errors.append("Password must be at least 8 characters long.")
+        
+    if errors:
+        for err in errors:
+            flash(err, "create_user_error")
         return redirect(url_for('user_management', tab='create'))
         
     from src.users import add_user
@@ -1035,6 +1081,92 @@ def user_management_delete():
         flash("Failed to delete user.", "manage_user_info")
         
     return redirect(url_for('user_management', tab='manage'))
+
+@app.route('/user_management/edit', methods=['GET', 'POST'])
+@login_required
+def user_management_edit():
+    if session.get('user_role') != 'admin':
+        if request.method == 'POST':
+            return jsonify({"error": "Unauthorized"}), 403
+        return redirect(url_for('dashboard'))
+        
+    if request.method == 'GET':
+        return redirect(url_for('user_management', tab='manage'))
+        
+    employee_id = request.form.get('employee_id', '').strip()
+    full_name = request.form.get('full_name', '').strip()
+    email = request.form.get('email', '').strip()
+    domain = request.form.get('domain', 'general').strip()
+    role = request.form.get('role', 'trainee').strip()
+    password = request.form.get('password', '').strip()
+    
+    if not employee_id or not full_name or not email:
+        flash("Employee ID, Full Name, and Email are required.", "manage_user_info")
+        return redirect(url_for('user_management', tab='manage'))
+        
+    success, msg = update_user(employee_id, full_name, email, domain, role, password)
+    if success:
+        flash(f"User {employee_id} updated successfully.", "manage_user_info")
+    else:
+        flash(msg, "manage_user_info")
+        
+    return redirect(url_for('user_management', tab='manage'))
+
+@app.route('/api/check_user', methods=['GET'])
+def api_check_user():
+    employee_id = request.args.get('employee_id', '').strip()
+    if not employee_id:
+        return jsonify({"exists": False})
+    exists = check_user_exists(employee_id)
+    return jsonify({"exists": exists})
+
+@app.route('/admin/logs')
+@login_required
+def admin_logs():
+    if session.get('user_role') != 'admin':
+        return redirect(url_for('dashboard'))
+        
+    search_query = request.args.get('search', '').strip()
+    
+    conn = sqlite3.connect(str(_DB_PATH))
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    if search_query:
+        cursor.execute(
+            """
+            SELECT id, employee_id, method, path, timestamp 
+            FROM activity_logs 
+            WHERE employee_id LIKE ? OR path LIKE ? 
+            ORDER BY timestamp DESC LIMIT 500
+            """,
+            (f'%{search_query}%', f'%{search_query}%')
+        )
+    else:
+        cursor.execute(
+            "SELECT id, employee_id, method, path, timestamp FROM activity_logs ORDER BY timestamp DESC LIMIT 500"
+        )
+        
+    logs = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return render_template('activity_logs.html', logs=logs, search_query=search_query)
+
+@app.route('/admin/logs/clear', methods=['POST'])
+@login_required
+def admin_logs_clear():
+    if session.get('user_role') != 'admin':
+        return redirect(url_for('dashboard'))
+        
+    conn = sqlite3.connect(str(_DB_PATH))
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM activity_logs")
+    conn.commit()
+    conn.close()
+    
+    flash("Activity logs cleared successfully.")
+    return redirect(url_for('admin_logs'))
+
 
 # ANNOUNCEMENTS
 @app.route('/announcements')
@@ -1622,6 +1754,61 @@ def before_request_cleanup():
                 except Exception:
                     pass
 
+@app.route('/assistant/upload_ephemeral', methods=['POST'])
+@login_required
+def assistant_upload_ephemeral():
+    tab_id = session.get('_tab_id')
+    if not tab_id:
+        return jsonify({"status": "error", "message": "No active session tab identifier found."}), 400
+        
+    if 'file' not in request.files:
+        return jsonify({"status": "error", "message": "No file part in the request."}), 400
+        
+    file = request.files['file']
+    if not file or not file.filename:
+        return jsonify({"status": "error", "message": "No file selected."}), 400
+        
+    if not file.filename.lower().endswith('.pdf'):
+        return jsonify({"status": "error", "message": "Invalid file format. Only PDF documents are supported."}), 400
+        
+    try:
+        from io import BytesIO
+        from src.ingest import extract_pages, chunk_pages, file_hash
+        from src.embeddings import embed_documents
+        
+        data = file.read()
+        if not data:
+            return jsonify({"status": "error", "message": "Selected file is empty."}), 400
+            
+        digest = file_hash(data)
+        pages = extract_pages(BytesIO(data))
+        if not pages:
+            return jsonify({"status": "error", "message": "No extractable text found in the PDF."}), 400
+            
+        chunks = chunk_pages(pages, file.filename)
+        if len(chunks) > 1000:
+            return jsonify({"status": "error", "message": f"Document is too large ({len(chunks)} chunks). Max allowed is 1000 chunks."}), 400
+            
+        embeddings = embed_documents([c["text"] for c in chunks])
+        added_count = add_ephemeral_chunks(tab_id, chunks, embeddings, digest)
+        
+        ephemeral_docs = session.get('ephemeral_docs', [])
+        if file.filename not in ephemeral_docs:
+            ephemeral_docs.append(file.filename)
+            session['ephemeral_docs'] = ephemeral_docs
+            
+        return jsonify({
+            "status": "success",
+            "message": f"Successfully processed and embedded {file.filename}.",
+            "chunks_added": added_count,
+            "filename": file.filename
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": f"Failed to ingest document: {str(e)}"}), 500
+
+
 @app.route('/assistant')
 @login_required
 def assistant():
@@ -1658,7 +1845,8 @@ def assistant():
         'assistant.html',
         active_messages=active_messages,
         user_sessions=user_sessions,
-        active_chat_session_id=active_id
+        active_chat_session_id=active_id,
+        ephemeral_docs=session.get('ephemeral_docs', [])
     )
 
 @app.route('/assistant/chat_stream', methods=['POST'])
@@ -1712,6 +1900,16 @@ def chat_stream():
                 sources = results
         except Exception as e:
             print(f"Retrieval error: {e}")
+    elif mode == "Ephemeral Doc Q&A":
+        try:
+            from src.embeddings import embed_query
+            query_vec = embed_query(query)
+            tab_id = session.get('_tab_id')
+            results = search_ephemeral(tab_id, query_vec, top_k=4)
+            if results:
+                sources = results
+        except Exception as e:
+            print(f"Ephemeral retrieval error: {e}")
             
     active_generations[emp_id] = {
         "session_id": active_session_id,
@@ -1727,13 +1925,18 @@ def chat_stream():
             yield "Error: State not found."
             return
             
-        from src.llm import generate_rag_answer_stream, generate_chat_answer_stream
+        from src.llm import generate_rag_answer_stream, generate_chat_answer_stream, generate_ephemeral_rag_answer_stream
         
         if mode == "RAG (Document Guided)":
             if not sources:
                 chunk_stream = ["No matching document context was found to guide an answer. Please upload documents first or check search configurations."]
             else:
                 chunk_stream = generate_rag_answer_stream(query, sources, model)
+        elif mode == "Ephemeral Doc Q&A":
+            if not sources:
+                chunk_stream = ["I am sorry, but the answer to your question is not present in the provided document."]
+            else:
+                chunk_stream = generate_ephemeral_rag_answer_stream(query, sources, model)
         else:
             system_prompt = (
                 "You are a helpful, encouraging learning coach for 'Talent Sphere Elevate', an advanced corporate training platform. "
@@ -2440,4 +2643,4 @@ def admin_kill_overall():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=True)

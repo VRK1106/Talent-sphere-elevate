@@ -5,4 +5,4 @@ pypdf
 langchain-text-splitters
 pandas
 python-dotenv
-Flask
+Flask
