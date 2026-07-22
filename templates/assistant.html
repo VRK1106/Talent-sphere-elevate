@@ -314,10 +314,12 @@
                     <input type="radio" name="chat_mode" id="modeGeneral" value="General Assistant" style="accent-color: var(--ts-primary);">
                     General Mode
                 </label>
+                {% if session.get('user_role') != 'admin' %}
                 <label class="btn-ts btn-ts-secondary" style="width: auto; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; padding: 0.4rem 0.8rem;">
                     <input type="radio" name="chat_mode" id="modeEphemeral" value="Ephemeral Doc Q&A" style="accent-color: var(--ts-primary);">
                     Ephemeral Doc Q&A
                 </label>
+                {% endif %}
             </div>
         </div>
 
@@ -638,6 +640,10 @@
         
         if (urlParams.get('mode') === 'ephemeral') {
             desiredMode = "Ephemeral Doc Q&A";
+        }
+        
+        if (USER_ROLE === 'admin' && desiredMode === "Ephemeral Doc Q&A") {
+            desiredMode = "RAG (Document Guided)";
         }
         
         if (desiredMode) {
