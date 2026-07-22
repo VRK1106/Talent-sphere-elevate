@@ -64,7 +64,7 @@ from src.config import EMBEDDING_MODEL, DOCUMENTS_DIR
 from src.vectorstore import stats, get_source_chunks, search, get_collection, add_ephemeral_chunks, search_ephemeral, delete_ephemeral_collection
 from src.llm import list_local_models, generate_chat_answer, generate_rag_answer, GROQ_API_KEY, analyze_proctor_image, transcribe_audio_whisper, generate_ephemeral_rag_answer_stream
 from src.concept_map import get_personalized_suggestions, get_related_concepts, get_ephemeral_document_text
-from src.student_performance import detect_performance_query, get_student_performance_context
+from src.student_performance import detect_performance_query, get_student_performance_context, get_aggregate_performance_context
 
 # Initialize databases
 init_db()
@@ -2185,7 +2185,18 @@ def chat_stream():
     # 1. Performance Query Intent Classification
     perf_target = detect_performance_query(query)
     perf_context = None
-    if perf_target:
+    aggregate_context = None
+
+    if perf_target == "ALL":
+        # Admin aggregate query — get summary of all trainees
+        user_role = session.get('user_role', 'trainee')
+        aggregate_context = get_aggregate_performance_context(user_role)
+        if "Unauthorized" in aggregate_context:
+            def error_agg_generator():
+                add_chat_message(active_session_id, "assistant", aggregate_context, [])
+                yield aggregate_context
+            return Response(stream_with_context(error_agg_generator()), mimetype='text/event-stream')
+    elif perf_target:
         user_role = session.get('user_role', 'trainee')
         perf_context = get_student_performance_context(perf_target, user_role, emp_id)
         
@@ -2196,11 +2207,11 @@ def chat_stream():
                 yield perf_context
             return Response(stream_with_context(error_event_generator()), mimetype='text/event-stream')
             
-    # 2. Document-Grounded Context Retrieval (if not a performance query)
+    # 2. Document-Grounded Context Retrieval (only if not a DB data query)
     sources = []
     selected_mode = "General Assistant"
     
-    if not perf_target:
+    if not perf_target:  # skip vector search for DB queries
         try:
             from src.embeddings import embed_query
             query_vec = embed_query(query)
@@ -2248,16 +2259,32 @@ def chat_stream():
             return
             
         from src.llm import generate_rag_answer_stream, generate_chat_answer_stream, generate_ephemeral_rag_answer_stream
+
         
-        if perf_target:
+        if aggregate_context:
             system_prompt = (
-                "You are an AI Coach for 'Talent Sphere Elevate' who has access to student reports. "
-                "You are talking to an Admin (or the trainee themselves about their own details).\n"
-                "Summarize the provided trainee performance context beautifully and clearly:\n"
-                "1. If presenting exam score lists or statistics, ALWAYS format them as a clean, styled markdown table.\n"
-                "2. Mention the student's name, email, specialization domain, estimated study hours, and proctoring log flags.\n"
-                "3. If proctoring flags/integrity violations are found in the report, highlight them clearly for the Admin (but maintain a coaching and objective tone).\n\n"
-                f"--- TRAINEE REPORT CONTEXT ---\n{perf_context}"
+                "You are an AI Coach and Analytics Advisor for 'Talent Sphere Elevate', a corporate training platform. "
+                "You have been given a complete, real-time performance report for ALL trainees on the platform.\n"
+                "Your task is to:\n"
+                "1. Present the data clearly using markdown tables wherever there are lists of trainees or scores.\n"
+                "2. Identify struggling trainees (below 60% average) and highlight them.\n"
+                "3. Identify weak exam topics (class average below 70%) and recommend them for remedial sessions.\n"
+                "4. Answer the admin's specific question directly using ONLY the data provided.\n"
+                "5. Be concise, data-driven, and actionable in your recommendations.\n\n"
+                f"--- AGGREGATE PLATFORM PERFORMANCE DATA ---\n{aggregate_context}"
+            )
+            chunk_stream = generate_chat_answer_stream(query, model, system_prompt)
+        elif perf_target and perf_context:
+            system_prompt = (
+                "You are an AI Coach for 'Talent Sphere Elevate' who has access to real student performance data from the database. "
+                "The data below is REAL and accurate — base your ENTIRE response on it.\n"
+                "Guidelines:\n"
+                "1. Present exam scores as a clean markdown table (Exam | Score | Percentage | Status).\n"
+                "2. Highlight weak areas (below 60%) and suggest specific improvement steps.\n"
+                "3. Mention study hours, session time, and overall progress trend.\n"
+                "4. If proctoring/integrity flags exist, mention them clearly but professionally.\n"
+                "5. Be encouraging and coaching-oriented.\n\n"
+                f"--- TRAINEE PERFORMANCE DATA ---\n{perf_context}"
             )
             chunk_stream = generate_chat_answer_stream(query, model, system_prompt)
         elif selected_mode == "Ephemeral Doc Q&A":
