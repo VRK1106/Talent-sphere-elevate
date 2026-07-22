@@ -20,15 +20,114 @@
             overflow: hidden;
         }
         .sidebar-container {
-            width: 310px;
+            width: 75px; /* Collapsed width */
             background-color: var(--ts-popover-bg, #0b0f19);
             border-right: 1px solid var(--ts-border, rgba(255, 255, 255, 0.08));
             display: flex;
             flex-direction: column;
-            padding: 1.2rem;
+            padding: 1.2rem 0.6rem;
             box-sizing: border-box;
+            overflow-x: hidden;
             overflow-y: auto;
             flex-shrink: 0;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease;
+        }
+        
+        .sidebar-container:hover {
+            width: 310px; /* Expanded width */
+            padding: 1.2rem;
+        }
+
+        /* Nav Link Text */
+        .sidebar-container .nav-text {
+            opacity: 0;
+            visibility: hidden;
+            white-space: nowrap;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+        .sidebar-container:hover .nav-text {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Brand Text */
+        .sidebar-container .sidebar-brand-text {
+            opacity: 0;
+            visibility: hidden;
+            white-space: nowrap;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+            width: 0;
+            overflow: hidden;
+        }
+        .sidebar-container:hover .sidebar-brand-text {
+            opacity: 1;
+            visibility: visible;
+            width: auto;
+        }
+
+        /* Profile Details */
+        .sidebar-container .sidebar-profile-text {
+            opacity: 0;
+            visibility: hidden;
+            height: 0;
+            overflow: hidden;
+            transition: opacity 0.2s ease, height 0.2s ease, visibility 0.2s ease;
+        }
+        .sidebar-container:hover .sidebar-profile-text {
+            opacity: 1;
+            visibility: visible;
+            height: auto;
+        }
+
+        /* Section Titles */
+        .sidebar-container .nav-section-title {
+            opacity: 0;
+            visibility: hidden;
+            white-space: nowrap;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+        .sidebar-container:hover .nav-section-title {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Hide buttons text / theme text when collapsed */
+        .sidebar-container .btn-text {
+            opacity: 0;
+            visibility: hidden;
+            display: none;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+        .sidebar-container:hover .btn-text {
+            opacity: 1;
+            visibility: visible;
+            display: inline;
+        }
+
+        /* Adjust chat history sidebar buttons when collapsed */
+        .sidebar-container .chat-history-sidebar-box {
+            padding-left: 0;
+            border-left: none;
+            margin-left: 0;
+            transition: all 0.3s ease;
+        }
+        .sidebar-container:hover .chat-history-sidebar-box {
+            padding-left: 1.2rem;
+            border-left: 2px solid var(--ts-border);
+            margin-left: 0.6rem;
+        }
+
+        .sidebar-container .sidebar-health-container {
+            opacity: 0;
+            visibility: hidden;
+            height: 0;
+            overflow: hidden;
+            transition: opacity 0.2s ease, height 0.2s ease, visibility 0.2s ease;
+        }
+        .sidebar-container:hover .sidebar-health-container {
+            opacity: 1;
+            visibility: visible;
+            height: auto;
         }
         .main-content {
             flex-grow: 1;
@@ -212,12 +311,14 @@
                 body.classList.remove('ts-light-mode');
                 document.documentElement.classList.remove('ts-light-mode');
                 localStorage.setItem('theme', 'dark');
-                document.getElementById('theme-btn-text').innerText = '☀️ Switch to Light';
+                document.getElementById('theme-btn-icon').innerText = '☀️';
+                document.getElementById('theme-btn-text').innerText = 'Switch to Light';
             } else {
                 body.classList.add('ts-light-mode');
                 document.documentElement.classList.add('ts-light-mode');
                 localStorage.setItem('theme', 'light');
-                document.getElementById('theme-btn-text').innerText = '🌙 Switch to Dark';
+                document.getElementById('theme-btn-icon').innerText = '🌙';
+                document.getElementById('theme-btn-text').innerText = 'Switch to Dark';
             }
         }
         
@@ -225,11 +326,14 @@
         document.addEventListener("DOMContentLoaded", () => {
             const savedTheme = localStorage.getItem('theme');
             const themeText = document.getElementById('theme-btn-text');
-            if (themeText) {
+            const themeIcon = document.getElementById('theme-btn-icon');
+            if (themeText && themeIcon) {
                 if (savedTheme === 'light') {
-                    themeText.innerText = '🌙 Switch to Dark';
+                    themeIcon.innerText = '🌙';
+                    themeText.innerText = 'Switch to Dark';
                 } else {
-                    themeText.innerText = '☀️ Switch to Light';
+                    themeIcon.innerText = '☀️';
+                    themeText.innerText = 'Switch to Light';
                 }
             }
         });
@@ -242,31 +346,33 @@
     {% if session.get('authenticated') and not session.get('taking_assignment_id') %}
     <div class="sidebar-container">
         <!-- Logo Branding Header -->
-        <div class="ts-sidebar-header-sticky">
-            <span style='font-size: 2.3rem;'>🚀</span>
-            <div style='font-size: 1.4rem; font-weight: 800; background: linear-gradient(135deg, #60A5FA 0%, #A78BFA 50%, #34D399 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-top: 0.3rem;'>
-                Talent Sphere
-            </div>
-            <div style='font-size: 0.72rem; letter-spacing: 0.15em; color: var(--ts-text-secondary); text-transform: uppercase; font-weight: 700; margin-top: 0.2rem;'>
-                ELEVATE PLATFORM
+        <div class="ts-sidebar-header-sticky" style="display: flex; align-items: center; gap: 0.6rem; min-height: 46px;">
+            <img src="/assets/logo.png" alt="Logo" style="width: 42px; height: 42px; object-fit: contain; border-radius: 8px; flex-shrink: 0;">
+            <div class="sidebar-brand-text">
+                <div style='font-size: 1.25rem; font-weight: 800; background: linear-gradient(135deg, #60A5FA 0%, #A78BFA 50%, #34D399 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1.2;'>
+                    Talent Sphere
+                </div>
+                <div style='font-size: 0.65rem; letter-spacing: 0.15em; color: var(--ts-text-secondary); text-transform: uppercase; font-weight: 700; margin-top: 0.1rem;'>
+                    ELEVATE PLATFORM
+                </div>
             </div>
         </div>
 
         <hr class="ts-divider-line">
 
         <!-- User Profile Card -->
-        <div class="ts-sidebar-profile">
-            <div style="display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.6rem;">
-                <div class="ts-profile-avatar">{{ user_initials }}</div>
-                <div style="flex: 1; min-width: 0;">
-                    <div class="ts-profile-name">{{ session.get('current_user') }}</div>
+        <div class="ts-sidebar-profile" style="display: flex; flex-direction: column; gap: 0.6rem;">
+            <div style="display: flex; align-items: center; gap: 0.8rem;">
+                <div class="ts-profile-avatar" style="flex-shrink: 0;">{{ user_initials }}</div>
+                <div class="sidebar-profile-text" style="flex: 1; min-width: 0;">
+                    <div class="ts-profile-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ session.get('current_user') }}</div>
                     <div class="ts-profile-details">
                         {{ session.get('user_info', {}).get('domain', 'General')|capitalize }} · 
                         <span class="ts-profile-badge">{{ session.get('user_role')|upper }}</span>
                     </div>
                 </div>
             </div>
-            <div style="margin-top: 0.6rem;">
+            <div class="sidebar-profile-text" style="margin-top: 0.2rem;">
                 <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--ts-text-secondary); margin-bottom: 0.2rem;">
                     <span>{{ progress_text }}</span>
                 </div>
@@ -281,24 +387,24 @@
         <!-- Custom Sidebar Navigation Links -->
         <div class="nav-section-title">Hub</div>
         <a href="/" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
-            <span class="nav-icon">📊</span> Dashboard
+            <span class="nav-icon">📊</span> <span class="nav-text">Dashboard</span>
         </a>
 
         <div class="nav-section-title">AI Workspace</div>
         <a href="/assistant" class="nav-link {% if active_page == 'assistant' %}active{% endif %}">
-            <span class="nav-icon">🤖</span> AI Assistant
+            <span class="nav-icon">🤖</span> <span class="nav-text">AI Assistant</span>
         </a>
 
         <!-- Render nested chat sessions inside navigation if show_chat_history is True -->
         {% if show_chat_history %}
         <div class="chat-history-sidebar-box">
             <a href="/assistant/session/create" class="btn-ts btn-ts-secondary" style="font-size: 0.8rem; padding: 0.35rem 0.5rem; margin-bottom: 0.5rem;">
-                ➕ New Chat Session
+                ➕ <span class="btn-text">New Chat Session</span>
             </a>
             
             {% if session.get('renaming_session_id') %}
             <div style="padding: 0.5rem; border: 1px solid var(--ts-border); border-radius: 6px; margin-bottom: 0.5rem; background: rgba(255,255,255,0.02)">
-                <div style='font-size: 0.8rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 0.2rem;'>✏️ Rename Session</div>
+                <div style='font-size: 0.8rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 0.2rem;' class="nav-text">✏️ Rename Session</div>
                 <form action="/assistant/session/rename/save" method="POST">
                     <input type="text" name="new_title" value="{{ session.get('renaming_session_title') }}" style="width: 100%; padding: 0.3rem; margin-bottom: 0.4rem; border-radius: 4px; border: 1px solid var(--ts-border); background: var(--ts-popover-bg); color: var(--ts-text)">
                     <div style="display: flex; gap: 0.25rem;">
@@ -310,112 +416,114 @@
             {% endif %}
             
             {% if not user_sessions %}
-                <span style="font-size: 0.8rem; color: var(--ts-text-muted)">No chat history found.</span>
+                <span style="font-size: 0.8rem; color: var(--ts-text-muted)" class="nav-text">No chat history found.</span>
             {% else %}
                 <div style="display: flex; flex-direction: column; gap: 0.3rem; max-height: 250px; overflow-y: auto;">
                     {% for s in user_sessions %}
                     <div style="display: flex; align-items: center; gap: 0.2rem;">
                         <a href="/assistant?session_id={{ s.session_id }}" class="btn-ts btn-ts-secondary" style="font-size: 0.8rem; padding: 0.3rem; text-align: left; justify-content: flex-start; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; {% if s.session_id == active_chat_session_id %}border-color: var(--ts-primary); font-weight: 600; color: var(--ts-primary);{% endif %}">
-                            {% if s.session_id == active_chat_session_id %}⭐{% else %}💬{% endif %} {{ s.title }}
+                            {% if s.session_id == active_chat_session_id %}⭐{% else %}💬{% endif %} <span class="nav-text">{{ s.title }}</span>
                         </a>
-                        <a href="/assistant/session/rename?id={{ s.session_id }}" title="Rename" style="text-decoration: none; font-size: 0.8rem; padding: 0.3rem;">✏️</a>
-                        <a href="/assistant/session/delete?id={{ s.session_id }}" title="Delete" style="text-decoration: none; font-size: 0.8rem; padding: 0.3rem;">🗑️</a>
+                        <a href="/assistant/session/rename?id={{ s.session_id }}" title="Rename" style="text-decoration: none; font-size: 0.8rem; padding: 0.3rem;" class="nav-text">✏️</a>
+                        <a href="/assistant/session/delete?id={{ s.session_id }}" title="Delete" style="text-decoration: none; font-size: 0.8rem; padding: 0.3rem;" class="nav-text">🗑️</a>
                     </div>
                     {% endfor %}
                 </div>
             {% endif %}
         </div>
         {% endif %}
-
+ 
         <a href="/search" class="nav-link {% if active_page == 'search' %}active{% endif %}">
-            <span class="nav-icon">🔍</span> Knowledge Search
+            <span class="nav-icon">🔍</span> <span class="nav-text">Knowledge Search</span>
         </a>
-
+ 
         <div class="nav-section-title">File Center</div>
         <a href="/documents" class="nav-link {% if active_page == 'documents' %}active{% endif %}">
-            <span class="nav-icon">📄</span> Documents
+            <span class="nav-icon">📄</span> <span class="nav-text">Documents</span>
         </a>
         {% if session.get('user_role') == 'admin' %}
         <a href="/ingest" class="nav-link {% if active_page == 'ingest' %}active{% endif %}">
-            <span class="nav-icon">📥</span> Document Ingestion
+            <span class="nav-icon">📥</span> <span class="nav-text">Document Ingestion</span>
         </a>
         {% endif %}
 
         {% if session.get('user_role') == 'admin' %}
         <div class="nav-section-title">Management</div>
         <a href="/user_management" class="nav-link {% if active_page == 'user_management' %}active{% endif %}">
-            <span class="nav-icon">👥</span> User Management
+            <span class="nav-icon">👥</span> <span class="nav-text">User Management</span>
         </a>
         <a href="/exams" class="nav-link {% if active_page == 'exams' %}active{% endif %}">
-            <span class="nav-icon">📝</span> Exams
+            <span class="nav-icon">📝</span> <span class="nav-text">Exams</span>
         </a>
         <a href="/announcements" class="nav-link {% if active_page == 'announcements' %}active{% endif %}">
-            <span class="nav-icon">📢</span> Announcements
+            <span class="nav-icon">📢</span> <span class="nav-text">Announcements</span>
         </a>
         <a href="/admin/logs" class="nav-link {% if active_page == 'activity_logs' %}active{% endif %}">
-            <span class="nav-icon">📋</span> Activity Logs
+            <span class="nav-icon">📋</span> <span class="nav-text">Activity Logs</span>
         </a>
         <a href="/admin/maintenance" class="nav-link {% if active_page == 'maintenance' %}active{% endif %}" style="color: var(--ts-danger, #ef4444); opacity: 0.85;">
-            <span class="nav-icon">⚙️</span> Maintenance
+            <span class="nav-icon">⚙️</span> <span class="nav-text">Maintenance</span>
         </a>
         {% else %}
         <div class="nav-section-title">Learning</div>
         <a href="/exams" class="nav-link {% if active_page == 'exams' %}active{% endif %}">
-            <span class="nav-icon">📝</span> Exams
+            <span class="nav-icon">📝</span> <span class="nav-text">Exams</span>
         </a>
         <a href="/announcements" class="nav-link {% if active_page == 'announcements' %}active{% endif %}">
-            <span class="nav-icon">📢</span> Announcements
+            <span class="nav-icon">📢</span> <span class="nav-text">Announcements</span>
         </a>
         {% endif %}
 
         <hr class="ts-divider-line">
 
         <!-- Theme Selector -->
-        <div style='font-size: 0.72rem; color: var(--ts-text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.4rem;'>Workspace Theme</div>
+        <div class="nav-section-title" style="margin-top: 1rem; margin-bottom: 0.4rem;">Workspace Theme</div>
         <button class="btn-ts btn-ts-secondary" onclick="toggleTheme()" style="justify-content: center;">
-            <span id="theme-btn-text">☀️ Switch to Light</span>
+            <span id="theme-btn-icon">☀️</span> <span id="theme-btn-text" class="btn-text">Switch to Light</span>
         </button>
 
         {% if session.get('user_role') == 'admin' %}
-        <hr class="ts-divider-line">
+        <div class="sidebar-health-container">
+            <hr class="ts-divider-line">
 
-        <!-- Platform Health Indicators -->
-        <div class="ts-sidebar-health">
-            <div style="font-size: 0.72rem; color: var(--ts-text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.6rem;">Platform Health</div>
-            <div style="display: flex; flex-direction: column; gap: 0.45rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 0.8rem; color: var(--ts-text-secondary);">SQLite Core</span>
-                    <span class="ts-health-status ts-health-{% if health.sqlite_ok %}ok{% else %}err{% endif %}">
-                        {% if health.sqlite_ok %}ONLINE{% else %}OFFLINE{% endif %}
-                    </span>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 0.8rem; color: var(--ts-text-secondary);">Chroma VectorDB</span>
-                    <span class="ts-health-status ts-health-{% if health.chroma_ok %}ok{% else %}err{% endif %}">
-                        {% if health.chroma_ok %}ONLINE{% else %}OFFLINE{% endif %}
-                    </span>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 0.8rem; color: var(--ts-text-secondary);">Ollama Qwen AI</span>
-                    <span class="ts-health-status ts-health-{% if health.ollama_ok %}ok{% else %}err{% endif %}">
-                        {% if health.ollama_ok %}ONLINE{% else %}OFFLINE{% endif %}
-                    </span>
+            <!-- Platform Health Indicators -->
+            <div class="ts-sidebar-health">
+                <div style="font-size: 0.72rem; color: var(--ts-text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.6rem;">Platform Health</div>
+                <div style="display: flex; flex-direction: column; gap: 0.45rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.8rem; color: var(--ts-text-secondary);">SQLite Core</span>
+                        <span class="ts-health-status ts-health-{% if health.sqlite_ok %}ok{% else %}err{% endif %}">
+                            {% if health.sqlite_ok %}ONLINE{% else %}OFFLINE{% endif %}
+                        </span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.8rem; color: var(--ts-text-secondary);">Chroma VectorDB</span>
+                        <span class="ts-health-status ts-health-{% if health.chroma_ok %}ok{% else %}err{% endif %}">
+                            {% if health.chroma_ok %}ONLINE{% else %}OFFLINE{% endif %}
+                        </span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.8rem; color: var(--ts-text-secondary);">Ollama Qwen AI</span>
+                        <span class="ts-health-status ts-health-{% if health.ollama_ok %}ok{% else %}err{% endif %}">
+                            {% if health.ollama_ok %}ONLINE{% else %}OFFLINE{% endif %}
+                        </span>
+                    </div>
                 </div>
             </div>
+
+            <hr class="ts-divider-line">
+
+            <!-- Database Statistics -->
+            <div style='font-size: 0.72rem; color: var(--ts-text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.6rem;'>Vector Catalog Stats</div>
+            <div style="font-size: 0.8rem; color: var(--ts-text-secondary); margin-bottom: 0.25rem;">📚 Documents Indexed: <b style="color: var(--ts-text)">{{ stats.sources }}</b></div>
+            <div style="font-size: 0.8rem; color: var(--ts-text-secondary); margin-bottom: 0.6rem;">🧩 Total Vector Chunks: <b style="color: var(--ts-text)">{{ stats.total_chunks }}</b></div>
         </div>
-
-        <hr class="ts-divider-line">
-
-        <!-- Database Statistics -->
-        <div style='font-size: 0.72rem; color: var(--ts-text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.6rem;'>Vector Catalog Stats</div>
-        <div style="font-size: 0.8rem; color: var(--ts-text-secondary); margin-bottom: 0.25rem;">📚 Documents Indexed: <b style="color: var(--ts-text)">{{ stats.sources }}</b></div>
-        <div style="font-size: 0.8rem; color: var(--ts-text-secondary); margin-bottom: 0.6rem;">🧩 Total Vector Chunks: <b style="color: var(--ts-text)">{{ stats.total_chunks }}</b></div>
         {% endif %}
 
         <hr class="ts-divider-line">
         <!-- Logout -->
         <a href="/logout" class="btn-ts btn-ts-secondary" style="justify-content: center;">
-            🚪 Logout
+            🚪 <span class="btn-text">Logout</span>
         </a>
     </div>
     {% endif %}
