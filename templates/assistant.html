@@ -413,17 +413,28 @@
         const radios = document.querySelectorAll('input[name="chat_mode"]');
         const uploadCard = document.getElementById('ephemeralUploadCard');
         
-        // Auto-select Ephemeral Doc Q&A mode if 'mode=ephemeral' query param is present
+        // Auto-select mode based on query param or saved state in sessionStorage
         const urlParams = new URLSearchParams(window.location.search);
+        let desiredMode = sessionStorage.getItem('ts_chat_mode');
+        
         if (urlParams.get('mode') === 'ephemeral') {
-            const ephemRadio = document.getElementById('modeEphemeral');
-            if (ephemRadio) {
-                ephemRadio.checked = true;
+            desiredMode = "Ephemeral Doc Q&A";
+        }
+        
+        if (desiredMode) {
+            const radioToCheck = Array.from(radios).find(r => r.value === desiredMode);
+            if (radioToCheck) {
+                radioToCheck.checked = true;
             }
         }
         
         function updateModeUI() {
-            const activeMode = document.querySelector('input[name="chat_mode"]:checked').value;
+            const activeRadio = document.querySelector('input[name="chat_mode"]:checked');
+            if (!activeRadio) return;
+            
+            const activeMode = activeRadio.value;
+            sessionStorage.setItem('ts_chat_mode', activeMode);
+            
             if (activeMode === "Ephemeral Doc Q&A") {
                 uploadCard.style.display = "block";
             } else {
@@ -542,11 +553,12 @@
         const model = modelSelect ? modelSelect.value : '';
 
         try {
+            const tabId = sessionStorage.getItem('ts_tab_id') || '';
             activeStreamController = new AbortController();
-            const response = await fetch('/assistant/chat_stream', {
+            const response = await fetch('/assistant/chat_stream?tab_id=' + tabId, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query, model, mode }),
+                body: JSON.stringify({ query, model, mode, tab_id: tabId }),
                 signal: activeStreamController.signal
             });
 
