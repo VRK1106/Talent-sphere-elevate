@@ -642,7 +642,6 @@
 
         // Initialize state on page load
         const cardOpen = sessionStorage.getItem('ts_upload_card_open');
-        const uploadCard = document.getElementById('ephemeralUploadCard');
         if (uploadCard && USER_ROLE !== 'admin') {
             if (cardOpen === 'true') {
                 uploadCard.style.display = 'block';
