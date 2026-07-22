@@ -245,6 +245,18 @@
         justify-content: center;
         align-items: center;
     }
+
+    /* Mermaid SVG scaling and responsiveness */
+    .mermaid {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+    }
+    .mermaid svg {
+        max-width: 100% !important;
+        height: auto !important;
+        background: transparent !important;
+    }
 </style>
 <!-- Markdown Parser CDN for client-side streaming rendering -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -490,7 +502,9 @@
                 container.style.border = '1px solid var(--ts-border)';
                 container.style.overflowX = 'auto';
                 container.style.marginBottom = '1rem';
-                container.textContent = codeEl.textContent;
+                let codeText = codeEl.textContent;
+                codeText = codeText.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+                container.textContent = codeText;
                 preEl.replaceWith(container);
                 processed = true;
             }

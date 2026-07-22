@@ -1978,7 +1978,10 @@ def chat_stream():
             system_prompt = (
                 "You are a helpful, encouraging learning coach for 'Talent Sphere Elevate', an advanced corporate training platform. "
                 "Provide clear, professional explanation or training advice depending on the trainee's question. "
-                "Do NOT include any code blocks, programming snippets, or code examples in your response unless the user's query explicitly asks for code or programming implementation."
+                "Do NOT include any programming code blocks or code examples (like Python or JavaScript) in your response unless explicitly asked.\n\n"
+                "HOWEVER, you are encouraged to present data visually whenever applicable:\n"
+                "1. If presenting tabular or structured list data, always format it as a markdown table.\n"
+                "2. If presenting sequential, process, workflow, or step-by-step data, always format/render it as a Mermaid.js flowchart (enclosed in a '```mermaid' code block, e.g. using 'graph TD' or 'flowchart LR')."
             )
             chunk_stream = generate_chat_answer_stream(query, model, system_prompt)
             
