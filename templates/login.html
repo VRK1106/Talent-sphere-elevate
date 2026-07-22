@@ -5,120 +5,99 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sign In - Talent Sphere Elevate</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:  #030712;
-    --card: rgba(13,17,23,0.82);
-    --primary: #6366f1;
-    --primary-dark: #4f46e5;
-    --accent: #a855f7;
-    --secondary: #10b981;
-    --text: #F3F4F6;
-    --text-soft: #9CA3AF;
-    --ring: rgba(99,102,241,0.3);
-    --border: rgba(255,255,255,0.07);
-    --input-bg: rgba(255,255,255,0.04);
+    --bg1: #FFF3E6;
+    --bg2: #EAE1FB;
+    --card: #FFFDFA;
+    --coral: #FF9166;
+    --coral-dark: #E8734A;
+    --plum: #4B3A63;
+    --plum-soft: #8479A0;
+    --mint: #7FD6B0;
+    --ring: rgba(255,145,102,0.28);
   }
 
   *{ box-sizing:border-box; margin:0; padding:0; }
 
   body{
     min-height:100vh;
-    font-family:'Outfit','Inter',sans-serif;
-    background:
-      radial-gradient(circle at 15% 15%, rgba(99,102,241,0.14) 0%, transparent 55%),
-      radial-gradient(circle at 85% 85%, rgba(16,185,129,0.12) 0%, transparent 55%),
-      radial-gradient(circle at 50% 50%, rgba(168,85,247,0.08) 0%, transparent 50%),
-      var(--bg);
+    font-family:'Inter', sans-serif;
+    background: radial-gradient(circle at 15% 15%, var(--bg1), transparent 55%),
+                radial-gradient(circle at 85% 85%, var(--bg2), transparent 55%),
+                linear-gradient(160deg, var(--bg1), var(--bg2));
     display:flex;
     align-items:center;
     justify-content:center;
-    padding:40px 20px;
+    padding: 40px 20px;
     overflow-x:hidden;
     position:relative;
   }
 
-  /* Subtle grid overlay */
-  body::before{
-    content:"";
-    position:fixed;
-    inset:0;
-    pointer-events:none;
-    background-image:
-      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
-    background-size:50px 50px;
-    opacity:0.8;
-    z-index:0;
-  }
-
-  /* ---- Floating orbs ---- */
   .floaty{
     position:absolute;
     border-radius:50%;
-    filter:blur(2px);
-    opacity:0.55;
-    animation:drift 8s ease-in-out infinite;
-    z-index:0;
+    filter: blur(2px);
+    opacity:0.5;
+    animation: drift 8s ease-in-out infinite;
   }
-  .floaty:nth-child(1){ width:16px; height:16px; background:var(--secondary); top:12%; left:18%; animation-delay:0s; }
-  .floaty:nth-child(2){ width:10px; height:10px; background:var(--primary); top:70%; left:12%; animation-delay:1.5s; }
+  .floaty:nth-child(1){ width:16px; height:16px; background:var(--mint); top:12%; left:18%; animation-delay:0s; }
+  .floaty:nth-child(2){ width:10px; height:10px; background:var(--coral); top:70%; left:12%; animation-delay:1.5s; }
   .floaty:nth-child(3){ width:14px; height:14px; background:#FFD97D; top:20%; right:15%; animation-delay:0.8s; }
-  .floaty:nth-child(4){ width:9px;  height:9px;  background:var(--accent); bottom:15%; right:20%; animation-delay:2.2s; }
+  .floaty:nth-child(4){ width:9px; height:9px; background:var(--plum-soft); bottom:15%; right:20%; animation-delay:2.2s; }
   @keyframes drift{
-    0%,100%{ transform:translateY(0) translateX(0); }
-    50%{ transform:translateY(-18px) translateX(8px); }
+    0%,100%{ transform: translateY(0) translateX(0); }
+    50%{ transform: translateY(-18px) translateX(8px); }
   }
 
   .scene{
     position:relative;
     width:100%;
-    max-width:400px;
-    z-index:1;
+    max-width:380px;
   }
 
   /* ---- MASCOT ---- */
   .mascot-wrap{
     display:flex;
     justify-content:center;
-    margin-bottom:-34px;
+    margin-bottom: -34px;
     position:relative;
     z-index:5;
   }
 
   .blob{
     width:104px; height:96px;
-    background:linear-gradient(135deg, var(--primary), var(--accent));
-    border-radius:58% 58% 55% 55% / 62% 62% 45% 45%;
+    background: var(--coral);
+    border-radius: 58% 58% 55% 55% / 62% 62% 45% 45%;
     position:relative;
-    box-shadow: 0 10px 30px rgba(99,102,241,0.4), 0 0 0 1px rgba(255,255,255,0.07);
-    animation:idle 3.2s ease-in-out infinite;
-    transition:transform 0.25s ease;
+    box-shadow: 0 10px 24px rgba(232,115,74,0.35);
+    animation: idle 3.2s ease-in-out infinite;
+    transition: transform 0.25s ease;
   }
   @keyframes idle{
-    0%,100%{ transform:translateY(0) rotate(0deg); }
-    50%{ transform:translateY(-5px) rotate(-1.5deg); }
+    0%,100%{ transform: translateY(0) rotate(0deg); }
+    50%{ transform: translateY(-5px) rotate(-1.5deg); }
   }
-  .blob.happy{ animation:happy-bounce 0.6s ease; }
+  .blob.happy{ animation: happy-bounce 0.6s ease; }
   @keyframes happy-bounce{
-    0%{ transform:scale(1); }
-    30%{ transform:scale(1.12,0.88) translateY(4px); }
-    55%{ transform:scale(0.94,1.1) translateY(-14px); }
-    75%{ transform:scale(1.05,0.95) translateY(0); }
-    100%{ transform:scale(1); }
+    0%{ transform: scale(1); }
+    30%{ transform: scale(1.12, 0.88) translateY(4px); }
+    55%{ transform: scale(0.94, 1.1) translateY(-14px); }
+    75%{ transform: scale(1.05, 0.95) translateY(0); }
+    100%{ transform: scale(1); }
   }
-  .blob.shake{ animation:shake 0.5s ease; }
+  .blob.shake{ animation: shake 0.5s ease; }
   @keyframes shake{
-    0%,100%{ transform:rotate(0deg); }
-    25%{ transform:rotate(-6deg); }
-    75%{ transform:rotate(6deg); }
+    0%,100%{ transform: rotate(0deg); }
+    25%{ transform: rotate(-6deg); }
+    75%{ transform: rotate(6deg); }
   }
 
   .cheek{
     position:absolute;
     width:14px; height:9px;
-    background:rgba(168,85,247,0.45);
+    background: rgba(232,115,74,0.55);
     border-radius:50%;
     top:56px;
   }
@@ -134,24 +113,25 @@
   }
   .eye{
     width:22px; height:22px;
-    background:var(--text);
+    background: var(--plum);
     border-radius:50%;
     position:relative;
     display:flex;
     align-items:center;
     justify-content:center;
-    transition:height 0.15s ease, transform 0.15s ease;
+    transition: height 0.15s ease, transform 0.15s ease;
   }
   .pupil{
     width:8px; height:8px;
-    background:#030712;
+    background: #fff;
     border-radius:50%;
-    transform:translate(0px,0px);
-    transition:transform 0.05s linear;
+    transform: translate(0px, 0px);
+    transition: transform 0.05s linear;
   }
   .eye.closed{ height:3px; border-radius:3px; }
   .eye.closed .pupil{ opacity:0; }
 
+  /* hands covering eyes for password */
   .hands{
     position:absolute;
     top:26px; left:0; right:0;
@@ -160,25 +140,25 @@
     gap:8px;
     pointer-events:none;
     opacity:0;
-    transform:translateY(14px) scale(0.7);
-    transition:opacity 0.25s ease, transform 0.25s ease;
+    transform: translateY(14px) scale(0.7);
+    transition: opacity 0.25s ease, transform 0.25s ease;
   }
-  .hands.show{ opacity:1; transform:translateY(0) scale(1); }
+  .hands.show{ opacity:1; transform: translateY(0) scale(1); }
   .hand{
     width:26px; height:26px;
-    background:var(--primary-dark);
-    border-radius:50% 50% 50% 5%;
+    background: var(--coral-dark);
+    border-radius: 50% 50% 50% 5%;
   }
-  .hand.right{ border-radius:50% 50% 5% 50%; }
+  .hand.right{ border-radius: 50% 50% 5% 50%; }
 
   .mouth{
     position:absolute;
     bottom:20px; left:50%;
-    transform:translateX(-50%);
+    transform: translateX(-50%);
     width:20px; height:10px;
-    border-bottom:3px solid var(--text);
-    border-radius:0 0 20px 20px;
-    transition:all 0.2s ease;
+    border-bottom: 3px solid var(--plum);
+    border-radius: 0 0 20px 20px;
+    transition: all 0.2s ease;
   }
   .mouth.big{ width:28px; height:16px; border-width:3.5px; }
   .mouth.flat{ border-radius:0; height:0; width:16px; }
@@ -189,167 +169,107 @@
     opacity:0;
     pointer-events:none;
   }
-  .sparkle.pop{ animation:sparkle-pop 0.7s ease forwards; }
+  .sparkle.pop{ animation: sparkle-pop 0.7s ease forwards; }
   @keyframes sparkle-pop{
-    0%{ opacity:0; transform:translateY(0) scale(0.3) rotate(0deg); }
+    0%{ opacity:0; transform: translateY(0) scale(0.3) rotate(0deg); }
     30%{ opacity:1; }
-    100%{ opacity:0; transform:translateY(-38px) scale(1.1) rotate(30deg); }
+    100%{ opacity:0; transform: translateY(-38px) scale(1.1) rotate(30deg); }
   }
 
   /* ---- CARD ---- */
   .card{
-    background:var(--card);
-    backdrop-filter:blur(24px);
-    -webkit-backdrop-filter:blur(24px);
-    border-radius:28px;
-    border:1px solid var(--border);
-    padding:52px 36px 34px;
-    box-shadow:
-      0 24px 60px rgba(0,0,0,0.5),
-      0 0 0 1px rgba(255,255,255,0.05),
-      inset 0 1px 0 rgba(255,255,255,0.06);
+    background: var(--card);
+    border-radius: 28px;
+    padding: 52px 34px 32px;
+    box-shadow: 0 20px 50px rgba(75,58,99,0.16);
     position:relative;
     opacity:0;
-    animation:rise 0.55s ease forwards;
+    animation: rise 0.55s ease forwards;
     animation-delay:0.1s;
-    transform:translateY(12px);
   }
   @keyframes rise{ to{ opacity:1; transform:none; } }
+  .card{ transform: translateY(10px); }
 
   h1{
-    font-family:'Outfit',sans-serif;
-    font-size:26px;
-    font-weight:800;
-    background:linear-gradient(135deg, var(--primary), var(--accent));
-    -webkit-background-clip:text;
-    -webkit-text-fill-color:transparent;
-    background-clip:text;
+    font-family:'Baloo 2', sans-serif;
+    font-size:25px;
+    font-weight:700;
+    color: var(--plum);
     text-align:center;
     margin-bottom:6px;
-    letter-spacing:-0.5px;
   }
   .sub{
     text-align:center;
     font-size:13.5px;
-    color:var(--text-soft);
-    margin-bottom:30px;
-    line-height:1.5;
+    color: var(--plum-soft);
+    margin-bottom:28px;
   }
 
-  .flash-msg{
-    background:rgba(239,68,68,0.1);
-    border:1px solid rgba(239,68,68,0.25);
-    color:#f87171;
-    padding:0.65rem 0.9rem;
-    border-radius:12px;
-    margin-bottom:1.2rem;
-    font-size:0.82rem;
-    font-weight:500;
-    text-align:center;
-  }
-
-  .field{ margin-bottom:18px; }
+  .field{ margin-bottom:16px; }
   label{
     display:block;
     font-size:12.5px;
     font-weight:600;
-    color:var(--text-soft);
+    color: var(--plum);
     margin-bottom:6px;
-    text-transform:uppercase;
-    letter-spacing:0.05em;
   }
   .input-wrap{ position:relative; }
-  input[type=text],
-  input[type=password],
-  input[type=email]{
+  input{
     width:100%;
-    padding:13px 16px;
-    border:1px solid var(--border);
-    background:var(--input-bg);
-    border-radius:14px;
+    padding: 12px 14px;
+    border: 2px solid #F0E9FB;
+    background: #FBF8FF;
+    border-radius: 14px;
     font-size:14.5px;
-    font-family:'Inter',sans-serif;
-    color:var(--text);
+    font-family:'Inter', sans-serif;
+    color: var(--plum);
     outline:none;
-    transition:border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
-  input::placeholder{ color:rgba(156,163,175,0.5); }
+  input::placeholder{ color:#BBAED6; }
   input:focus{
-    border-color:var(--primary);
-    background:rgba(99,102,241,0.06);
-    box-shadow:0 0 0 4px var(--ring);
+    border-color: var(--coral);
+    box-shadow: 0 0 0 4px var(--ring);
   }
 
   .toggle-pw{
     position:absolute;
     right:12px; top:50%; transform:translateY(-50%);
     background:none; border:none;
-    font-size:11px; font-weight:700;
-    color:var(--text-soft);
+    font-size:12px; font-weight:600;
+    color: var(--plum-soft);
     cursor:pointer;
-    letter-spacing:0.06em;
-    text-transform:uppercase;
-    transition:color 0.15s;
   }
-  .toggle-pw:hover{ color:var(--primary); }
+  .toggle-pw:hover{ color: var(--coral-dark); }
 
   .row-between{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    margin:8px 0 24px;
+    margin: 6px 0 22px;
     font-size:12.5px;
   }
-  .remember{ display:flex; align-items:center; gap:6px; color:var(--text-soft); }
-  .remember input[type=checkbox]{
-    width:14px; height:14px;
-    accent-color:var(--primary);
-    background:none;
-    border:none;
-    padding:0;
-  }
-  a.forgot{ color:var(--primary); text-decoration:none; font-weight:600; }
+  .remember{ display:flex; align-items:center; gap:6px; color: var(--plum-soft); }
+  .remember input{ width:14px; height:14px; accent-color: var(--coral); }
+  a.forgot{ color: var(--coral-dark); text-decoration:none; font-weight:600; }
   a.forgot:hover{ text-decoration:underline; }
 
   button.submit{
     width:100%;
-    padding:15px;
+    padding:14px;
     border:none;
     border-radius:16px;
-    background:linear-gradient(135deg, var(--primary), var(--accent));
+    background: var(--coral);
     color:#fff;
-    font-family:'Outfit',sans-serif;
+    font-family:'Baloo 2', sans-serif;
     font-weight:700;
     font-size:16px;
     cursor:pointer;
-    box-shadow:0 8px 24px rgba(99,102,241,0.4);
-    transition:transform 0.12s ease, box-shadow 0.12s ease;
-    letter-spacing:0.02em;
+    box-shadow: 0 8px 18px rgba(255,145,102,0.4);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
   }
-  button.submit:hover{
-    transform:translateY(-2px);
-    box-shadow:0 12px 28px rgba(99,102,241,0.5);
-  }
-  button.submit:active{ transform:translateY(0); }
-
-  .demo-creds{
-    text-align:center;
-    margin-top:22px;
-    font-size:11px;
-    color:var(--text-soft);
-    line-height:1.6;
-    border-top:1px solid var(--border);
-    padding-top:16px;
-  }
-  .demo-creds code{
-    background:rgba(99,102,241,0.1);
-    border:1px solid rgba(99,102,241,0.15);
-    color:var(--primary);
-    padding:0.1rem 0.4rem;
-    border-radius:5px;
-    font-size:11px;
-    font-family:'Inter',monospace;
-  }
+  button.submit:hover{ transform: translateY(-2px); box-shadow: 0 10px 22px rgba(255,145,102,0.48); }
+  button.submit:active{ transform: translateY(0); }
 
   @media (prefers-reduced-motion: reduce){
     *{ animation:none !important; transition:none !important; }
@@ -375,6 +295,7 @@
         }
     })();
 
+    // Intercept form submissions to inject the tab ID
     document.addEventListener("DOMContentLoaded", () => {
         document.addEventListener("submit", function(e) {
             const form = e.target;
@@ -422,10 +343,13 @@
     <h1>Talent Sphere Elevate</h1>
     <p class="sub">Sign in to access your AI-powered corporate learning space.</p>
 
+    <!-- Flashed messages container -->
     {% with messages = get_flashed_messages() %}
         {% if messages %}
             {% for message in messages %}
-                <div class="flash-msg">{{ message }}</div>
+                <div style="background-color: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #EF4444; padding: 0.65rem 0.85rem; border-radius: 10px; margin-bottom: 1.2rem; font-size: 0.82rem; font-weight: 500; text-align: center;">
+                    {{ message }}
+                </div>
             {% endfor %}
         {% endif %}
     {% endwith %}
@@ -434,7 +358,7 @@
       <div class="field">
         <label for="username">Username or Email</label>
         <div class="input-wrap">
-          <input type="text" id="username" name="username" placeholder="Employee ID or email" autocomplete="username" required>
+          <input type="text" id="username" name="username" placeholder="Employee ID or Email" autocomplete="username" required>
         </div>
       </div>
 
@@ -454,12 +378,12 @@
         <a href="#" class="forgot">Forgot it?</a>
       </div>
 
-      <button type="submit" class="submit" id="submitBtn">Let's go! ✦</button>
+      <button type="submit" class="submit" id="submitBtn">Let's go!</button>
     </form>
 
-    <div class="demo-creds">
+    <div style="text-align: center; margin-top: 24px; font-size: 11px; color: var(--plum-soft); line-height: 1.5; border-top: 1px dashed #F0E9FB; padding-top: 16px;">
         🔑 Demo credentials:<br>
-        <code>admin</code> / <code>admin123</code> &nbsp;|&nbsp; <code>emp01</code> / <code>jane1234</code>
+        <b>admin</b> / <b>admin123</b> &nbsp;|&nbsp; <b>emp01</b> / <b>jane1234</b>
     </div>
   </div>
 </div>
@@ -477,6 +401,7 @@
 
   let coveringEyes = false;
 
+  // Mascot eyes track cursor
   document.addEventListener('mousemove', (e) => {
     if (coveringEyes) return;
     const rect = blob.getBoundingClientRect();
@@ -492,8 +417,12 @@
     pupilR.style.transform = `translate(${px}px, ${py}px)`;
   });
 
-  userField.addEventListener('focus', () => { mouth.classList.add('big'); });
-  userField.addEventListener('blur', () => { mouth.classList.remove('big'); });
+  userField.addEventListener('focus', () => {
+    mouth.classList.add('big');
+  });
+  userField.addEventListener('blur', () => {
+    mouth.classList.remove('big');
+  });
 
   pwField.addEventListener('focus', () => {
     coveringEyes = true;
@@ -532,6 +461,7 @@
     }
   }
 
+  // Trigger shake on load if there's a flashed message
   {% if get_flashed_messages() %}
   document.addEventListener('DOMContentLoaded', () => {
     blob.classList.add('shake');
@@ -547,10 +477,16 @@
       setTimeout(() => blob.classList.remove('shake'), 500);
       return;
     }
+    
+    // Play happy bounce & sparkles animation
     blob.classList.add('happy');
     spawnSparkles();
-    document.getElementById('submitBtn').textContent = 'Signing in…';
-    setTimeout(() => { e.target.submit(); }, 600);
+    document.getElementById('submitBtn').textContent = 'Signing in...';
+    
+    // Submit form after animation completes
+    setTimeout(() => {
+      e.target.submit();
+    }, 600);
   });
 </script>
 

@@ -3,125 +3,52 @@
 
 {% block head %}
 <style>
-    /* ── Upload Drop Zone ── */
+    /* Ingestion Drag & Drop Zone */
     .upload-zone {
-        border: 2px dashed rgba(99,102,241,0.35);
-        border-radius: 16px;
+        border: 2px dashed rgba(99, 102, 241, 0.4);
+        border-radius: 12px;
         padding: 3rem 2rem;
         text-align: center;
-        background: rgba(99,102,241,0.03);
+        background: rgba(255, 255, 255, 0.02);
         cursor: pointer;
-        transition: all 0.25s ease;
+        transition: all 0.2s ease;
         margin-bottom: 1.5rem;
     }
-    .upload-zone:hover, .upload-zone.drag-over {
+    .upload-zone:hover {
         border-color: var(--ts-primary);
-        background: rgba(99,102,241,0.07);
-        box-shadow: 0 0 0 4px rgba(99,102,241,0.1);
+        background: rgba(99, 102, 241, 0.05);
     }
-
-    /* ── Loading overlay ── */
+    body.ts-light-mode .upload-zone {
+        background: rgba(255, 255, 255, 0.8);
+        border-color: rgba(99, 102, 241, 0.3);
+    }
+    
+    /* Loading overlay */
     .loading-overlay {
         display: none;
         position: fixed;
-        inset: 0;
-        background: rgba(3,7,18,0.88);
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(11, 15, 25, 0.85);
         z-index: 9999;
         justify-content: center;
         align-items: center;
         flex-direction: column;
         gap: 1.5rem;
-        backdrop-filter: blur(10px);
+        backdrop-filter: blur(8px);
     }
     .spinner {
-        width: 56px; height: 56px;
-        border: 4px solid rgba(255,255,255,0.08);
+        width: 60px;
+        height: 60px;
+        border: 5px solid rgba(255, 255, 255, 0.1);
         border-top-color: var(--ts-primary);
         border-radius: 50%;
-        animation: spin 0.9s linear infinite;
+        animation: spin 1s linear infinite;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── Section heading ── */
-    .section-heading {
-        font-size: 1.05rem;
-        font-weight: 700;
-        color: var(--ts-text);
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    /* ── Doc row ── */
-    .doc-row {
-        background: rgba(255,255,255,0.02);
-        border: 1px solid rgba(255,255,255,0.05);
-        border-radius: 14px;
-        padding: 1.2rem 1.4rem;
-        transition: border-color 0.2s, background 0.2s;
-    }
-    .doc-row:hover {
-        border-color: rgba(99,102,241,0.2);
-        background: rgba(99,102,241,0.03);
-    }
-
-    /* ── Chunk details panel ── */
-    .chunk-details {
-        border: 1px solid rgba(255,255,255,0.05);
-        border-radius: 10px;
-        overflow: hidden;
-        margin-top: 0.75rem;
-    }
-    .chunk-details summary {
-        padding: 0.6rem 0.9rem;
-        font-size: 0.82rem;
-        font-weight: 600;
-        cursor: pointer;
-        color: var(--ts-text-secondary);
-        outline: none;
-        background: rgba(255,255,255,0.02);
-        transition: background 0.15s, color 0.15s;
-        list-style: none;
-        user-select: none;
-    }
-    .chunk-details summary:hover { background: rgba(255,255,255,0.04); color: var(--ts-text); }
-    .chunk-details summary::-webkit-details-marker { display: none; }
-    .chunk-details[open] summary { color: var(--ts-primary); border-bottom: 1px solid rgba(255,255,255,0.05); }
-
-    /* ── Danger zone card ── */
-    .danger-zone {
-        background: rgba(239,68,68,0.04);
-        border: 1px solid rgba(239,68,68,0.2);
-        border-radius: 16px;
-        padding: 1.5rem;
-        margin-bottom: 3rem;
-    }
-
-    /* ── Metric mini ── */
-    .ingest-metric {
-        background: rgba(255,255,255,0.025);
-        border: 1px solid rgba(255,255,255,0.06);
-        border-radius: 14px;
-        padding: 1.2rem;
-        text-align: center;
-    }
-    .ingest-metric-val {
-        font-size: 2rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, var(--ts-primary), var(--ts-accent));
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        line-height: 1.1;
-    }
-    .ingest-metric-label {
-        font-size: 0.72rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.07em;
-        color: var(--ts-text-muted);
-        margin-top: 0.35rem;
+    @keyframes spin {
+        to { transform: rotate(360deg); }
     }
 </style>
 {% endblock %}
@@ -129,55 +56,55 @@
 {% block content %}
 <div class="ts-hero">
     <div class="ts-hero-title">📥 Document Ingestion Pipeline</div>
-    <div class="ts-hero-subtitle">Upload training PDFs, view text chunks, and update the searchable vector index.</div>
+    <div class="ts-hero-subtitle">
+        Upload training PDFs, view text chunks, and update the searchable vector index.
+    </div>
 </div>
 
-<div class="ts-info-banner" style="margin-top: 1.5rem; margin-bottom: 1.5rem; border-radius: 12px;">
-    <div class="ts-info-title" style="font-weight: 700; margin-bottom: 0.2rem;">Secure Ingestion Control</div>
-    <div class="ts-info-body" style="font-size: 0.9rem;">
+<div class="ts-info-banner" style="margin-top: 1.5rem; margin-bottom: 1.5rem; border-radius: 8px;">
+    <div class="ts-info-title" style="font-weight: 600;">Secure Ingestion Control</div>
+    <div class="ts-info-body" style="font-size: 0.9rem; margin-top: 0.2rem;">
         Upload PDFs to split them into overlapping passages. Duplicate checks prevent redundant processing, and progress stats keep you fully informed.
     </div>
 </div>
 
-<!-- ── Upload Form ── -->
+<!-- Uploader Form -->
 <form action="/ingest" method="POST" enctype="multipart/form-data" id="uploadForm">
-    <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-        <div style="font-size: 3rem; margin-bottom: 1rem; line-height: 1;">📁</div>
-        <div style="font-size: 1.05rem; font-weight: 700; color: var(--ts-text); margin-bottom: 0.3rem;">
-            Select PDF Files to Ingest
-        </div>
-        <div style="font-size: 0.82rem; color: var(--ts-text-muted);">
-            Click to choose · PDF training documents
-        </div>
+    <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+        <span style="font-size: 3rem; display: block; margin-bottom: 1rem;">📁</span>
+        <span style="font-size: 1.1rem; font-weight: 600; color: var(--ts-text);">Select PDF Files to Ingest</span>
+        <span style="font-size: 0.8rem; color: var(--ts-text-secondary); display: block; margin-top: 0.4rem;">
+            Click here to choose PDF training documents
+        </span>
         <input type="file" id="fileInput" name="files" multiple accept=".pdf" style="display: none;" onchange="updateSelectedFilesList()">
-        <div id="fileList" style="margin-top: 1rem; font-size: 0.85rem; color: var(--ts-primary); font-weight: 600; line-height: 1.6;"></div>
+        <div id="fileList" style="margin-top: 1rem; font-size: 0.85rem; color: var(--ts-primary); font-weight: 600;"></div>
     </div>
-
-    <button type="submit" class="btn-ts btn-ts-primary" id="buildBtn" style="width: auto; padding: 0.8rem 2rem; margin-bottom: 2rem;" disabled>
+    
+    <button type="submit" class="btn-ts btn-ts-primary" id="buildBtn" style="width: auto; padding: 0.75rem 2rem; margin-bottom: 2rem;" disabled>
         🔧 Build Vector Index
     </button>
 </form>
 
-<!-- ── Ingestion Summary ── -->
+<!-- Ingestion Feedback / Summary -->
 {% if summary %}
-<div class="ts-card" style="padding: 1.4rem; border-radius: 16px; margin-bottom: 1.5rem; border-color: rgba(16,185,129,0.2); background: rgba(16,185,129,0.03);">
-    <div style="font-size: 1rem; font-weight: 700; color: var(--ts-secondary); margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.4rem;">
-        📦 Ingestion Summary
+<div class="ts-card" style="padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
+    <div style="font-size: 1.1rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span>📦</span> Ingestion Summary
     </div>
-    <div style="font-size: 0.95rem; color: var(--ts-text); line-height: 1.7;">
-        Files processed: <strong>{{ summary.processed }}</strong> &nbsp;·&nbsp;
-        Chunks added: <strong>{{ summary.chunks }}</strong> &nbsp;·&nbsp;
-        Duplicates skipped: <strong>{{ summary.duplicates }}</strong>
+    <div style="font-size: 0.95rem; line-height: 1.6;">
+        Files processed: <b>{{ summary.processed }}</b> &nbsp;·&nbsp; 
+        Chunks added: <b>{{ summary.chunks }}</b> &nbsp;·&nbsp; 
+        Duplicates skipped: <b>{{ summary.duplicates }}</b>
     </div>
 </div>
 {% endif %}
 
-<!-- ── Flash alerts ── -->
+<!-- Ingestion Flash Alerts -->
 {% with messages = get_flashed_messages() %}
     {% if messages %}
-        <div style="margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+        <div style="margin-bottom: 2rem; display: flex; flex-direction: column; gap: 0.5rem;">
             {% for message in messages %}
-                <div style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); color: #34d399; padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.88rem;">
+                <div style="background-color: rgba(52, 211, 153, 0.1); border: 1px solid rgba(52, 211, 153, 0.2); color: #34d399; padding: 0.75rem; border-radius: 8px; font-size: 0.88rem;">
                     {{ message }}
                 </div>
             {% endfor %}
@@ -185,50 +112,56 @@
     {% endif %}
 {% endwith %}
 
-<!-- ── Library Stats ── -->
-<div class="section-heading">📚 Document Library Catalog</div>
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.8rem;">
-    <div class="ingest-metric">
-        <div class="ingest-metric-val">{{ stats.sources }}</div>
-        <div class="ingest-metric-label">Documents Ingested</div>
+<!-- Current library stats -->
+<div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-text); margin-bottom: 1rem;'>Document Library Catalog</div>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
+    <div class="ts-metric ts-metric-card" style="padding: 1.2rem; border-radius: 12px; text-align: center; margin-bottom: 0;">
+        <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ stats.sources }}</div>
+        <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem;">Documents Ingested</div>
     </div>
-    <div class="ingest-metric">
-        <div class="ingest-metric-val">{{ stats.total_chunks }}</div>
-        <div class="ingest-metric-label">Total Vector Chunks</div>
+    <div class="ts-metric ts-metric-card" style="padding: 1.2rem; border-radius: 12px; text-align: center; margin-bottom: 0;">
+        <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ stats.total_chunks }}</div>
+        <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem;">Total Vector Chunks</div>
     </div>
 </div>
 
 {% if not stats.source_names %}
-    <div class="ts-info-banner" style="padding: 1rem; border-radius: 12px; margin-bottom: 2rem;">
+    <div class="ts-info-banner" style="padding: 1rem; border-radius: 8px; margin-bottom: 2rem;">
         <div class="ts-info-body">The vector store is currently empty. Use the uploader above to build your index.</div>
     </div>
 {% else %}
-    <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 3rem;">
+    <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 3rem;">
         {% for doc in stats.source_details %}
-        <div class="doc-row">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+        <div class="ts-card" style="padding: 1.2rem; border-radius: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
                 <div>
-                    <div style="font-size: 1rem; font-weight: 700; color: var(--ts-text); margin-bottom: 0.2rem;">📄 {{ doc.name }}</div>
-                    <div style="font-size: 0.82rem; color: var(--ts-text-secondary);">
+                    <span style="font-size: 1.1rem; font-weight: 600; color: var(--ts-text);">📄 {{ doc.name }}</span><br>
+                    <span style="color: var(--ts-text-secondary); font-size: 0.85rem;">
                         {{ doc.pages }} pages &nbsp;·&nbsp; {{ doc.chunks }} chunks
-                    </div>
+                    </span>
                 </div>
-                <form action="/ingest/delete" method="POST" onsubmit="return confirm('Delete this document? This cannot be undone.')" style="margin: 0;">
-                    <input type="hidden" name="doc_name" value="{{ doc.name }}">
-                    <button type="submit" class="btn-ts btn-ts-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; color: #f87171; border-color: rgba(248,113,113,0.25);">
-                        🗑️ Delete
-                    </button>
-                </form>
+                <div style="width: auto;">
+                    <form action="/ingest/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this document? This cannot be undone.')">
+                        <input type="hidden" name="doc_name" value="{{ doc.name }}">
+                        <button type="submit" class="btn-ts btn-ts-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; color: #f87171; border-color: rgba(248, 113, 113, 0.2);">
+                            🗑️ Delete
+                        </button>
+                    </form>
+                </div>
             </div>
-            <details class="chunk-details">
-                <summary>👁️ Browse Chunks</summary>
-                <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 280px; overflow-y: auto; padding: 0.75rem;">
+            
+            <!-- Collapsible chunk browser -->
+            <details style="margin-top: 0.5rem; border: 1px solid var(--ts-border); border-radius: 6px; padding: 0.5rem;">
+                <summary style="font-size: 0.85rem; font-weight: 600; cursor: pointer; color: var(--ts-text-secondary); outline: none;">
+                    👁️ Browse Chunks
+                </summary>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 300px; overflow-y: auto; margin-top: 0.75rem; padding-right: 0.25rem;">
                     {% for c in doc_chunks[doc.name] %}
-                    <div style="padding: 0.75rem; border-radius: 8px; background: rgba(255,255,255,0.015); border: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem;">
-                        <div style="font-size: 0.72rem; color: var(--ts-secondary); font-weight: 700; margin-bottom: 0.3rem; letter-spacing: 0.04em;">
-                            PAGE {{ c.page }} · CHUNK {{ c.chunk_index }}
+                    <div style="padding: 0.75rem; border-radius: 6px; background-color: rgba(255, 255, 255, 0.01); border: 1px solid var(--ts-border); font-size: 0.88rem;">
+                        <div style="font-size: 0.75rem; color: var(--ts-secondary); font-weight: 600; margin-bottom: 0.25rem;">
+                            Page {{ c.page }} · Chunk {{ c.chunk_index }}
                         </div>
-                        <div style="color: var(--ts-text); line-height: 1.55;">{{ c.text }}</div>
+                        <div style="color: var(--ts-text); line-height: 1.4;">{{ c.text }}</div>
                     </div>
                     {% endfor %}
                 </div>
@@ -238,28 +171,26 @@
     </div>
 {% endif %}
 
-<!-- ── Danger Zone ── -->
-<div class="section-heading" style="color: #f87171;">⚠️ Danger Zone</div>
-<div class="danger-zone">
-    <div style="font-weight: 700; color: #ef4444; margin-bottom: 0.4rem;">Reset database vector index permanently.</div>
-    <div style="font-size: 0.85rem; color: var(--ts-text-secondary); margin-bottom: 1.2rem; line-height: 1.5;">
+<!-- Danger Zone -->
+<div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-text); margin-bottom: 1rem;'>Danger Zone</div>
+<div class="ts-card" style="padding: 1.5rem; border-radius: 12px; border-color: rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.02); margin-bottom: 3rem;">
+    <div style="font-weight: 600; color: #ef4444; margin-bottom: 0.5rem;">Reset your database vector index permanently.</div>
+    <div style="font-size: 0.85rem; color: var(--ts-text-secondary); margin-bottom: 1rem;">
         This will delete ALL chunks from the vector database index and clear all uploaded PDF documents. This action is destructive and cannot be undone.
     </div>
-
+    
     {% if not session.get('confirm_reset') %}
         <form action="/ingest/reset/confirm" method="POST">
-            <button type="submit" class="btn-ts" style="width: auto; color: #ef4444; border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.08);">
+            <button type="submit" class="btn-ts" style="width: auto; color: #ef4444; border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.05);">
                 🗑️ Reset entire database index
             </button>
         </form>
     {% else %}
-        <div style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.35); padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
-            <div style="color: #f87171; font-weight: 700; margin-bottom: 0.75rem;">⚠️ WARNING: Are you absolutely sure? This cannot be undone.</div>
-            <div style="display: flex; gap: 0.6rem;">
+        <div style="background: rgba(239,68,68,0.1); border: 1px solid #ef4444; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+            <div style="color: #ef4444; font-weight: 700; margin-bottom: 0.5rem;">⚠️ WARNING: Are you absolutely sure?</div>
+            <div style="display: flex; gap: 0.5rem;">
                 <form action="/ingest/reset/execute" method="POST">
-                    <button type="submit" class="btn-ts btn-ts-primary" style="background: linear-gradient(135deg,#ef4444,#dc2626); border-color: #ef4444; box-shadow: 0 4px 14px rgba(239,68,68,0.3);">
-                        Yes, reset index
-                    </button>
+                    <button type="submit" class="btn-ts btn-ts-primary" style="background-color: #ef4444; border-color: #ef4444;">Yes, reset index</button>
                 </form>
                 <form action="/ingest/reset/cancel" method="POST">
                     <button type="submit" class="btn-ts btn-ts-secondary">Cancel</button>
@@ -269,44 +200,33 @@
     {% endif %}
 </div>
 
-<!-- ── Loading Overlay ── -->
+<!-- Loading Overlay -->
 <div class="loading-overlay" id="loadingOverlay">
     <div class="spinner"></div>
-    <div style="font-size: 1.2rem; font-weight: 700; color: #fff;">Building Vector Index…</div>
-    <div style="font-size: 0.88rem; color: #9ca3af; text-align: center; max-width: 380px; line-height: 1.5;">
-        Processing PDF pages, extracting content, generating embeddings, and building catalog database.
-    </div>
+    <div style="font-size: 1.2rem; font-weight: 700; color: #ffffff;">Building Vector Index...</div>
+    <div style="font-size: 0.9rem; color: #9ca3af;">Processing PDF pages, extracting content, generating embeddings, and building catalog database.</div>
 </div>
 
 <script>
     function updateSelectedFilesList() {
         const input = document.getElementById('fileInput');
-        const list  = document.getElementById('fileList');
-        const btn   = document.getElementById('buildBtn');
+        const list = document.getElementById('fileList');
+        const btn = document.getElementById('buildBtn');
+        
         if (input.files.length > 0) {
-            const names = Array.from(input.files).map(f => f.name);
-            list.innerHTML = '📎 ' + names.join(' · ');
+            let fileNames = [];
+            for (let i = 0; i < input.files.length; i++) {
+                fileNames.push(input.files[i].name);
+            }
+            list.innerHTML = "Selected files to ingest: " + fileNames.join(', ');
             btn.disabled = false;
         } else {
-            list.innerHTML = '';
+            list.innerHTML = "";
             btn.disabled = true;
         }
     }
-
-    // Drag & drop
-    const zone = document.getElementById('dropZone');
-    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
-    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
-    zone.addEventListener('drop', e => {
-        e.preventDefault();
-        zone.classList.remove('drag-over');
-        const dt = e.dataTransfer;
-        if (dt.files.length) {
-            document.getElementById('fileInput').files = dt.files;
-            updateSelectedFilesList();
-        }
-    });
-
+    
+    // Show spinner when submitting form
     document.getElementById('uploadForm').addEventListener('submit', function() {
         document.getElementById('loadingOverlay').style.display = 'flex';
     });

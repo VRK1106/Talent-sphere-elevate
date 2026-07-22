@@ -7,32 +7,32 @@
 
 :root {
   /* Neon Gradient Themes */
-  --ts-primary: #6366f1;
-  /* Indigo */
-  --ts-primary-hover: #4f46e5;
-  /* Dark Indigo */
-  --ts-secondary: #10b981;
+  --ts-primary: #60A5FA;
+  /* Light Blue */
+  --ts-primary-hover: #3B82F6;
+  /* Blue */
+  --ts-secondary: #34D399;
   /* Emerald */
-  --ts-accent: #a855f7;
-  /* Accent Purple */
-  --ts-gradient: linear-gradient(135deg, var(--ts-primary) 0%, var(--ts-accent) 55%, var(--ts-secondary) 100%);
-  --ts-gradient-hero: linear-gradient(120deg, #080a10 0%, #17182f 50%, #030408 100%);
+  --ts-accent: #A78BFA;
+  /* Lavender */
+  --ts-gradient: linear-gradient(135deg, var(--ts-primary) 0%, var(--ts-accent) 50%, var(--ts-secondary) 100%);
+  --ts-gradient-hero: linear-gradient(120deg, #000000 0%, #111827 50%, #030712 100%);
 
   /* Popover settings */
-  --ts-popover-bg: #0b0f19;
-  --ts-popover-text: #F3F4F6;
+  --ts-popover-bg: #0d0d0d;
+  --ts-popover-text: #E5E7EB;
 
   /* Premium Surfaces */
-  --ts-bg: #030712;
-  /* Dark Midnight Navy */
-  --ts-surface: rgba(13, 17, 23, 0.72);
-  /* GitHub Dark Glass Card */
-  --ts-border: rgba(255, 255, 255, 0.05);
-  --ts-border-hover: rgba(99, 102, 241, 0.35);
+  --ts-bg: #000000;
+  /* Pure Black */
+  --ts-surface: rgba(20, 20, 20, 0.7);
+  /* Dark Glass Card */
+  --ts-border: rgba(255, 255, 255, 0.08);
+  --ts-border-hover: rgba(96, 165, 250, 0.35);
 
   /* Typography */
-  --ts-text: #F3F4F6;
-  /* Gray 100 */
+  --ts-text: #E5E7EB;
+  /* Gray 200 */
   --ts-text-secondary: #9CA3AF;
   /* Gray 400 */
   --ts-text-muted: #6B7280;
@@ -47,11 +47,11 @@
   /* Rose */
 
   /* Shadows & Glass */
-  --ts-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
-  --ts-shadow-hover: 0 10px 40px rgba(99, 102, 241, 0.18);
-  --ts-shadow-glow: 0 0 20px rgba(99, 102, 241, 0.1);
-  --ts-radius: 20px;
-  --ts-radius-pill: 99px;
+  --ts-shadow: 0 4px 30px rgba(0, 0, 0, 0.6);
+  --ts-shadow-hover: 0 10px 40px rgba(96, 165, 250, 0.25);
+  --ts-shadow-glow: 0 0 15px rgba(96, 165, 250, 0.15);
+  --ts-radius: 16px;
+  --ts-radius-pill: 30px;
 }
 
 /* ---------- Base layout ---------- */

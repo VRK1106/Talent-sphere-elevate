@@ -52,7 +52,7 @@
     .message-row {
         display: flex;
         width: 100%;
-        margin-bottom: 1rem;
+        margin-bottom: 0.5rem;
     }
     .message-row.user {
         justify-content: flex-end;
@@ -63,60 +63,41 @@
     
     .message-bubble {
         max-width: 75%;
-        padding: 1.1rem 1.4rem;
+        padding: 1rem 1.25rem;
+        border-radius: 16px;
         line-height: 1.6;
         font-size: 0.95rem;
         word-break: break-word;
         box-shadow: var(--ts-shadow);
         border: 1px solid var(--ts-border);
-        transition: all 0.2s ease;
     }
     .message-row.user .message-bubble {
-        background: var(--ts-gradient);
+        background: var(--ts-primary);
         color: #FFFFFF !important;
-        border-radius: 20px 20px 4px 20px;
-        border-color: transparent;
+        border-bottom-right-radius: 4px;
+        border-color: var(--ts-primary);
     }
     .message-row.user .message-bubble * {
         color: #FFFFFF !important;
     }
     .message-row.assistant .message-bubble {
-        background: rgba(255, 255, 255, 0.02);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
+        background: var(--ts-inner-bg);
         color: var(--ts-text);
-        border-radius: 20px 20px 20px 4px;
-        border-color: var(--ts-border);
-    }
-    .message-row.assistant .message-bubble:hover {
-        border-color: rgba(99, 102, 241, 0.2);
-        box-shadow: var(--ts-shadow-hover);
+        border-bottom-left-radius: 4px;
     }
     
     .message-avatar {
         font-size: 1.5rem;
-        margin: 0 0.6rem;
+        margin: 0 0.5rem;
         display: flex;
         align-items: center;
-        justify-content: center;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid var(--ts-border);
-        border-radius: 50%;
-        width: 38px;
-        height: 38px;
-        flex-shrink: 0;
     }
     
-    /* Floating modern Input Box */
+    /* Input Form Area */
     .chat-input-area {
-        padding: 1rem 1.25rem;
-        border: 1px solid var(--ts-border);
-        background: rgba(13, 17, 23, 0.65);
-        backdrop-filter: blur(24px);
-        -webkit-backdrop-filter: blur(24px);
-        border-radius: var(--ts-radius, 20px);
-        margin: 1rem;
-        box-shadow: var(--ts-shadow), 0 -4px 30px rgba(0,0,0,0.1);
+        padding: 1rem;
+        border-top: 1px solid var(--ts-border);
+        background: rgba(255, 255, 255, 0.02);
         display: flex;
         flex-direction: column;
         gap: 0.5rem;
@@ -125,27 +106,20 @@
     .chat-input-row {
         display: flex;
         gap: 0.75rem;
-        align-items: center;
     }
     
     .chat-input-field {
         flex-grow: 1;
-        padding: 0.75rem 1.2rem;
-        border-radius: 99px;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
         border: 1px solid var(--ts-border);
-        background-color: rgba(255, 255, 255, 0.03);
+        background-color: var(--ts-input-bg, #0f172a);
         color: var(--ts-text);
         outline: none;
         font-size: 0.95rem;
         resize: none;
         height: 44px;
         box-sizing: border-box;
-        transition: border-color 0.25s, box-shadow 0.25s;
-    }
-    .chat-input-field:focus {
-        border-color: var(--ts-primary);
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-        background-color: rgba(255, 255, 255, 0.05);
     }
 
     /* ── Voice / Mic button ─────────────────────────────────────────── */
@@ -248,45 +222,6 @@
         transition: all 0.2s ease;
         user-select: none;
         vertical-align: middle;
-    }
-    
-    /* Modern Suggested Follow-up Chips */
-    .followup-chip {
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        padding: 0.45rem 1.0rem !important;
-        font-size: 0.78rem !important;
-        font-weight: 600 !important;
-        border-radius: 99px !important;
-        border: 1px solid rgba(99, 102, 241, 0.18) !important;
-        background: rgba(99, 102, 241, 0.04) !important;
-        color: #a5b4fc !important;
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        cursor: pointer !important;
-        white-space: nowrap !important;
-        width: auto !important;
-        height: auto !important;
-        line-height: 1.2 !important;
-        text-decoration: none !important;
-        box-sizing: border-box !important;
-    }
-    .followup-chip:hover {
-        background: rgba(99, 102, 241, 0.12) !important;
-        border-color: var(--ts-primary) !important;
-        color: #FFFFFF !important;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2) !important;
-    }
-    body.ts-light-mode .followup-chip {
-        background: rgba(99, 102, 241, 0.05) !important;
-        border-color: rgba(99, 102, 241, 0.15) !important;
-        color: var(--ts-primary) !important;
-    }
-    body.ts-light-mode .followup-chip:hover {
-        background: rgba(99, 102, 241, 0.1) !important;
-        color: var(--ts-primary-hover) !important;
-    }
     }
     .citation-marker:hover {
         background: var(--ts-primary);
@@ -598,7 +533,7 @@
                                 </div>
                                 <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
                                     {% for f in msg.followups %}
-                                        <button class="followup-chip" onclick="sendFollowupText('{{ f|escape }}')">
+                                        <button class="btn-ts btn-ts-secondary" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; border-radius: 6px; height: auto; width: auto; border: 1px solid var(--ts-border);" onclick="sendFollowupText('{{ f|escape }}')">
                                             {{ f }}
                                         </button>
                                     {% endfor %}
@@ -3038,7 +2973,13 @@
 
                 data.suggestions.forEach(promptText => {
                     const pill = document.createElement('button');
-                    pill.className = 'followup-chip';
+                    pill.className = 'btn-ts btn-ts-secondary';
+                    pill.style.padding = '0.3rem 0.75rem';
+                    pill.style.fontSize = '0.78rem';
+                    pill.style.borderRadius = '20px';
+                    pill.style.height = 'auto';
+                    pill.style.width = 'auto';
+                    pill.style.border = '1px solid var(--ts-border)';
                     pill.innerText = promptText;
                     pill.onclick = () => {
                         const input = document.getElementById('queryInput');
