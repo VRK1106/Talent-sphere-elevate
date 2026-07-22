@@ -288,6 +288,9 @@
         <a href="/assistant" class="nav-link {% if active_page == 'assistant' %}active{% endif %}">
             <span class="nav-icon">🤖</span> AI Assistant
         </a>
+        <a href="/assistant?mode=ephemeral" class="nav-link {% if active_page == 'ephemeral_assistant' %}active{% endif %}">
+            <span class="nav-icon">📎</span> Ephemeral Q&A
+        </a>
 
         <!-- Render nested chat sessions inside navigation if show_chat_history is True -->
         {% if show_chat_history %}

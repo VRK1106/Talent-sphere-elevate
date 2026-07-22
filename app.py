@@ -271,7 +271,10 @@ def inject_global_data():
     path = request.path
     active_page = 'dashboard'
     if path.startswith('/assistant'):
-        active_page = 'assistant'
+        if request.args.get('mode') == 'ephemeral':
+            active_page = 'ephemeral_assistant'
+        else:
+            active_page = 'assistant'
     elif path.startswith('/search'):
         active_page = 'search'
     elif path.startswith('/documents'):

@@ -389,6 +389,15 @@
         const radios = document.querySelectorAll('input[name="chat_mode"]');
         const uploadCard = document.getElementById('ephemeralUploadCard');
         
+        // Auto-select Ephemeral Doc Q&A mode if 'mode=ephemeral' query param is present
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('mode') === 'ephemeral') {
+            const ephemRadio = document.getElementById('modeEphemeral');
+            if (ephemRadio) {
+                ephemRadio.checked = true;
+            }
+        }
+        
         function updateModeUI() {
             const activeMode = document.querySelector('input[name="chat_mode"]:checked').value;
             if (activeMode === "Ephemeral Doc Q&A") {
