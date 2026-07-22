@@ -337,6 +337,7 @@
     </div>
 </div>
 
+{% if session.get('user_role') != 'admin' %}
 <!-- Ephemeral Document Uploader Card (Visible only in Ephemeral Doc Q&A Mode) -->
 <div id="ephemeralUploadCard" class="ts-card" style="display: none; padding: 1.2rem; border-radius: 12px; margin-top: 0.5rem; border-color: rgba(99, 102, 241, 0.35);">
     <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
@@ -376,6 +377,7 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 <!-- Chat Window -->
 <div class="chat-container">
