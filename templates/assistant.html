@@ -29,7 +29,14 @@
         border: 1px solid var(--ts-border);
         border-radius: 12px;
         overflow: hidden;
-        margin-top: 1rem;
+        margin-top: 0.5rem;
+    }
+
+    .main-container .ts-card {
+        padding: 0.75rem 1.2rem !important;
+        margin-top: 0.5rem !important;
+        margin-bottom: 0.5rem !important;
+        flex-shrink: 0 !important;
     }
     
     .chat-messages {
@@ -204,15 +211,13 @@
 
 {% block content %}
 <div style="display: flex; flex-direction: column; height: 100%; min-height: 0;">
-<div class="ts-hero">
-    <div class="ts-hero-title">🤖 AI Study Assistant</div>
-    <div class="ts-hero-subtitle">
-        Your interactive LLM learning coach. Ask questions about training courses, guidelines, or technical concepts.
-    </div>
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem; flex-shrink: 0; border-bottom: 1px solid var(--ts-border); padding-bottom: 0.5rem;">
+    <h2 style="margin: 0; font-size: 1.4rem; font-weight: 700; color: var(--ts-text-heading);">🤖 AI Study Assistant</h2>
+    <span style="font-size: 0.85rem; color: var(--ts-text-secondary); font-weight: 500;">Interactive Learning Coach</span>
 </div>
 
 <!-- Config Bar -->
-<div class="ts-card" style="padding: 1rem; border-radius: 12px; margin-top: 1.5rem;">
+<div class="ts-card" style="padding: 1rem; border-radius: 12px; margin-top: 0.5rem;">
     <div style="display: grid; grid-template-columns: 3.5fr 2fr 1fr; gap: 1.5rem; align-items: center;">
         <div style="display: flex; flex-direction: column; gap: 0.3rem;">
             <label style="font-size: 0.85rem; font-weight: 600; color: var(--ts-text-secondary);">Assistant Mode</label>
@@ -256,7 +261,7 @@
 </div>
 
 <!-- Ephemeral Document Uploader Card (Visible only in Ephemeral Doc Q&A Mode) -->
-<div id="ephemeralUploadCard" class="ts-card" style="display: none; padding: 1.2rem; border-radius: 12px; margin-top: 1rem; border-color: rgba(99, 102, 241, 0.35);">
+<div id="ephemeralUploadCard" class="ts-card" style="display: none; padding: 1.2rem; border-radius: 12px; margin-top: 0.5rem; border-color: rgba(99, 102, 241, 0.35);">
     <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
         <div style="flex-grow: 1;">
             <div style="font-size: 0.95rem; font-weight: 700; color: var(--ts-text-heading); display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem;">
