@@ -63,6 +63,7 @@ from src.chats import (
 from src.config import EMBEDDING_MODEL, DOCUMENTS_DIR
 from src.vectorstore import stats, get_source_chunks, search, get_collection, add_ephemeral_chunks, search_ephemeral, delete_ephemeral_collection
 from src.llm import list_local_models, generate_chat_answer, generate_rag_answer, GROQ_API_KEY, analyze_proctor_image, transcribe_audio_whisper, generate_ephemeral_rag_answer_stream
+from src.concept_map import get_personalized_suggestions, get_related_concepts
 
 # Initialize databases
 init_db()
@@ -448,6 +449,133 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+def get_log_analytics(emp_id=None):
+    import datetime
+    analytics = {}
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        c = conn.cursor()
+        
+        # 1. Peak Study Hours (hourly distribution)
+        if emp_id:
+            c.execute("""
+                SELECT strftime('%H', timestamp) as hr, COUNT(*) 
+                FROM activity_logs 
+                WHERE employee_id = ? 
+                GROUP BY hr
+            """, (emp_id,))
+        else:
+            c.execute("""
+                SELECT strftime('%H', timestamp) as hr, COUNT(*) 
+                FROM activity_logs 
+                GROUP BY hr
+            """)
+        hr_data = {f"{i:02d}": 0 for i in range(24)}
+        for row in c.fetchall():
+            if row[0]:
+                hr_data[row[0]] = row[1]
+        analytics["hours_labels"] = [f"{i}:00" for i in range(24)]
+        analytics["hours_counts"] = [hr_data[f"{i:02d}"] for i in range(24)]
+
+        # 2. Activity Category Distribution (Study vs Exam vs Other)
+        if emp_id:
+            c.execute("SELECT path FROM activity_logs WHERE employee_id = ?", (emp_id,))
+        else:
+            c.execute("SELECT path FROM activity_logs")
+        
+        paths = c.fetchall()
+        study_count = 0
+        exam_count = 0
+        other_count = 0
+        for p in paths:
+            path_str = p[0] or ""
+            if path_str.startswith("/assistant"):
+                study_count += 1
+            elif path_str.startswith("/exams"):
+                exam_count += 1
+            else:
+                other_count += 1
+        analytics["category_labels"] = ["Study / Assistant", "Exams / Quizzes", "Other Actions"]
+        analytics["category_counts"] = [study_count, exam_count, other_count]
+        
+        # 3. Weekly Trend (last 7 days)
+        today = datetime.date.today()
+        dates_list = [(today - datetime.timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
+        dates_list.reverse()
+        
+        trend_data = {d: 0 for d in dates_list}
+        if emp_id:
+            c.execute("""
+                SELECT date(timestamp) as dt, COUNT(*) 
+                FROM activity_logs 
+                WHERE employee_id = ? AND timestamp >= datetime('now', '-7 days')
+                GROUP BY dt
+            """, (emp_id,))
+        else:
+            c.execute("""
+                SELECT date(timestamp) as dt, COUNT(*) 
+                FROM activity_logs 
+                WHERE timestamp >= datetime('now', '-7 days')
+                GROUP BY dt
+            """)
+        for row in c.fetchall():
+            if row[0] in trend_data:
+                trend_data[row[0]] = row[1]
+        analytics["trend_labels"] = dates_list
+        analytics["trend_counts"] = [trend_data[d] for d in dates_list]
+        
+        # 4. Total activity count
+        if emp_id:
+            c.execute("SELECT COUNT(*) FROM activity_logs WHERE employee_id = ?", (emp_id,))
+        else:
+            c.execute("SELECT COUNT(*) FROM activity_logs")
+        analytics["total_activities"] = c.fetchone()[0]
+
+        # 5. Study Time / Session Estimate (Trainee only)
+        if emp_id:
+            c.execute("SELECT timestamp FROM activity_logs WHERE employee_id = ? ORDER BY timestamp ASC", (emp_id,))
+            timestamps = []
+            for row in c.fetchall():
+                if row[0]:
+                    try:
+                        timestamps.append(datetime.datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S"))
+                    except Exception:
+                        pass
+            
+            sessions = []
+            if timestamps:
+                current_session = [timestamps[0]]
+                for ts in timestamps[1:]:
+                    diff = (ts - current_session[-1]).total_seconds() / 60.0
+                    if diff <= 30.0:
+                        current_session.append(ts)
+                    else:
+                        sessions.append(current_session)
+                        current_session = [ts]
+                sessions.append(current_session)
+                
+            total_minutes = 0
+            for s in sessions:
+                if len(s) > 1:
+                    duration = (s[-1] - s[0]).total_seconds() / 60.0
+                    total_minutes += max(duration, 5.0)
+                else:
+                    total_minutes += 5.0
+            
+            analytics["study_hours"] = round(total_minutes / 60.0, 1)
+            analytics["avg_session_mins"] = round(total_minutes / len(sessions), 1) if sessions else 0
+        
+        conn.close()
+    except Exception as e:
+        print(f"Error calculating log analytics: {e}")
+        analytics = {
+            "hours_labels": [], "hours_counts": [],
+            "category_labels": [], "category_counts": [],
+            "trend_labels": [], "trend_counts": [],
+            "total_activities": 0, "study_hours": 0.0, "avg_session_mins": 0
+        }
+    return analytics
+
 # DASHBOARD
 @app.route('/')
 @login_required
@@ -575,6 +703,7 @@ def dashboard():
         doc_labels = [d["name"] for d in doc_rows]
         doc_chunks = [d["chunks"] for d in doc_rows]
         
+        log_stats = get_log_analytics()
         admin_stats = {
             "trainees_count": len(trainees),
             "active_now": active_now,
@@ -594,7 +723,14 @@ def dashboard():
             "doc_labels": doc_labels,
             "doc_chunks": doc_chunks,
             "rag_use_count": rag_use_count,
-            "general_use_count": general_use_count
+            "general_use_count": general_use_count,
+            "log_hours_labels": log_stats["hours_labels"],
+            "log_hours_counts": log_stats["hours_counts"],
+            "log_category_labels": log_stats["category_labels"],
+            "log_category_counts": log_stats["category_counts"],
+            "log_trend_labels": log_stats["trend_labels"],
+            "log_trend_counts": log_stats["trend_counts"],
+            "total_activities": log_stats["total_activities"]
         }
         
         from src.exams import get_system_setting
@@ -635,13 +771,23 @@ def dashboard():
             score_val = a.get("score") or 0.0
             trajectory_scores.append((score_val / total_m * 100.0) if total_m > 0 else 0.0)
             
+        log_stats = get_log_analytics(emp_id)
         trainee_stats = {
             "pending_count": len(pending_exams),
             "completed_count": len(completed_exams),
             "personal_avg": personal_avg,
             "chat_count": len(chat_sessions),
             "trajectory_labels": trajectory_labels,
-            "trajectory_scores": trajectory_scores
+            "trajectory_scores": trajectory_scores,
+            "log_hours_labels": log_stats["hours_labels"],
+            "log_hours_counts": log_stats["hours_counts"],
+            "log_category_labels": log_stats["category_labels"],
+            "log_category_counts": log_stats["category_counts"],
+            "log_trend_labels": log_stats["trend_labels"],
+            "log_trend_counts": log_stats["trend_counts"],
+            "total_activities": log_stats["total_activities"],
+            "study_hours": log_stats["study_hours"],
+            "avg_session_mins": log_stats["avg_session_mins"]
         }
         
         from src.exams import get_all_announcements
@@ -1885,6 +2031,15 @@ def assistant():
         ephemeral_docs=session.get('ephemeral_docs', [])
     )
 
+@app.route('/assistant/suggestions', methods=['GET'])
+@login_required
+def assistant_suggestions():
+    user_info = session.get('user_info', {}) or {}
+    emp_id = user_info.get('employee_id', 'demo')
+    prompts = get_personalized_suggestions(emp_id)
+    return jsonify({"suggestions": prompts})
+
+
 @app.route('/assistant/chat_stream', methods=['POST'])
 @login_required
 def chat_stream():
@@ -2001,6 +2156,11 @@ def chat_stream():
             if gen_state["sources"]:
                 sources_json = json.dumps(gen_state["sources"])
                 yield f"[SOURCES_JSON_START]{sources_json}[SOURCES_JSON_END]"
+                
+            related_concepts = get_related_concepts(query)
+            if related_concepts:
+                suggestions_json = json.dumps(related_concepts)
+                yield f"[SUGGESTIONS_JSON_START]{suggestions_json}[SUGGESTIONS_JSON_END]"
                 
         except Exception as e:
             yield f"Error in streaming: {e}"

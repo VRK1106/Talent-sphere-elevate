@@ -170,6 +170,23 @@
                 </div>
             </div>
         </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
+            <div>
+                <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-accent); margin-bottom: 1rem;'>📊 Study vs Assessment Engagement</div>
+                <div class="ts-card" style="padding: 1rem; border-radius: 12px; display: flex; justify-content: center; height: 270px;">
+                    <div style="width: 250px; height: 250px;">
+                        <canvas id="logCategoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 1rem;'>🕒 Trainee Activity by Hour (Peak Times)</div>
+                <div class="ts-card" style="padding: 1rem; border-radius: 12px;">
+                    <canvas id="logHoursChart" style="height: 250px;"></canvas>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Tab 2: Trainee Directory -->
@@ -344,6 +361,7 @@
     <!-- Tabs Navigation -->
     <div class="tabs-container">
         <button class="tab-link active" onclick="openTab(event, 'trainee-progress')">📈 My Progress & Assessments</button>
+        <button class="tab-link" onclick="openTab(event, 'trainee-activity')">📊 My Study Insights</button>
         <button class="tab-link" onclick="openTab(event, 'trainee-recs')">📚 AI Coach Recommendations</button>
     </div>
 
@@ -389,6 +407,39 @@
                     {% endfor %}
                 </div>
             {% endif %}
+        </div>
+    </div>
+
+    <!-- Tab 3: Trainee Activity Insights -->
+    <div id="trainee-activity" class="tab-content">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 1rem;">
+            <div>
+                <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 1rem;'>📈 My Weekly Activity (Actions per Day)</div>
+                <div class="ts-card" style="padding: 1rem; border-radius: 12px;">
+                    <canvas id="traineeActivityChart" style="height: 250px;"></canvas>
+                </div>
+            </div>
+            <div>
+                <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-secondary); margin-bottom: 1rem;'>🎯 Study vs Assessment Engagement</div>
+                <div class="ts-card" style="padding: 1rem; border-radius: 12px; display: flex; justify-content: center; height: 270px;">
+                    <div style="width: 250px; height: 250px;">
+                        <canvas id="traineeCategoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
+            <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+                <div style="font-size: 2.5rem; font-weight: 800; color: var(--ts-primary);">{{ trainee_stats.study_hours }}</div>
+                <div style="font-size: 1rem; font-weight: 600; color: var(--ts-text); margin-top: 0.5rem;">Estimated Study Hours 📚</div>
+                <div style="font-size: 0.8rem; color: var(--ts-text-muted); margin-top: 0.25rem;">Calculated based on active session blocks on study pages.</div>
+            </div>
+            <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+                <div style="font-size: 2.5rem; font-weight: 800; color: var(--ts-secondary);">{{ trainee_stats.avg_session_mins }}m</div>
+                <div style="font-size: 1rem; font-weight: 600; color: var(--ts-text); margin-top: 0.5rem;">Average Session Duration ⏱️</div>
+                <div style="font-size: 0.8rem; color: var(--ts-text-muted); margin-top: 0.25rem;">Average length of continuous study sessions.</div>
+            </div>
         </div>
     </div>
 
@@ -826,6 +877,55 @@
                             y: { grid: { color: gridColor }, ticks: { color: textColor } }
                         }
                     }
+            // 6. Admin Log Category Chart (Doughnut)
+            const logCatCtx = document.getElementById('logCategoryChart');
+            if (logCatCtx) {
+                new Chart(logCatCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: {{ admin_stats.log_category_labels|tojson }},
+                        datasets: [{
+                            data: {{ admin_stats.log_category_counts|tojson }},
+                            backgroundColor: ['#6366F1', '#10B981', '#F59E0B'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: textColor, boxWidth: 12 }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 7. Admin Log Hours Chart (Bar)
+            const logHoursCtx = document.getElementById('logHoursChart');
+            if (logHoursCtx) {
+                new Chart(logHoursCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: {{ admin_stats.log_hours_labels|tojson }},
+                        datasets: [{
+                            label: 'Actions Logged',
+                            data: {{ admin_stats.log_hours_counts|tojson }},
+                            backgroundColor: '#8B5CF6',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { color: textColor, maxRotation: 45 } },
+                            y: { grid: { color: gridColor }, ticks: { color: textColor } }
+                        }
+                    }
                 });
             }
         {% endif %}
@@ -860,6 +960,64 @@
                                 ticks: { color: textColor },
                                 min: 0,
                                 max: 100
+                            }
+                        }
+                    }
+                });
+            }
+        {% endif %}
+
+        {% if session.get('user_role') != 'admin' %}
+            // Trainee Weekly Activity Chart (Line)
+            const traineeActCtx = document.getElementById('traineeActivityChart');
+            if (traineeActCtx) {
+                new Chart(traineeActCtx, {
+                    type: 'line',
+                    data: {
+                        labels: {{ trainee_stats.log_trend_labels|tojson }},
+                        datasets: [{
+                            label: 'Actions Done',
+                            data: {{ trainee_stats.log_trend_counts|tojson }},
+                            borderColor: '#10B981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            borderWidth: 2,
+                            pointBackgroundColor: '#10B981'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { color: gridColor }, ticks: { color: textColor } },
+                            y: { grid: { color: gridColor }, ticks: { color: textColor } }
+                        }
+                    }
+                });
+            }
+
+            // Trainee Category Chart (Doughnut)
+            const traineeCatCtx = document.getElementById('traineeCategoryChart');
+            if (traineeCatCtx) {
+                new Chart(traineeCatCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: {{ trainee_stats.log_category_labels|tojson }},
+                        datasets: [{
+                            data: {{ trainee_stats.log_category_counts|tojson }},
+                            backgroundColor: ['#6366F1', '#10B981', '#F59E0B'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: textColor, boxWidth: 12 }
                             }
                         }
                     }

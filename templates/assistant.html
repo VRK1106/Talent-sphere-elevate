@@ -449,6 +449,8 @@
     <!-- Active Input / Form -->
     <div class="chat-input-area">
         <div id="wizardContainer" style="display: none; width: 100%;"></div>
+        <!-- Dynamic Chat Suggestions Container -->
+        <div id="chatSuggestionsContainer" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.8rem; justify-content: center; width: 100%;"></div>
         <div class="chat-input-row" id="chatInputRow">
             <textarea id="queryInput" placeholder="Ask a question to your AI Coach..." class="chat-input-field" 
                       onkeydown="handleKeyPress(event)" {% if not groq_api_key %}disabled{% endif %}></textarea>
@@ -755,6 +757,13 @@
                     ⚠️ Info not found in ingested document chunks.
                 </div>
                 <div id="activeSourcesBox" style="display: none;" class="sources-box"></div>
+                <!-- Suggested explore concepts box -->
+                <div id="activeSuggestionsBox" style="display: none; margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px dashed var(--ts-border);">
+                    <div style="font-size: 0.78rem; font-weight: 700; color: var(--ts-text-secondary); margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.3rem;">
+                        🔍 Suggested areas to explore:
+                    </div>
+                    <div id="activeSuggestionsList" style="display: flex; flex-wrap: wrap; gap: 0.4rem;"></div>
+                </div>
             </div>
         `;
         messagesBox.appendChild(assistantRow);
@@ -801,43 +810,90 @@
                 }
             }
 
+            let streamBuffer = '';
             while (true) {
                 const { value, done } = await reader.read();
                 if (done) break;
                 
                 const chunk = decoder.decode(value, { stream: true });
+                streamBuffer += chunk;
                 
-                if (chunk.includes('[EXAM_WIZARD_START]')) {
+                if (streamBuffer.includes('[EXAM_WIZARD_START]')) {
                     skipReload = true;
                     activeTextEl.innerHTML = getExamWizardHtml();
                     initExamWizard();
                     break;
                 }
                 
-                // Check if chunk contains sources metadata block at the end
-                if (chunk.includes('[SOURCES_JSON_START]')) {
-                    const parts = chunk.split('[SOURCES_JSON_START]');
-                    assistantResponseText += parts[0];
-                    activeTextEl.innerHTML = parseAndFormatMessage(assistantResponseText);
-                    
-                    const sourcesStr = parts[1].replace('[SOURCES_JSON_END]', '').trim();
-                    try {
-                        receivedSources = JSON.parse(sourcesStr);
-                        window.activeSources = receivedSources;
-                    } catch(e) {
-                        console.error("Failed to parse sources", e);
-                    }
-                    break;
-                } else {
-                    assistantResponseText += chunk;
-                    activeTextEl.innerHTML = parseAndFormatMessage(assistantResponseText);
-                    scrollToBottom();
+                // Strip metadata blocks from the text to render it dynamically while streaming
+                let renderText = streamBuffer;
+                const srcStartIdx = renderText.indexOf('[SOURCES_JSON_START]');
+                if (srcStartIdx !== -1) {
+                    renderText = renderText.substring(0, srcStartIdx);
+                }
+                const sugStartIdx = renderText.indexOf('[SUGGESTIONS_JSON_START]');
+                if (sugStartIdx !== -1) {
+                    renderText = renderText.substring(0, sugStartIdx);
+                }
+                
+                assistantResponseText = renderText;
+                activeTextEl.innerHTML = parseAndFormatMessage(assistantResponseText);
+                scrollToBottom();
+            }
+
+            // Parse metadata from full buffer
+            if (streamBuffer.includes('[SOURCES_JSON_START]')) {
+                const parts = streamBuffer.split('[SOURCES_JSON_START]');
+                const sourcesStr = parts[1].split('[SOURCES_JSON_END]')[0].trim();
+                try {
+                    receivedSources = JSON.parse(sourcesStr);
+                    window.activeSources = receivedSources;
+                } catch(e) {
+                    console.error("Failed to parse sources", e);
+                }
+            }
+
+            let receivedSuggestions = null;
+            if (streamBuffer.includes('[SUGGESTIONS_JSON_START]')) {
+                const parts = streamBuffer.split('[SUGGESTIONS_JSON_START]');
+                const suggestionsStr = parts[1].split('[SUGGESTIONS_JSON_END]')[0].trim();
+                try {
+                    receivedSuggestions = JSON.parse(suggestionsStr);
+                } catch(e) {
+                    console.error("Failed to parse suggestions", e);
                 }
             }
 
             // Render citations if present
             if (receivedSources && receivedSources.length > 0) {
                 renderCitations(receivedSources);
+            }
+
+            // Render explore suggestions if present
+            if (receivedSuggestions && receivedSuggestions.length > 0) {
+                const sugBox = document.getElementById('activeSuggestionsBox');
+                const sugList = document.getElementById('activeSuggestionsList');
+                if (sugBox && sugList) {
+                    sugList.innerHTML = '';
+                    receivedSuggestions.forEach(concept => {
+                        const badge = document.createElement('button');
+                        badge.className = 'btn-ts btn-ts-secondary';
+                        badge.style.padding = '0.25rem 0.6rem';
+                        badge.style.fontSize = '0.75rem';
+                        badge.style.borderRadius = '6px';
+                        badge.style.height = 'auto';
+                        badge.style.width = 'auto';
+                        badge.style.border = '1px solid var(--ts-border)';
+                        badge.innerText = concept;
+                        badge.onclick = () => {
+                            const input = document.getElementById('queryInput');
+                            input.value = `Tell me more about ${concept}.`;
+                            submitMessage();
+                        };
+                        sugList.appendChild(badge);
+                    });
+                    sugBox.style.display = 'block';
+                }
             }
 
             // Post render processing (Mermaid diagrams)
@@ -2789,5 +2845,53 @@
             statusDiv.textContent = `Error: ${err}`;
         });
     }
+
+    function loadInputSuggestions() {
+        const container = document.getElementById('chatSuggestionsContainer');
+        if (!container) return;
+        
+        container.innerHTML = '<span style="font-size: 0.8rem; color: var(--ts-text-muted);">Loading personalized suggestions...</span>';
+        
+        fetch('/assistant/suggestions')
+        .then(res => res.json())
+        .then(data => {
+            container.innerHTML = '';
+            if (data.suggestions && data.suggestions.length > 0) {
+                const label = document.createElement('div');
+                label.style.fontSize = '0.78rem';
+                label.style.fontWeight = '600';
+                label.style.color = 'var(--ts-text-secondary)';
+                label.style.width = '100%';
+                label.style.textAlign = 'center';
+                label.style.marginBottom = '0.2rem';
+                label.innerText = '💡 Try asking your Coach:';
+                container.appendChild(label);
+
+                data.suggestions.forEach(promptText => {
+                    const pill = document.createElement('button');
+                    pill.className = 'btn-ts btn-ts-secondary';
+                    pill.style.padding = '0.3rem 0.75rem';
+                    pill.style.fontSize = '0.78rem';
+                    pill.style.borderRadius = '20px';
+                    pill.style.height = 'auto';
+                    pill.style.width = 'auto';
+                    pill.style.border = '1px solid var(--ts-border)';
+                    pill.innerText = promptText;
+                    pill.onclick = () => {
+                        const input = document.getElementById('queryInput');
+                        input.value = promptText;
+                        submitMessage();
+                    };
+                    container.appendChild(pill);
+                });
+            }
+        })
+        .catch(err => {
+            console.error("Failed to load suggestions", err);
+            container.innerHTML = '';
+        });
+    }
+
+    window.addEventListener('DOMContentLoaded', loadInputSuggestions);
 </script>
 {% endblock %}
