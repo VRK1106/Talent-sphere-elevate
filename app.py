@@ -1812,6 +1812,39 @@ def assistant_upload_ephemeral():
         return jsonify({"status": "error", "message": f"Failed to ingest document: {str(e)}"}), 500
 
 
+@app.route('/assistant/delete_ephemeral_file', methods=['POST'])
+@login_required
+def assistant_delete_ephemeral_file():
+    tab_id = session.get('_tab_id')
+    if not tab_id:
+        return jsonify({"status": "error", "message": "No active session tab identifier found."}), 400
+        
+    data = request.get_json() or {}
+    filename = data.get('filename')
+    if not filename:
+        return jsonify({"status": "error", "message": "No filename provided."}), 400
+        
+    try:
+        from src.vectorstore import get_ephemeral_collection
+        collection = get_ephemeral_collection(tab_id)
+        
+        # Delete from Chroma where source matches the filename
+        collection.delete(where={"source": filename})
+        
+        # Remove from session list
+        ephemeral_docs = session.get('ephemeral_docs', [])
+        if filename in ephemeral_docs:
+            ephemeral_docs.remove(filename)
+            session['ephemeral_docs'] = ephemeral_docs
+            
+        return jsonify({
+            "status": "success",
+            "message": f"Successfully removed {filename} from in-memory session."
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Failed to delete document: {str(e)}"}), 500
+
+
 @app.route('/assistant')
 @login_required
 def assistant():

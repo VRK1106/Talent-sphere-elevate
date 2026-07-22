@@ -290,8 +290,9 @@
                 <span id="noEphemeralDocs" style="font-size: 0.8rem; color: var(--ts-text-muted); font-style: italic;">No ephemeral documents uploaded for this session yet.</span>
             {% else %}
                 {% for doc in ephemeral_docs %}
-                    <span class="ts-profile-badge" style="font-size: 0.75rem; padding: 0.2rem 0.5rem; background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.25);">
+                    <span class="ts-profile-badge" style="font-size: 0.75rem; padding: 0.2rem 0.5rem; background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.25); display: inline-flex; align-items: center; gap: 0.3rem;">
                         📄 {{ doc }}
+                        <a href="javascript:void(0)" onclick="deleteEphemeralFile('{{ doc }}')" style="color: #ef4444; font-weight: bold; text-decoration: none; margin-left: 0.2rem; cursor: pointer;" title="Remove this document">×</a>
                     </span>
                 {% endfor %}
             {% endif %}
@@ -574,7 +575,15 @@
             const activeTextEl = document.getElementById('activeResponseText');
             activeTextEl.innerHTML = ''; // Clear thinking
 
-            let skipReload = false;
+            const activeSessionId = "{{ active_chat_session_id }}";
+            const activeLink = document.querySelector(`.chat-history-sidebar-box a[href*="${activeSessionId}"]`);
+            let skipReload = true;
+            if (activeLink) {
+                const title = activeLink.textContent.trim();
+                if (title === "New Chat" || title === "New Conversation" || title === "Welcome Conversation" || title.startsWith("Chat ")) {
+                    skipReload = false;
+                }
+            }
 
             while (true) {
                 const { value, done } = await reader.read();
@@ -2479,14 +2488,21 @@
                     noDocsSpan.remove();
                 }
                 
-                // Add new document tag to UI
+                // Add new document tag to UI with delete button
                 const docSpan = document.createElement('span');
                 docSpan.className = "ts-profile-badge";
                 docSpan.style.fontSize = "0.75rem";
                 docSpan.style.padding = "0.2rem 0.5rem";
                 docSpan.style.background = "rgba(99, 102, 241, 0.1)";
                 docSpan.style.borderColor = "rgba(99, 102, 241, 0.25)";
-                docSpan.textContent = `📄 ${data.filename}`;
+                docSpan.style.display = "inline-flex";
+                docSpan.style.alignItems = "center";
+                docSpan.style.gap = "0.3rem";
+                
+                docSpan.innerHTML = `
+                    📄 ${data.filename}
+                    <a href="javascript:void(0)" onclick="deleteEphemeralFile('${data.filename}')" style="color: #ef4444; font-weight: bold; text-decoration: none; margin-left: 0.2rem; cursor: pointer;" title="Remove this document">×</a>
+                `;
                 listDiv.appendChild(docSpan);
             } else {
                 statusDiv.style.backgroundColor = "rgba(239, 68, 68, 0.1)";
@@ -2501,6 +2517,55 @@
             statusDiv.style.border = "1px solid rgba(239, 68, 68, 0.25)";
             statusDiv.style.color = "#ef4444";
             statusDiv.textContent = `Network error during upload: ${err}`;
+        });
+    }
+
+    function deleteEphemeralFile(filename) {
+        if (!confirm(`Are you sure you want to remove '${filename}' from this session's memory?`)) {
+            return;
+        }
+        
+        const statusDiv = document.getElementById('ephemeralUploadStatus');
+        statusDiv.style.display = "block";
+        statusDiv.style.backgroundColor = "rgba(239, 68, 68, 0.1)";
+        statusDiv.style.border = "1px solid rgba(239, 68, 68, 0.25)";
+        statusDiv.style.color = "#ef4444";
+        statusDiv.textContent = `Removing ${filename}...`;
+        
+        const tabId = sessionStorage.getItem('ts_tab_id') || '';
+        
+        fetch('/assistant/delete_ephemeral_file?tab_id=' + tabId, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                statusDiv.style.backgroundColor = "rgba(52, 211, 153, 0.1)";
+                statusDiv.style.border = "1px solid rgba(52, 211, 153, 0.25)";
+                statusDiv.style.color = "#34d399";
+                statusDiv.textContent = data.message;
+                
+                // Remove the specific span from list
+                const badges = document.querySelectorAll('#ephemeralDocsList .ts-profile-badge');
+                badges.forEach(b => {
+                    if (b.textContent.includes(filename)) {
+                        b.remove();
+                    }
+                });
+                
+                // If empty, append the default span
+                const listDiv = document.getElementById('ephemeralDocsList');
+                if (listDiv.children.length === 0) {
+                    listDiv.innerHTML = `<span id="noEphemeralDocs" style="font-size: 0.8rem; color: var(--ts-text-muted); font-style: italic;">No ephemeral documents uploaded for this session yet.</span>`;
+                }
+            } else {
+                statusDiv.textContent = `Error: ${data.message}`;
+            }
+        })
+        .catch(err => {
+            statusDiv.textContent = `Error: ${err}`;
         });
     }
 </script>
