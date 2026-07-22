@@ -381,8 +381,59 @@
 <div class="chat-container">
     <div class="chat-messages" id="chatMessages">
         {% if not active_messages %}
-            <div style="text-align: center; margin: auto; color: var(--ts-text-muted); font-size: 0.95rem;">
-                👋 Hello! I am your AI Study Coach. Ask me anything to get started.
+            <div style="margin: auto; max-width: 680px; width: 100%; padding: 2rem 1rem; text-align: center; display: flex; flex-direction: column; gap: 1.8rem; align-items: center;">
+                
+                <!-- Animated Hero Greeting -->
+                <div style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%); border: 1px solid rgba(99, 102, 241, 0.25); padding: 2rem; border-radius: 16px; box-shadow: var(--ts-shadow); width: 100%;">
+                    <div style="font-size: 2.2rem; font-weight: 800; background: linear-gradient(to right, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; letter-spacing: -0.5px;">
+                        Hello, {{ session.get('user_info', {}).get('full_name', 'Trainee') }}!
+                    </div>
+                    <div style="font-size: 1rem; color: var(--ts-text-secondary); max-width: 480px; margin: 0 auto; line-height: 1.5;">
+                        I am your unified AI Study Coach. I can help you analyze documents, review exam topics, and track performance.
+                    </div>
+                </div>
+                
+                <!-- Quick Action Cards Grid -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem; width: 100%;">
+                    {% if session.get('user_role') != 'admin' %}
+                    <!-- Card 1: Attach Document (Trainee only) -->
+                    <div class="welcome-action-card" onclick="toggleUploadCard()" style="cursor: pointer; background: var(--ts-card-bg); border: 1px solid var(--ts-border); padding: 1.5rem; border-radius: 12px; transition: all 0.3s ease; text-align: left; display: flex; flex-direction: column; gap: 0.5rem; height: 100%;">
+                        <div style="font-size: 1.5rem;">📎</div>
+                        <div style="font-size: 0.92rem; font-weight: 700; color: var(--ts-text-heading);">Session Documents</div>
+                        <div style="font-size: 0.78rem; color: var(--ts-text-secondary); line-height: 1.4;">Upload a temporary PDF to ask questions directly from it.</div>
+                    </div>
+                    {% else %}
+                    <!-- Card 1: Review student (Admin only) -->
+                    <div class="welcome-action-card" onclick="sendFollowupText('How is trainee RK performing?')" style="cursor: pointer; background: var(--ts-card-bg); border: 1px solid var(--ts-border); padding: 1.5rem; border-radius: 12px; transition: all 0.3s ease; text-align: left; display: flex; flex-direction: column; gap: 0.5rem; height: 100%;">
+                        <div style="font-size: 1.5rem;">👥</div>
+                        <div style="font-size: 0.92rem; font-weight: 700; color: var(--ts-text-heading);">Trainee Insights</div>
+                        <div style="font-size: 0.78rem; color: var(--ts-text-secondary); line-height: 1.4;">Instantly query trainee scores, session logs, and webcam proctor flags.</div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Card 2: Performance Summary -->
+                    <div class="welcome-action-card" onclick="sendFollowupText('How is my performance?')" style="cursor: pointer; background: var(--ts-card-bg); border: 1px solid var(--ts-border); padding: 1.5rem; border-radius: 12px; transition: all 0.3s ease; text-align: left; display: flex; flex-direction: column; gap: 0.5rem; height: 100%;">
+                        <div style="font-size: 1.5rem;">📊</div>
+                        <div style="font-size: 0.92rem; font-weight: 700; color: var(--ts-text-heading);">My Progress</div>
+                        <div style="font-size: 0.78rem; color: var(--ts-text-secondary); line-height: 1.4;">Review your study actions, session stats, and overall exam completion.</div>
+                    </div>
+                    
+                    <!-- Card 3: Weakness analysis -->
+                    <div class="welcome-action-card" onclick="sendFollowupText('What are my weakest areas and how do I study them?')" style="cursor: pointer; background: var(--ts-card-bg); border: 1px solid var(--ts-border); padding: 1.5rem; border-radius: 12px; transition: all 0.3s ease; text-align: left; display: flex; flex-direction: column; gap: 0.5rem; height: 100%;">
+                        <div style="font-size: 1.5rem;">💡</div>
+                        <div style="font-size: 0.92rem; font-weight: 700; color: var(--ts-text-heading);">Weak Area Review</div>
+                        <div style="font-size: 0.78rem; color: var(--ts-text-secondary); line-height: 1.4;">Identify subjects where you scored under 70% in exams.</div>
+                    </div>
+                </div>
+                
+                <!-- Hover effect styles -->
+                <style>
+                    .welcome-action-card:hover {
+                        transform: translateY(-4px);
+                        border-color: var(--ts-primary) !important;
+                        box-shadow: 0 8px 24px rgba(99, 102, 241, 0.15);
+                    }
+                </style>
             </div>
         {% else %}
             {% for msg in active_messages %}
@@ -427,6 +478,20 @@
                                         {% endfor %}
                                     </div>
                                 </details>
+                            </div>
+                        {% endif %}
+                        {% if msg.role == 'assistant' and msg.followups %}
+                            <div style="margin-top: 0.8rem; padding-top: 0.6rem; border-top: 1px dashed var(--ts-border);">
+                                <div style="font-size: 0.72rem; font-weight: 700; color: var(--ts-text-secondary); margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.2rem;">
+                                    💡 Suggested follow-up:
+                                </div>
+                                <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+                                    {% for f in msg.followups %}
+                                        <button class="btn-ts btn-ts-secondary" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; border-radius: 6px; height: auto; width: auto; border: 1px solid var(--ts-border);" onclick="sendFollowupText('{{ f|escape }}')">
+                                            {{ f }}
+                                        </button>
+                                    {% endfor %}
+                                </div>
                             </div>
                         {% endif %}
                     </div>
@@ -2823,6 +2888,14 @@
             statusDiv.textContent = `Error: ${err}`;
         });
     }
+
+    window.sendFollowupText = function(text) {
+        const input = document.getElementById('queryInput');
+        if (input) {
+            input.value = text;
+            submitMessage();
+        }
+    };
 
     function loadInputSuggestions() {
         const container = document.getElementById('chatSuggestionsContainer');

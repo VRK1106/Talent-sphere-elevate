@@ -2128,7 +2128,16 @@ def assistant_suggestions():
             except Exception as e:
                 print(f"Failed to generate ephemeral suggestions: {e}")
                 
-    prompts = get_personalized_suggestions(emp_id)
+    active_id = session.get('active_chat_session_id')
+    from src.chats import get_chat_messages
+    active_messages = get_chat_messages(active_id) if active_id else []
+    
+    if len(active_messages) == 0:
+        from src.concept_map import get_history_based_suggestions
+        prompts = get_history_based_suggestions(emp_id)
+    else:
+        prompts = get_personalized_suggestions(emp_id)
+        
     return jsonify({"suggestions": prompts})
 
 
@@ -2284,9 +2293,52 @@ def chat_stream():
                 sources_json = json.dumps(gen_state["sources"])
                 yield f"[SOURCES_JSON_START]{sources_json}[SOURCES_JSON_END]"
                 
-            related_concepts = get_related_concepts(query)
-            if related_concepts:
-                suggestions_json = json.dumps(related_concepts)
+            # Generate exactly 3 direct follow-up questions based on the assistant response
+            followups = []
+            if not gen_state.get("stop") and final_text:
+                try:
+                    from src.llm import generate_chat_answer, list_local_models, clean_json_response
+                    local_models = list_local_models()
+                    model_name = local_models[0] if local_models else "llama3-8b-8192"
+                    followup_prompt = (
+                        f"Based on this AI Coach response to a student's question, generate exactly 3 short, direct "
+                        f"follow-up questions the student might want to ask next to continue learning:\n\n"
+                        f"AI Coach response:\n{final_text[:2000]}\n\n"
+                        f"Keep each question short (under 12 words) and phrase them as direct student questions.\n"
+                        f"You MUST return ONLY a valid JSON array of strings (do not wrap in markdown or prefix text).\n"
+                        f"Example format:\n"
+                        f"[\"How do I use this?\", \"What is a code example?\"]"
+                    )
+                    resp = generate_chat_answer(
+                        prompt=followup_prompt,
+                        model_name=model_name,
+                        system_instruction="You are a study suggestion assistant. You output ONLY valid JSON arrays of strings."
+                    )
+                    cleaned = clean_json_response(resp)
+                    import re
+                    try:
+                        followups = json.loads(cleaned)
+                    except Exception:
+                        followups = re.findall(r'"([^"]+)"', cleaned)
+                        if not followups:
+                            followups = re.findall(r"'([^']+)'", cleaned)
+                    
+                    if isinstance(followups, list) and len(followups) > 0:
+                        followups = [f.strip() for f in followups if f.strip()][:3]
+                    else:
+                        followups = []
+                except Exception as e:
+                    print(f"Failed to generate dynamic followups: {e}")
+                    followups = []
+            
+            # Save followups in the database for the active message
+            if followups:
+                from src.chats import update_last_chat_message_followups
+                update_last_chat_message_followups(active_session_id, followups)
+                
+            # Yield followups inside SUGGESTIONS_JSON block for direct client compatibility
+            if followups:
+                suggestions_json = json.dumps(followups)
                 yield f"[SUGGESTIONS_JSON_START]{suggestions_json}[SUGGESTIONS_JSON_END]"
                 
         except Exception as e:

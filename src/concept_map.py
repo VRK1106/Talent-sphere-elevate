@@ -213,3 +213,88 @@ def get_ephemeral_document_text(session_id: str) -> str:
     except Exception as e:
         print(f"Error fetching ephemeral text: {e}")
         return ""
+
+
+def get_previous_chat_context(emp_id: str, limit_messages: int = 10) -> str:
+    """Retrieve the conversation context from the user's previous non-empty sessions."""
+    from src.chats import get_chat_sessions_for_user, get_chat_messages
+    try:
+        sessions = get_chat_sessions_for_user(emp_id)
+        text_excerpts = []
+        for s in sessions:
+            # Skip current active session if it is empty (dealt with in route)
+            msgs = get_chat_messages(s["session_id"])
+            if msgs:
+                text_excerpts.append(f"=== Session: {s['title']} ===")
+                for m in msgs[-4:]:
+                    text_excerpts.append(f"{m['role'].upper()}: {m['content']}")
+                if len(text_excerpts) >= limit_messages:
+                    break
+        return "\n".join(text_excerpts)
+    except Exception as e:
+        print(f"Error fetching previous chat context: {e}")
+        return ""
+
+
+def clean_json_response(raw_resp: str) -> str:
+    import re
+    resp = raw_resp.strip()
+    if resp.startswith("```"):
+        match = re.match(r"^```(?:json)?\s*", resp)
+        if match:
+            resp = resp[match.end():]
+        if resp.endswith("```"):
+            resp = resp[:-3]
+    resp = resp.strip()
+    start_idx = resp.find('[')
+    end_idx = resp.rfind(']')
+    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+        resp = resp[start_idx:end_idx+1]
+    return resp.strip()
+
+
+def get_history_based_suggestions(emp_id: str) -> list[str]:
+    """Generate suggestions based on previous conversations using LLM, or fallback to profile suggestions."""
+    context = get_previous_chat_context(emp_id)
+    if not context.strip():
+        return get_personalized_suggestions(emp_id)
+        
+    from src.llm import generate_chat_answer, list_local_models
+    prompt = (
+        f"The student was previously discussing the following topics:\n"
+        f"{context}\n\n"
+        f"Based on this learning history, generate exactly 3 short, direct follow-up questions "
+        f"the student might want to ask next to resume their learning.\n"
+        f"Keep each suggestion under 12 words, and phrase them as direct student questions.\n"
+        f"You MUST output ONLY a valid JSON array of strings (do not wrap in markdown or prefix text).\n"
+        f"Example format:\n"
+        f"[\"How does X work?\", \"Why do we do Y?\"]"
+    )
+    
+    local_models = list_local_models()
+    model_name = local_models[0] if local_models else "llama3-8b-8192"
+    
+    try:
+        resp = generate_chat_answer(
+            prompt=prompt,
+            model_name=model_name,
+            system_instruction="You are a study suggestions assistant. You output ONLY valid JSON arrays of strings."
+        )
+        cleaned = clean_json_response(resp)
+        import re
+        prompts = []
+        try:
+            prompts = json.loads(cleaned)
+        except Exception:
+            prompts = re.findall(r'"([^"]+)"', cleaned)
+            if not prompts:
+                prompts = re.findall(r"'([^']+)'", cleaned)
+                
+        if isinstance(prompts, list) and len(prompts) > 0:
+            prompts = [p.strip() for p in prompts if p.strip()]
+            if prompts:
+                return prompts[:4]
+    except Exception as e:
+        print(f"Failed to generate history-based suggestions: {e}")
+        
+    return get_personalized_suggestions(emp_id)

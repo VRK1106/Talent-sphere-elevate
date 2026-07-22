@@ -43,6 +43,12 @@ def init_chats_db() -> None:
         """
     )
     
+    # Run migration to add followups column if missing
+    cursor.execute("PRAGMA table_info(chat_messages)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if "followups" not in columns:
+        cursor.execute("ALTER TABLE chat_messages ADD COLUMN followups TEXT")
+        
     conn.commit()
     conn.close()
 
@@ -108,7 +114,7 @@ def get_chat_messages(session_id: str) -> list[dict[str, Any]]:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT message_id, session_id, role, content, sources, created_at FROM chat_messages WHERE session_id = ? ORDER BY message_id ASC",
+            "SELECT message_id, session_id, role, content, sources, followups, created_at FROM chat_messages WHERE session_id = ? ORDER BY message_id ASC",
             (session_id,)
         )
         rows = cursor.fetchall()
@@ -121,10 +127,40 @@ def get_chat_messages(session_id: str) -> list[dict[str, Any]]:
                 d["sources"] = json.loads(d["sources"]) if d["sources"] else []
             except Exception:
                 d["sources"] = []
+            try:
+                d["followups"] = json.loads(d["followups"]) if d["followups"] else []
+            except Exception:
+                d["followups"] = []
             result.append(d)
         return result
     except Exception:
         return []
+
+
+def update_last_chat_message_followups(session_id: str, followups: list[str]) -> bool:
+    """Update the followups column of the most recent message in the session."""
+    try:
+        conn = sqlite3.connect(str(_DB_PATH))
+        cursor = conn.cursor()
+        followups_str = json.dumps(followups) if followups else None
+        cursor.execute(
+            """
+            UPDATE chat_messages 
+            SET followups = ? 
+            WHERE message_id = (
+                SELECT MAX(message_id) 
+                FROM chat_messages 
+                WHERE session_id = ? AND role = 'assistant'
+            )
+            """,
+            (followups_str, session_id)
+        )
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error updating message followups: {e}")
+        return False
 
 
 def delete_chat_session(session_id: str) -> bool:
