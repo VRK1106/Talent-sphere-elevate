@@ -6,15 +6,17 @@
     <title>{% block title %}Talent Sphere Elevate{% endblock %}</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Design Tokens Theme Sheet -->
+    <link rel="stylesheet" href="/assets/theme.css?v=2">
     <!-- Main Style Sheet -->
-    <link rel="stylesheet" href="/assets/styles.css">
+    <link rel="stylesheet" href="/assets/styles.css?v=2">
     
     <style>
         body {
             margin: 0;
-            font-family: 'Inter', sans-serif;
-            background-color: var(--ts-bg, #0b0f19);
-            color: var(--ts-text, #e2e8f0);
+            font-family: var(--font-sans);
+            background-color: var(--bg);
+            color: var(--text-primary);
             display: flex;
             height: 100vh;
             overflow: hidden;
@@ -25,8 +27,8 @@
         .sidebar-container {
             width: 64px;
             min-width: 64px;
-            background: var(--ts-popover-bg, #0d1117);
-            border-right: 1px solid var(--ts-border, rgba(255,255,255,0.07));
+            background: var(--surface);
+            border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
             align-items: stretch;
@@ -50,7 +52,7 @@
             display: flex;
             flex-direction: column;
             height: 100%;
-            padding: 0.6rem 0.45rem 0.6rem;
+            padding: var(--space-2) var(--space-1);
             box-sizing: border-box;
             overflow-y: auto;
             overflow-x: hidden;
@@ -60,14 +62,14 @@
         .sb-logo-row {
             display: flex;
             align-items: center;
-            gap: 0.65rem;
-            padding: 0.25rem 0.25rem 0.35rem;
+            gap: var(--space-1);
+            padding: var(--space-1) var(--space-1) calc(var(--space-1) + 2px);
             flex-shrink: 0;
         }
         .sb-logo-img {
             width: 32px;
             height: 32px;
-            border-radius: 9px;
+            border-radius: var(--radius);
             object-fit: contain;
             flex-shrink: 0;
         }
@@ -83,27 +85,25 @@
             max-width: 200px;
         }
         .sb-brand-title {
-            font-size: 1.0rem;
-            font-weight: 800;
-            background: linear-gradient(135deg,#60a5fa 0%,#a78bfa 55%,#34d399 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-size: var(--font-size-md);
+            font-weight: var(--font-weight-semibold);
+            color: var(--primary);
             line-height: 1.15;
         }
         .sb-brand-sub {
-            font-size: 0.55rem;
+            font-size: var(--font-size-xs);
             letter-spacing: 0.12em;
             text-transform: uppercase;
-            font-weight: 700;
-            color: var(--ts-text-secondary,#9CA3AF);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-secondary);
             margin-top: 1px;
         }
 
         /* ---- Divider ---- */
         .sb-divider {
             height: 1px;
-            background: var(--ts-border, rgba(255,255,255,0.07));
-            margin: 0.35rem 0;
+            background: var(--border);
+            margin: var(--space-1) 0;
             flex-shrink: 0;
         }
 
@@ -111,8 +111,8 @@
         .sb-profile-row {
             display: flex;
             align-items: center;
-            gap: 0.65rem;
-            padding: 0.35rem 0.25rem;
+            gap: var(--space-1);
+            padding: var(--space-1) var(--space-1);
             flex-shrink: 0;
         }
         .sb-avatar {
@@ -120,10 +120,10 @@
             height: 30px;
             min-width: 30px;
             border-radius: 50%;
-            background: linear-gradient(135deg,#4f46e5,#7c3aed);
-            color:#fff;
-            font-size: 0.7rem;
-            font-weight: 700;
+            background: var(--primary);
+            color: #fff;
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-semibold);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -141,32 +141,31 @@
             max-width: 200px;
         }
         .sb-profile-name {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--ts-text,#e2e8f0);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
             overflow: hidden;
             text-overflow: ellipsis;
         }
         .sb-profile-meta {
-            font-size: 0.65rem;
-            color: var(--ts-text-secondary,#9CA3AF);
+            font-size: var(--font-size-xs);
+            color: var(--text-secondary);
             margin-top: 1px;
         }
         .sb-badge {
             display: inline-block;
-            background: rgba(99,102,241,0.18);
-            color: var(--ts-primary,#6366f1);
+            background: rgba(59, 91, 255, 0.1);
+            color: var(--primary);
             border-radius: 3px;
             padding: 0 4px;
-            font-size: 0.58rem;
-            font-weight: 700;
-            letter-spacing: 0.04em;
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-semibold);
             vertical-align: middle;
         }
 
         /* ---- Progress bar (only visible when expanded) ---- */
         .sb-progress-wrap {
-            padding: 0 0.25rem 0.25rem;
+            padding: 0 var(--space-1) var(--space-1);
             opacity: 0;
             max-height: 0;
             overflow: hidden;
@@ -177,31 +176,31 @@
             max-height: 50px;
         }
         .sb-progress-label {
-            font-size: 0.65rem;
-            color: var(--ts-text-secondary,#9CA3AF);
+            font-size: var(--font-size-xs);
+            color: var(--text-secondary);
             margin-bottom: 4px;
         }
         .sb-progress-track {
             height: 4px;
-            background: rgba(255,255,255,0.08);
+            background: var(--border);
             border-radius: 99px;
             overflow: hidden;
         }
         .sb-progress-fill {
             height: 100%;
-            background: linear-gradient(90deg,#6366f1,#a78bfa);
+            background: var(--primary);
             border-radius: 99px;
             transition: width 0.4s ease;
         }
 
         /* ---- Section label ---- */
         .sb-section-label {
-            font-size: 0.6rem;
-            font-weight: 700;
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-semibold);
             letter-spacing: 0.08em;
             text-transform: uppercase;
-            color: var(--ts-text-secondary,#9CA3AF);
-            padding: 0.45rem 0.4rem 0.15rem;
+            color: var(--text-secondary);
+            padding: var(--space-1) var(--space-1) 4px;
             opacity: 0;
             max-height: 0;
             overflow: hidden;
@@ -217,28 +216,28 @@
         .sb-nav-link {
             display: flex;
             align-items: center;
-            gap: 0.6rem;
-            padding: 0.42rem 0.45rem;
-            border-radius: 8px;
+            gap: var(--space-1);
+            padding: var(--space-1) var(--space-1);
+            border-radius: var(--radius);
             text-decoration: none;
-            color: var(--ts-text-secondary,#9CA3AF);
-            font-size: 0.82rem;
-            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-regular);
             transition: background 0.15s ease, color 0.15s ease;
             margin-bottom: 2px;
             white-space: nowrap;
             overflow: hidden;
         }
         .sb-nav-link:hover {
-            background: rgba(99,102,241,0.1);
-            color: var(--ts-primary,#6366f1);
+            background: var(--surface-alt);
+            color: var(--primary);
         }
         .sb-nav-link.active {
-            background: var(--ts-primary,#4f46e5);
+            background: var(--primary);
             color: #fff !important;
         }
         .sb-nav-icon {
-            font-size: 1.05rem;
+            font-size: var(--font-size-md);
             width: 24px;
             text-align: center;
             flex-shrink: 0;
@@ -261,27 +260,142 @@
             max-height: 0;
             overflow: hidden;
             transition: opacity 0.22s ease 0.04s, max-height 0.35s ease;
-            margin-left: 0.5rem;
-            padding-left: 0.85rem;
-            border-left: 2px solid var(--ts-border, rgba(255,255,255,0.1));
+            margin-left: calc(var(--space-1) / 2);
+            padding-left: var(--space-1);
+            border-left: 2px solid var(--border);
         }
         .sidebar-container:hover .sb-chat-history {
             opacity: 1;
-            max-height: 90px;
+            max-height: 240px;
+        }
+        .sb-chat-new {
+            display: flex;
+            align-items: center;
+            gap: var(--space-1);
+            font-size: var(--font-size-xs);
+            padding: var(--space-1);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: var(--surface-alt);
+            color: var(--text-primary);
+            text-decoration: none;
+            margin-bottom: var(--space-1);
+            white-space: nowrap;
+        }
+        .sb-chat-new:hover {
+            background: var(--border);
+        }
+        .sb-rename-container {
+            padding: var(--space-1);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: var(--space-1);
+            background: var(--surface-alt);
+        }
+        .sb-rename-title {
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-semibold);
+            color: var(--primary);
+            margin-bottom: var(--space-1);
+        }
+        .sb-rename-input {
+            width: 100%;
+            padding: var(--space-1);
+            margin-bottom: var(--space-1);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-primary);
+            font-size: var(--font-size-sm);
+        }
+        .sb-rename-actions {
+            display: flex;
+            gap: var(--space-1);
+        }
+        .sb-rename-save {
+            flex: 1;
+            padding: var(--space-1);
+            border-radius: var(--radius);
+            background: var(--primary);
+            border: none;
+            color: #fff;
+            font-size: var(--font-size-xs);
+            cursor: pointer;
+            font-weight: var(--font-weight-semibold);
+        }
+        .sb-rename-save:hover {
+            background: var(--primary-hover);
+        }
+        .sb-rename-cancel {
+            flex: 1;
+            padding: var(--space-1);
+            border-radius: var(--radius);
+            text-align: center;
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            font-size: var(--font-size-xs);
+            text-decoration: none;
+            background: var(--surface);
+        }
+        .sb-rename-cancel:hover {
+            background: var(--surface-alt);
+        }
+        .sb-chat-history-list {
+            display: flex;
+            flex-direction: column;
+            gap: calc(var(--space-1) / 2);
+            max-height: 140px;
+            overflow-y: auto;
+        }
+        .sb-chat-session-row {
+            display: flex;
+            align-items: center;
+            gap: calc(var(--space-1) / 4);
+        }
+        .sb-chat-session-link {
+            flex: 1;
+            font-size: var(--font-size-xs);
+            padding: calc(var(--space-1) / 2) var(--space-1);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: var(--surface-alt);
+            color: var(--text-primary);
+            text-decoration: none;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .sb-chat-session-link:hover {
+            background: var(--border);
+        }
+        .sb-chat-session-link.active {
+            border-color: var(--primary);
+            color: var(--primary);
+            font-weight: var(--font-weight-semibold);
+            background: var(--surface);
+        }
+        .sb-chat-action-icon {
+            text-decoration: none;
+            font-size: var(--font-size-xs);
+            padding: 4px;
+            color: var(--text-secondary);
+        }
+        .sb-chat-action-icon:hover {
+            color: var(--text-primary);
         }
 
         /* ---- Theme / action buttons ---- */
         .sb-action-btn {
             display: flex;
             align-items: center;
-            gap: 0.6rem;
-            padding: 0.42rem 0.45rem;
-            border-radius: 8px;
-            border: 1px solid var(--ts-border,rgba(255,255,255,0.1));
-            background: rgba(255,255,255,0.04);
-            color: var(--ts-text,#e2e8f0);
-            font-size: 0.8rem;
-            font-weight: 500;
+            gap: var(--space-1);
+            padding: var(--space-1) var(--space-1);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: var(--surface-alt);
+            color: var(--text-primary);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-semibold);
             cursor: pointer;
             text-decoration: none;
             transition: background 0.15s ease;
@@ -292,10 +406,10 @@
             margin-bottom: 4px;
         }
         .sb-action-btn:hover {
-            background: rgba(255,255,255,0.08);
+            background: var(--border);
         }
         .sb-action-icon {
-            font-size: 0.95rem;
+            font-size: var(--font-size-md);
             width: 24px;
             text-align: center;
             flex-shrink: 0;
@@ -318,17 +432,38 @@
             max-height: 0;
             overflow: hidden;
             transition: opacity 0.22s ease 0.04s, max-height 0.3s ease;
+            font-size: var(--font-size-xs);
+            color: var(--text-secondary);
         }
         .sidebar-container:hover .sb-admin-panel {
             opacity: 1;
-            max-height: 60px;
+            max-height: 80px;
+        }
+        .sb-admin-health-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: calc(var(--space-1) / 2) var(--space-1);
+        }
+        .sb-admin-stats-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: calc(var(--space-1) / 2) var(--space-1) 0;
+            border-top: 1px dashed var(--border);
+        }
+        .health-indicator-ok {
+            color: var(--success);
+        }
+        .health-indicator-err {
+            color: var(--error);
         }
 
         /* ---- Spacer pushes logout to bottom ---- */
         .sb-spacer { flex: 1; }
         .main-content {
             flex-grow: 1;
-            padding: 2rem;
+            padding: var(--space-4);
             box-sizing: border-box;
             overflow-y: auto;
             display: flex;
@@ -342,45 +477,45 @@
         
         /* Navigation links */
         .nav-section-title {
-            font-size: 0.72rem;
-            color: var(--ts-text-secondary, #9CA3AF);
+            font-size: var(--font-size-xs);
+            color: var(--text-secondary);
             text-transform: uppercase;
-            font-weight: 700;
+            font-weight: var(--font-weight-semibold);
             letter-spacing: 0.05em;
-            margin-top: 1rem;
-            margin-bottom: 0.4rem;
+            margin-top: var(--space-2);
+            margin-bottom: var(--space-1);
         }
         .nav-link {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            padding: 0.6rem 0.8rem;
-            color: var(--ts-text-secondary, #9CA3AF);
+            gap: var(--space-1);
+            padding: var(--space-1) var(--space-2);
+            color: var(--text-secondary);
             text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 500;
-            border-radius: 8px;
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-regular);
+            border-radius: var(--radius);
             transition: all 0.2s ease;
-            margin-bottom: 0.25rem;
+            margin-bottom: calc(var(--space-1) / 2);
         }
         .nav-link:hover {
-            background-color: rgba(79, 70, 229, 0.08);
-            color: var(--ts-primary, #6366f1);
+            background-color: var(--surface-alt);
+            color: var(--primary);
         }
         .nav-link.active {
-            background-color: var(--ts-primary, #4F46E5);
+            background-color: var(--primary);
             color: #FFFFFF !important;
         }
         .nav-icon {
-            font-size: 1.15rem;
+            font-size: var(--font-size-md);
         }
         
         .chat-history-sidebar-box {
-            padding-left: 1.2rem;
-            border-left: 2px solid var(--ts-border);
-            margin-left: 0.6rem;
-            margin-top: 0.25rem;
-            margin-bottom: 0.75rem;
+            padding-left: var(--space-2);
+            border-left: 2px solid var(--border);
+            margin-left: var(--space-1);
+            margin-top: calc(var(--space-1) / 2);
+            margin-bottom: var(--space-2);
         }
         
         /* Custom styled buttons to match streamlit types */
@@ -388,50 +523,58 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            font-size: 0.875rem;
-            font-weight: 500;
-            border-radius: 8px;
+            gap: var(--space-1);
+            padding: var(--space-1) var(--space-2);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-semibold);
+            border-radius: var(--radius);
             cursor: pointer;
             transition: all 0.2s ease;
-            border: 1px solid var(--ts-border);
+            border: 1px solid var(--border);
             background-color: transparent;
-            color: var(--ts-text);
+            color: var(--text-primary);
             text-decoration: none;
             width: 100%;
             box-sizing: border-box;
         }
         .btn-ts-primary {
-            background-color: var(--ts-primary, #4F46E5);
-            border-color: var(--ts-primary, #4F46E5);
+            background-color: var(--primary);
+            border-color: var(--primary);
             color: #FFFFFF !important;
         }
         .btn-ts-primary:hover {
-            background-color: var(--ts-primary-hover, #4338CA);
-            border-color: var(--ts-primary-hover, #4338CA);
+            background-color: var(--primary-hover);
+            border-color: var(--primary-hover);
         }
         .btn-ts-secondary {
-            background-color: rgba(255, 255, 255, 0.05);
-            color: var(--ts-text);
+            background-color: var(--surface-alt);
+            color: var(--text-primary);
+            border-color: var(--border);
         }
         .btn-ts-secondary:hover {
-            background-color: rgba(255, 255, 255, 0.1);
+            background-color: var(--border);
         }
         
-        body.ts-light-mode .btn-ts-secondary {
-            background-color: rgba(0, 0, 0, 0.05);
-            color: var(--ts-text);
+        .sb-logout-btn {
+            color: var(--error) !important;
+            border-color: var(--error) !important;
         }
-        body.ts-light-mode .btn-ts-secondary:hover {
-            background-color: rgba(0, 0, 0, 0.1);
+        .sb-logout-btn:hover {
+            background: rgba(220, 38, 38, 0.1) !important;
+        }
+        
+        .sb-maintenance-link {
+            color: var(--error) !important;
+        }
+        .sb-maintenance-link:hover {
+            background-color: rgba(220, 38, 38, 0.1) !important;
         }
         
         /* Section Dividers */
         .ts-divider-line {
             height: 1px;
-            background-color: var(--ts-border, rgba(255, 255, 255, 0.08));
-            margin: 1rem 0;
+            background-color: var(--border);
+            margin: var(--space-2) 0;
             border: none;
         }
     </style>
@@ -492,36 +635,52 @@
 
         // Set light/dark theme early on boot to prevent page flickering
         (function() {
-            const savedTheme = localStorage.getItem('theme');
+            let savedTheme = localStorage.getItem('theme');
+            if (!savedTheme) {
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                savedTheme = prefersDark ? 'dark' : 'light';
+            }
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            
+            // Keep ts-light-mode class on body/html for backwards compatibility
             if (savedTheme === 'light') {
                 document.documentElement.classList.add('ts-light-mode');
                 document.addEventListener('DOMContentLoaded', () => {
                     document.body.classList.add('ts-light-mode');
+                });
+            } else {
+                document.documentElement.classList.remove('ts-light-mode');
+                document.addEventListener('DOMContentLoaded', () => {
+                    document.body.classList.remove('ts-light-mode');
                 });
             }
         })();
         
         // Theme toggle function
         function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
             const body = document.body;
-            if (body.classList.contains('ts-light-mode')) {
-                body.classList.remove('ts-light-mode');
-                document.documentElement.classList.remove('ts-light-mode');
-                localStorage.setItem('theme', 'dark');
-                document.getElementById('theme-btn-icon').innerText = '☀️';
-                document.getElementById('theme-btn-text').innerText = 'Switch to Light';
-            } else {
+            if (newTheme === 'light') {
                 body.classList.add('ts-light-mode');
                 document.documentElement.classList.add('ts-light-mode');
-                localStorage.setItem('theme', 'light');
                 document.getElementById('theme-btn-icon').innerText = '🌙';
                 document.getElementById('theme-btn-text').innerText = 'Switch to Dark';
+            } else {
+                body.classList.remove('ts-light-mode');
+                document.documentElement.classList.remove('ts-light-mode');
+                document.getElementById('theme-btn-icon').innerText = '☀️';
+                document.getElementById('theme-btn-text').innerText = 'Switch to Light';
             }
         }
         
         // Sync theme text on load
         document.addEventListener("DOMContentLoaded", () => {
-            const savedTheme = localStorage.getItem('theme');
+            const savedTheme = document.documentElement.getAttribute('data-theme') || 'light';
             const themeText = document.getElementById('theme-btn-text');
             const themeIcon = document.getElementById('theme-btn-icon');
             if (themeText && themeIcon) {
@@ -567,12 +726,12 @@
             </div>
         </div>
         {% if session.get('user_role') != 'admin' %}
-        <div class="sb-progress-wrap" style="padding: 0 0.25rem 0.2rem;">
-            <div style="display:flex; align-items:center; gap:0.4rem; margin-bottom:3px;">
+        <div class="sb-progress-wrap">
+            <div style="display:flex; align-items:center; gap:var(--space-1); margin-bottom:3px;">
                 <div class="sb-progress-track" style="flex:1;">
                     <div class="sb-progress-fill" style="width: {{ progress_pct }}%;"></div>
                 </div>
-                <span style="font-size:0.62rem; color:var(--ts-text-secondary); white-space:nowrap; flex-shrink:0;">{{ progress_pct }}%</span>
+                <span style="font-size:var(--font-size-xs); color:var(--text-secondary); white-space:nowrap; flex-shrink:0;">{{ progress_pct }}%</span>
             </div>
         </div>
         {% endif %}
@@ -595,46 +754,33 @@
         <!-- Chat history sub-panel (only visible when expanded) -->
         {% if show_chat_history %}
         <div class="sb-chat-history">
-            <a href="/assistant/session/create"
-               style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;
-                      padding:0.3rem 0.4rem;border-radius:6px;border:1px solid var(--ts-border);
-                      background:rgba(255,255,255,0.04);color:var(--ts-text);text-decoration:none;
-                      margin-bottom:0.4rem;white-space:nowrap;">
+            <a href="/assistant/session/create" class="sb-chat-new">
                 ➕ New Chat
             </a>
             {% if session.get('renaming_session_id') %}
-            <div style="padding:0.4rem;border:1px solid var(--ts-border);border-radius:6px;
-                        margin-bottom:0.4rem;background:rgba(255,255,255,0.02);">
-                <div style="font-size:0.75rem;font-weight:600;color:var(--ts-primary);margin-bottom:0.2rem;">✏️ Rename</div>
+            <div class="sb-rename-container">
+                <div class="sb-rename-title">✏️ Rename</div>
                 <form action="/assistant/session/rename/save" method="POST">
-                    <input type="text" name="new_title" value="{{ session.get('renaming_session_title') }}"
-                           style="width:100%;padding:0.25rem;margin-bottom:0.3rem;border-radius:4px;
-                                  border:1px solid var(--ts-border);background:var(--ts-popover-bg);color:var(--ts-text);font-size:0.78rem;">
-                    <div style="display:flex;gap:0.25rem;">
-                        <button type="submit" style="flex:1;padding:0.2rem;border-radius:4px;
-                            background:var(--ts-primary);border:none;color:#fff;font-size:0.75rem;cursor:pointer;">Save</button>
-                        <a href="/assistant/session/rename/cancel"
-                           style="flex:1;padding:0.2rem;border-radius:4px;text-align:center;
-                                  border:1px solid var(--ts-border);color:var(--ts-text);font-size:0.75rem;text-decoration:none;">Cancel</a>
+                    <input type="text" name="new_title" value="{{ session.get('renaming_session_title') }}" class="sb-rename-input">
+                    <div class="sb-rename-actions">
+                        <button type="submit" class="sb-rename-save">Save</button>
+                        <a href="/assistant/session/rename/cancel" class="sb-rename-cancel">Cancel</a>
                     </div>
                 </form>
             </div>
             {% endif %}
             {% if not user_sessions %}
-                <span style="font-size:0.78rem;color:var(--ts-text-secondary);">No history yet.</span>
+                <span style="font-size:var(--font-size-xs);color:var(--text-secondary);">No history yet.</span>
             {% else %}
-            <div style="display:flex;flex-direction:column;gap:0.2rem;max-height:200px;overflow-y:auto;">
+            <div class="sb-chat-history-list">
                 {% for s in user_sessions %}
-                <div style="display:flex;align-items:center;gap:0.15rem;">
+                <div class="sb-chat-session-row">
                     <a href="/assistant?session_id={{ s.session_id }}"
-                       style="flex:1;font-size:0.78rem;padding:0.25rem 0.35rem;border-radius:5px;
-                              border:1px solid {% if s.session_id==active_chat_session_id %}var(--ts-primary){% else %}var(--ts-border){% endif %};
-                              background:rgba(255,255,255,0.03);
-                              color:{% if s.session_id==active_chat_session_id %}var(--ts-primary){% else %}var(--ts-text){% endif %};
-                              text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-                              font-weight:{% if s.session_id==active_chat_session_id %}600{% else %}400{% endif %};">{% if s.session_id==active_chat_session_id %}⭐{% else %}💬{% endif %} {{ s.title }}</a>
-                    <a href="/assistant/session/rename?id={{ s.session_id }}" title="Rename" style="text-decoration:none;font-size:0.78rem;padding:0.2rem;">✏️</a>
-                    <a href="/assistant/session/delete?id={{ s.session_id }}" title="Delete" style="text-decoration:none;font-size:0.78rem;padding:0.2rem;">🗑️</a>
+                       class="sb-chat-session-link {% if s.session_id==active_chat_session_id %}active{% endif %}">
+                       {% if s.session_id==active_chat_session_id %}⭐{% else %}💬{% endif %} {{ s.title }}
+                    </a>
+                    <a href="/assistant/session/rename?id={{ s.session_id }}" title="Rename" class="sb-chat-action-icon">✏️</a>
+                    <a href="/assistant/session/delete?id={{ s.session_id }}" title="Delete" class="sb-chat-action-icon">🗑️</a>
                 </div>
                 {% endfor %}
             </div>
@@ -677,8 +823,7 @@
             <span class="sb-nav-icon">📋</span>
             <span class="sb-nav-label">Activity Logs</span>
         </a>
-        <a href="/admin/maintenance" class="sb-nav-link {% if active_page == 'maintenance' %}active{% endif %}"
-           style="color: var(--ts-danger,#ef4444);">
+        <a href="/admin/maintenance" class="sb-nav-link sb-maintenance-link {% if active_page == 'maintenance' %}active{% endif %}">
             <span class="sb-nav-icon">⚙️</span>
             <span class="sb-nav-label">Maintenance</span>
         </a>
@@ -707,16 +852,16 @@
 
         {% if session.get('user_role') == 'admin' %}
         <!-- ── Admin: Compact Health + Stats ── -->
-        <div class="sb-admin-panel" style="font-size: 0.72rem; color: var(--ts-text-secondary);">
-            <div class="sb-divider" style="margin: 0.35rem 0;"></div>
+        <div class="sb-admin-panel">
+            <div class="sb-divider"></div>
             <!-- Health dot indicators in a single line -->
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.15rem 0.25rem 0.25rem;">
-                <span title="SQLite Core status">DB: <b style="color: {% if health.sqlite_ok %}#34d399{% else %}#ef4444{% endif %};">●</b></span>
-                <span title="Chroma Vector Database status">Vector: <b style="color: {% if health.chroma_ok %}#34d399{% else %}#ef4444{% endif %};">●</b></span>
-                <span title="Ollama Qwen AI core status">AI: <b style="color: {% if health.ollama_ok %}#34d399{% else %}#ef4444{% endif %};">●</b></span>
+            <div class="sb-admin-health-row">
+                <span title="SQLite Core status">DB: <b class="{% if health.sqlite_ok %}health-indicator-ok{% else %}health-indicator-err{% endif %}">●</b></span>
+                <span title="Chroma Vector Database status">Vector: <b class="{% if health.chroma_ok %}health-indicator-ok{% else %}health-indicator-err{% endif %}">●</b></span>
+                <span title="Ollama Qwen AI core status">AI: <b class="{% if health.ollama_ok %}health-indicator-ok{% else %}health-indicator-err{% endif %}">●</b></span>
             </div>
             <!-- Doc stats in a single line -->
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.15rem 0.25rem 0; border-top: 1px dashed rgba(255,255,255,0.05);">
+            <div class="sb-admin-stats-row">
                 <span>📚 <b>{{ stats.sources }}</b> docs</span>
                 <span>🧩 <b>{{ stats.total_chunks }}</b> chunks</span>
             </div>
@@ -726,7 +871,7 @@
         <div class="sb-divider" style="margin-top:0.4rem;"></div>
 
         <!-- ── Logout ── -->
-        <a href="/logout" class="sb-action-btn" style="color:var(--ts-danger,#ef4444);border-color:rgba(239,68,68,0.2);">
+        <a href="/logout" class="sb-action-btn sb-logout-btn">
             <span class="sb-action-icon">🚪</span>
             <span class="sb-action-label">Logout</span>
         </a>

@@ -3,73 +3,66 @@
    Milestone 1 upgraded custom stylesheet
    ============================================================ */
 
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap");
+@import url("theme.css?v=2");
 
 :root {
-  /* Neon Gradient Themes */
-  --ts-primary: #60A5FA;
-  /* Light Blue */
-  --ts-primary-hover: #3B82F6;
-  /* Blue */
-  --ts-secondary: #34D399;
-  /* Emerald */
-  --ts-accent: #A78BFA;
-  /* Lavender */
-  --ts-gradient: linear-gradient(135deg, var(--ts-primary) 0%, var(--ts-accent) 50%, var(--ts-secondary) 100%);
-  --ts-gradient-hero: linear-gradient(120deg, #000000 0%, #111827 50%, #030712 100%);
+  /* Neon Gradient Themes -> Calm Token references */
+  --ts-primary: var(--primary);
+  --ts-primary-hover: var(--primary-hover);
+  --ts-secondary: var(--accent);
+  --ts-accent: var(--accent);
+  --ts-gradient: var(--primary);
+  --ts-gradient-hero: var(--surface-alt);
 
   /* Popover settings */
-  --ts-popover-bg: #0d0d0d;
-  --ts-popover-text: #E5E7EB;
+  --ts-popover-bg: var(--surface-alt);
+  --ts-popover-text: var(--text-primary);
 
   /* Premium Surfaces */
-  --ts-bg: #000000;
-  /* Pure Black */
-  --ts-surface: rgba(20, 20, 20, 0.7);
-  /* Dark Glass Card */
-  --ts-border: rgba(255, 255, 255, 0.08);
-  --ts-border-hover: rgba(96, 165, 250, 0.35);
+  --ts-bg: var(--bg);
+  --ts-surface: var(--surface);
+  --ts-card-bg: var(--surface);
+  --ts-border: var(--border);
+  --ts-border-hover: var(--primary);
 
   /* Typography */
-  --ts-text: #E5E7EB;
-  /* Gray 200 */
-  --ts-text-secondary: #9CA3AF;
-  /* Gray 400 */
-  --ts-text-muted: #6B7280;
-  /* Gray 500 */
+  --ts-text: var(--text-primary);
+  --ts-text-heading: var(--text-primary);
+  --ts-text-secondary: var(--text-secondary);
+  --ts-text-muted: var(--text-secondary);
 
   /* Semantics */
-  --ts-success: #10B981;
-  /* Emerald */
-  --ts-warning: #F59E0B;
-  /* Amber */
-  --ts-danger: #EF4444;
-  /* Rose */
+  --ts-success: var(--success);
+  --ts-warning: var(--warning);
+  --ts-danger: var(--error);
 
   /* Shadows & Glass */
-  --ts-shadow: 0 4px 30px rgba(0, 0, 0, 0.6);
-  --ts-shadow-hover: 0 10px 40px rgba(96, 165, 250, 0.25);
-  --ts-shadow-glow: 0 0 15px rgba(96, 165, 250, 0.15);
-  --ts-radius: 16px;
-  --ts-radius-pill: 30px;
+  --ts-shadow: var(--shadow);
+  --ts-shadow-hover: var(--shadow);
+  --ts-shadow-glow: none;
+  --ts-radius: var(--radius);
+  --ts-radius-pill: 99px;
+  
+  /* Additional layout variables used in styles */
+  --ts-inner-bg: var(--surface-alt);
+  --ts-badge-bg: var(--surface-alt);
+  --ts-badge-border: var(--border);
+  --ts-input-bg: var(--surface-alt);
+  --ts-sidebar-bg: var(--surface);
 }
 
 /* ---------- Base layout ---------- */
 html,
 body,
 [class*="css"] {
-  font-family: "Outfit", "Inter", system-ui, sans-serif;
-  color: var(--ts-text);
-  background-color: var(--ts-bg) !important;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background-color: var(--bg) !important;
 }
 
 body {
   position: relative;
-  background:
-    radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
-    radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.12) 0%, transparent 40%),
-    radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
-    var(--ts-bg) !important;
+  background: var(--bg) !important;
 }
 
 body::before {
@@ -77,11 +70,7 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
-  background-size: 50px 50px;
-  opacity: 0.8;
+  background-image: none;
   z-index: 0;
 }
 
@@ -107,13 +96,13 @@ h4 {
 .ts-hero {
   position: relative;
   overflow: hidden;
-  background: var(--ts-gradient-hero);
-  border: 1px solid var(--ts-border);
-  color: var(--ts-text);
-  border-radius: 24px;
-  padding: 2.5rem 2.8rem;
-  box-shadow: var(--ts-shadow), 0 0 30px rgba(99, 102, 241, 0.1);
-  margin-bottom: 1.8rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: var(--radius);
+  padding: var(--space-5);
+  box-shadow: var(--shadow);
+  margin-bottom: var(--space-4);
 }
 
 .ts-hero::before {
@@ -124,8 +113,9 @@ h4 {
   width: 320px;
   height: 320px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(59, 91, 255, 0.04) 0%, transparent 70%);
   filter: blur(15px);
+  pointer-events: none;
 }
 
 .ts-hero::after {
@@ -136,28 +126,26 @@ h4 {
   width: 300px;
   height: 300px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(6, 182, 212, 0.2) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(13, 148, 136, 0.03) 0%, transparent 70%);
   filter: blur(15px);
+  pointer-events: none;
 }
 
 .ts-hero-title {
   position: relative;
   z-index: 1;
-  font-size: 2.6rem;
-  font-weight: 800;
+  font-size: calc(var(--font-size-xl) * 1.35);
+  font-weight: var(--font-weight-semibold);
   line-height: 1.1;
-  background: linear-gradient(135deg, #FFFFFF 30%, #E0E7FF 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--primary);
 }
 
 .ts-hero-subtitle {
   position: relative;
   z-index: 1;
-  margin-top: 0.75rem;
-  font-size: 1.1rem;
-  font-weight: 300;
-  color: var(--ts-text-secondary);
+  margin-top: calc(var(--space-1) / 2);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
   line-height: 1.5;
   max-width: 800px;
 }
@@ -173,9 +161,7 @@ h4 {
   font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -0.01em;
-  background: linear-gradient(135deg, var(--ts-text-heading, #FFFFFF) 60%, var(--ts-secondary) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--ts-text-heading);
 }
 
 .ts-section-subtitle {
@@ -263,9 +249,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:hover {
 .ts-metric-value {
   font-size: 2.1rem;
   font-weight: 800;
-  background: linear-gradient(135deg, var(--ts-text-heading, #FFFFFF) 40%, var(--ts-primary) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--ts-text-heading);
   line-height: 1.1;
 }
 
@@ -1121,40 +1105,11 @@ div[data-baseweb="popover"] [role="option"]:hover,
    ============================================================ */
 
 body.ts-light-mode {
-  --ts-bg: #F3F4F6;
-  --ts-surface: rgba(255, 255, 255, 0.7);
-  --ts-border: rgba(0, 0, 0, 0.08);
-  --ts-border-hover: rgba(99, 102, 241, 0.35);
-  --ts-text: #1F2937;
-  --ts-text-heading: #111827;
-  --ts-text-secondary: #4B5563;
-  --ts-text-muted: #9CA3AF;
-  --ts-input-bg: rgba(255, 255, 255, 0.85);
-  --ts-popover-bg: #FFFFFF;
-  --ts-popover-text: #1F2937;
-  --ts-inner-bg: rgba(0, 0, 0, 0.025);
-  --ts-badge-bg: rgba(99, 102, 241, 0.1);
-  --ts-badge-border: rgba(99, 102, 241, 0.2);
-  --ts-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
-  --ts-shadow-hover: 0 10px 40px rgba(99, 102, 241, 0.1);
-  --ts-shadow-glow: 0 0 15px rgba(99, 102, 241, 0.06);
-  --ts-gradient-hero: linear-gradient(120deg, #FFFFFF 0%, #EEF2F6 50%, #E2E8F0 100%);
-  --ts-danger: #B91C1C;
-  --ts-warning: #B45309;
-}
-
-body.ts-light-mode {
-  background:
-    radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.04) 0%, transparent 40%),
-    radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.04) 0%, transparent 40%),
-    radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.03) 0%, transparent 50%),
-    var(--ts-bg) !important;
+  background: var(--bg) !important;
 }
 
 body.ts-light-mode::before {
-  background-image:
-    linear-gradient(rgba(0, 0, 0, 0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.015) 1px, transparent 1px) !important;
+  background-image: none !important;
 }
 
 body.ts-light-mode .ts-sidebar-profile {
@@ -1278,253 +1233,4 @@ body.ts-light-mode input::placeholder,
 body.ts-light-mode textarea::placeholder {
   color: var(--ts-text-muted) !important;
 }
-
-/* ============================================================
-   LIGHT MODE — Comprehensive Text Color Fixes
-   Covers all elements with hardcoded dark-theme colors
-   ============================================================ */
-
-/* Headings - hardcoded #FFFFFF in base */
-body.ts-light-mode h1,
-body.ts-light-mode h2,
-body.ts-light-mode h3,
-body.ts-light-mode h4 {
-  color: var(--ts-text-heading) !important;
-  -webkit-text-fill-color: var(--ts-text-heading) !important;
-}
-
-/* Hero banner */
-body.ts-light-mode .ts-hero {
-  background: linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(6,182,212,0.06) 100%) !important;
-  border: 1px solid rgba(99, 102, 241, 0.15) !important;
-  color: var(--ts-text) !important;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.05) !important;
-}
-
-body.ts-light-mode .ts-hero-title {
-  background: linear-gradient(135deg, var(--ts-primary) 0%, var(--ts-accent) 100%) !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-}
-
-body.ts-light-mode .ts-hero-subtitle {
-  color: #374151 !important;
-  -webkit-text-fill-color: #374151 !important;
-}
-
-/* Section titles */
-body.ts-light-mode .ts-section-title {
-  background: linear-gradient(135deg, var(--ts-primary) 0%, var(--ts-secondary) 100%) !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-}
-
-body.ts-light-mode .ts-section-subtitle {
-  color: #4B5563 !important;
-  -webkit-text-fill-color: #4B5563 !important;
-}
-
-/* Cards */
-body.ts-light-mode .ts-card {
-  background: rgba(255,255,255,0.75) !important;
-  border: 1px solid rgba(0,0,0,0.06) !important;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.04) !important;
-}
-
-body.ts-light-mode .ts-card-title {
-  color: #111827 !important;
-  -webkit-text-fill-color: #111827 !important;
-}
-
-body.ts-light-mode .ts-card-body {
-  color: #4B5563 !important;
-  -webkit-text-fill-color: #4B5563 !important;
-}
-
-/* Metric cards */
-body.ts-light-mode .ts-metric {
-  background: rgba(255,255,255,0.85) !important;
-  border: 1px solid rgba(0,0,0,0.06) !important;
-}
-
-body.ts-light-mode .ts-metric-value {
-  background: linear-gradient(135deg, var(--ts-primary) 0%, var(--ts-secondary) 100%) !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-}
-
-body.ts-light-mode .ts-metric-label {
-  color: #4B5563 !important;
-  -webkit-text-fill-color: #4B5563 !important;
-}
-
-/* Info banners */
-body.ts-light-mode .ts-info-banner {
-  background: linear-gradient(120deg, rgba(99,102,241,0.07), rgba(6,182,212,0.03)) !important;
-  border-color: rgba(99,102,241,0.15) !important;
-}
-
-body.ts-light-mode .ts-info-title {
-  color: #1E40AF !important;
-  -webkit-text-fill-color: #1E40AF !important;
-}
-
-body.ts-light-mode .ts-info-body {
-  color: #374151 !important;
-  -webkit-text-fill-color: #374151 !important;
-}
-
-/* Pills & tags */
-body.ts-light-mode .ts-pill {
-  background: rgba(99,102,241,0.08) !important;
-  color: var(--ts-primary) !important;
-  border-color: rgba(99,102,241,0.2) !important;
-}
-
-body.ts-light-mode .ts-pill:hover {
-  background: rgba(99,102,241,0.15) !important;
-  color: var(--ts-primary) !important;
-}
-
-/* Highlights */
-body.ts-light-mode .ts-highlight {
-  background-color: rgba(245,158,11,0.2) !important;
-  color: #92400E !important;
-  -webkit-text-fill-color: #92400E !important;
-}
-
-/* Catalog cards */
-body.ts-light-mode .ts-catalog-card {
-  background: rgba(255,255,255,0.7) !important;
-  border-color: rgba(0,0,0,0.07) !important;
-}
-
-body.ts-light-mode .ts-catalog-name {
-  color: #111827 !important;
-  -webkit-text-fill-color: #111827 !important;
-}
-
-body.ts-light-mode .ts-catalog-meta {
-  color: #4B5563 !important;
-}
-
-/* Empty state */
-body.ts-light-mode .ts-empty {
-  background: rgba(255,255,255,0.5) !important;
-}
-
-body.ts-light-mode .ts-empty-title {
-  color: #111827 !important;
-  -webkit-text-fill-color: #111827 !important;
-}
-
-body.ts-light-mode .ts-empty-body {
-  color: #4B5563 !important;
-}
-
-/* Search results */
-body.ts-light-mode .ts-result-page {
-  background: rgba(0,0,0,0.04) !important;
-  border-color: rgba(0,0,0,0.06) !important;
-  color: #4B5563 !important;
-}
-
-body.ts-light-mode .ts-result-text {
-  color: #1F2937 !important;
-}
-
-/* Sidebar container */
-body.ts-light-mode .sidebar-container {
-  background-color: #FFFFFF !important;
-  border-right-color: rgba(0,0,0,0.08) !important;
-}
-
-/* Navigation links */
-body.ts-light-mode .nav-link {
-  color: #4B5563 !important;
-}
-
-body.ts-light-mode .nav-link:hover {
-  background-color: rgba(99,102,241,0.06) !important;
-  color: var(--ts-primary) !important;
-}
-
-body.ts-light-mode .nav-section-title {
-  color: #9CA3AF !important;
-}
-
-/* Sidebar profile card */
-body.ts-light-mode .ts-sidebar-profile {
-  background: rgba(0,0,0,0.03) !important;
-  border: 1px solid rgba(0,0,0,0.05) !important;
-}
-
-body.ts-light-mode .ts-profile-name {
-  color: #111827 !important;
-  -webkit-text-fill-color: #111827 !important;
-}
-
-body.ts-light-mode .ts-profile-details {
-  color: #6B7280 !important;
-  -webkit-text-fill-color: #6B7280 !important;
-}
-
-/* Health indicators */
-body.ts-light-mode .ts-sidebar-health {
-  background: rgba(0,0,0,0.02) !important;
-  border: 1px solid rgba(0,0,0,0.04) !important;
-}
-
-/* Nested cards */
-body.ts-light-mode .ts-nested-card {
-  background-color: rgba(0,0,0,0.025) !important;
-  border-color: rgba(0,0,0,0.07) !important;
-}
-
-/* Badge outline in light mode */
-body.ts-light-mode .ts-badge-outline {
-  background: rgba(99,102,241,0.08) !important;
-  border-color: rgba(99,102,241,0.2) !important;
-  color: var(--ts-primary) !important;
-}
-
-/* Tab links */
-body.ts-light-mode .tab-link {
-  color: #6B7280 !important;
-}
-
-body.ts-light-mode .tab-link:hover,
-body.ts-light-mode .tab-link.active {
-  color: var(--ts-primary) !important;
-}
-
-/* Progress bar track */
-body.ts-light-mode .ts-progress-bar-bg {
-  background: rgba(0,0,0,0.08) !important;
-}
-
-/* Divider lines */
-body.ts-light-mode .ts-divider-line {
-  background-color: rgba(0,0,0,0.08) !important;
-}
-
-/* Chat history panel */
-body.ts-light-mode .chat-history-sidebar-box {
-  border-left-color: rgba(0,0,0,0.12) !important;
-}
-
-/* Question cards in exam */
-body.ts-light-mode .question-card {
-  background: rgba(0,0,0,0.02) !important;
-  border-color: rgba(0,0,0,0.07) !important;
-}
-
-body.ts-light-mode .mcq-option-label {
-  background: rgba(0,0,0,0.02) !important;
-  border-color: rgba(0,0,0,0.08) !important;
-  color: #1F2937 !important;
-}
-
-body.ts-light-mode .mcq-option-label:hover {
-  background: rgba(99,102,241,0.05) !important;
-}
+

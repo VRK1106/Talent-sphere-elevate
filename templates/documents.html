@@ -20,7 +20,7 @@
             <div style="display: flex; flex-direction: column; gap: 0.4rem;">
                 <label style="font-size: 0.9rem; font-weight: 600; color: var(--ts-text);">Select Document to Browse</label>
                 <select name="selected_doc" onchange="this.form.submit()" 
-                        style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg, #0f172a); color: var(--ts-text); outline: none; font-size: 0.95rem;">
+                        style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none; font-size: 0.95rem;">
                     {% for name in source_names %}
                         <option value="{{ name }}" {% if name == selected_doc %}selected{% endif %}>{{ name }}</option>
                     {% endfor %}
@@ -90,7 +90,7 @@
                 <form method="GET" action="/documents" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
                     <input type="hidden" name="selected_doc" value="{{ selected_doc }}">
                     <input type="text" name="query" value="{{ query }}" placeholder="Type a keyword to highlight matches..."
-                           style="flex-grow: 1; padding: 0.60rem 0.80rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg, #0f172a); color: var(--ts-text); outline: none;">
+                           style="flex-grow: 1; padding: 0.60rem 0.80rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg); color: var(--ts-text); outline: none;">
                     <button type="submit" class="btn-ts btn-ts-primary" style="width: auto; padding: 0 1.5rem;">Filter</button>
                     {% if query %}
                         <a href="/documents?selected_doc={{ selected_doc }}" class="btn-ts btn-ts-secondary" style="width: auto; padding: 0 1.2rem; display: flex; align-items: center; justify-content: center; text-decoration: none;">Clear</a>

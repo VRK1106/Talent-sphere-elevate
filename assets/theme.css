@@ -1,0 +1,124 @@
+/* ==========================================
+   Design Tokens - Sleek Focused Learning Aesthetic
+   ========================================== */
+
+/* Font import — required or --font-sans silently falls back to system-ui */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+
+:root {
+  /* Colors - Light Mode (Default) */
+  --bg: #F8FAFC;                  /* Cool off-white for excellent contrast */
+  --surface: #FFFFFF;             /* Cards / Panels */
+  --surface-alt: #F1F5F9;         /* Secondary panels, inputs */
+  --border: #E2E8F0;              /* Crisp borders */
+  --text-primary: #0F172A;        /* Very deep slate-black (100% contrast, extremely readable) */
+  --text-secondary: #334155;      /* Dark slate-grey (WCAG AAA compliant readability) */
+  --primary: #3B5BFF;             /* Confident Indigo-Blue brand color */
+  --primary-hover: #2E4CE6;       /* 8% darker than primary */
+  --accent: #0D9488;              /* Teal for AI-generated moments only */
+  --success: #16A34A;             /* Semantic success */
+  --warning: #D97706;             /* Semantic warning */
+  --error: #DC2626;               /* Semantic error */
+
+  /* Data Visualization Palette — distinct from semantic colors, for charts/analytics only */
+  --chart-1: #3B5BFF;
+  --chart-2: #0D9488;
+  --chart-3: #D97706;
+  --chart-4: #8B5CF6;
+  --chart-5: #EC4899;
+  --chart-6: #64748B;
+
+  /* Typography */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 20px;
+  --font-size-xl: 28px;
+
+  --font-weight-regular: 400;
+  --font-weight-semibold: 600;
+
+  /* Spacing (8px base unit) */
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 48px;
+  --space-6: 64px;
+
+  /* Radius (Single unified value) */
+  --radius: 10px;
+
+  /* Elevation/Shadows */
+  --shadow: 0 2px 4px rgba(15, 23, 42, 0.05);
+
+  /* Accessibility: focus state */
+  --focus-ring: rgba(59, 91, 255, 0.4);
+
+  /* Disabled states */
+  --disabled-bg: var(--surface-alt);
+  --disabled-text: var(--text-secondary);
+  --disabled-opacity: 0.5;
+
+  /* Overlay/Scrim for modals */
+  --overlay: rgba(15, 23, 42, 0.6);
+
+  /* Motion */
+  --transition-theme: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+[data-theme="dark"] {
+  /* Colors - Dark Mode (Derived) */
+  --bg: #0F172A;                  /* Deep slate-blue (much richer dark mode background) */
+  --surface: #1E293B;             /* Cards / Panels */
+  --surface-alt: #334155;         /* Secondary panels, inputs */
+  --border: #475569;              /* Visible crisp borders */
+  --text-primary: #F8FAFC;        /* Clean bright off-white (highly visible) */
+  --text-secondary: #CBD5E1;      /* Light grey (excellent contrast on dark blue) */
+
+  --primary: #60A5FA;             /* Vibrant sky-blue for strong contrast on dark slate */
+  --primary-hover: #4B90E2;
+  --accent: #2DD4BF;              /* Vibrant teal */
+
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --error: #EF4444;
+
+  /* Data Visualization Palette — lightness-adjusted for dark surfaces */
+  --chart-1: #60A5FA;
+  --chart-2: #2DD4BF;
+  --chart-3: #F59E0B;
+  --chart-4: #A78BFA;
+  --chart-5: #F472B6;
+  --chart-6: #94A3B8;
+
+  /* Elevation/Shadows (No shadows for dark mode, use contrast instead) */
+  --shadow: none;
+
+  /* Accessibility: focus state (higher opacity for dark bg visibility) */
+  --focus-ring: rgba(96, 165, 250, 0.5);
+
+  /* Disabled states (inherit surface-alt/text-secondary automatically via var reference above) */
+
+  /* Overlay/Scrim — slightly heavier for dark mode depth */
+  --overlay: rgba(0, 0, 0, 0.7);
+}
+
+/* Global application of motion + focus tokens */
+* {
+  transition: var(--transition-theme);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+[disabled],
+.disabled {
+  background-color: var(--disabled-bg) !important;
+  color: var(--disabled-text) !important;
+  opacity: var(--disabled-opacity);
+  cursor: not-allowed;
+}

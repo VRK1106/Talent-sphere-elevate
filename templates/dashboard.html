@@ -5,73 +5,263 @@
 <!-- Chart.js CDN for premium charts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-    .ts-metrics-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-        margin-bottom: 1.5rem;
+    /* Reusable Dashboard Card */
+    .ts-card {
+        background-color: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: var(--space-4);
+        box-shadow: var(--shadow);
     }
     
+    /* Email settings layout */
+    .card-email-toggle {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--space-4);
+        gap: var(--space-3);
+    }
+    
+    /* Grid system */
+    .ts-metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: var(--space-3);
+        margin-bottom: var(--space-4);
+    }
+    
+    /* Metric Cards */
+    .ts-metric-card {
+        background-color: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: var(--space-4);
+        text-align: center;
+        cursor: pointer;
+        transition: transform var(--transition-theme), border-color var(--transition-theme), box-shadow var(--transition-theme);
+        box-shadow: var(--shadow);
+    }
+    
+    .ts-metric-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--primary);
+    }
+    
+    .ts-metric-value {
+        font-size: var(--font-size-xl);
+        font-weight: var(--font-weight-semibold);
+        color: var(--text-primary);
+    }
+    
+    .ts-metric-label {
+        font-size: var(--font-size-xs);
+        text-transform: uppercase;
+        font-weight: var(--font-weight-semibold);
+        margin-top: calc(var(--space-1) / 2);
+        letter-spacing: 0.05em;
+    }
+    .metric-label-primary { color: var(--primary); }
+    .metric-label-accent { color: var(--accent); }
+    
+    /* Large Stats Card (for trainee estimated study hours, etc) */
+    .ts-card-center {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: var(--space-5);
+    }
+    
+    .value-large {
+        font-size: calc(var(--font-size-xl) * 1.5);
+        font-weight: var(--font-weight-semibold);
+        color: var(--primary);
+    }
+    
+    .value-large-accent {
+        font-size: calc(var(--font-size-xl) * 1.5);
+        font-weight: var(--font-weight-semibold);
+        color: var(--accent);
+    }
+    
+    .label-large {
+        font-size: var(--font-size-md);
+        font-weight: var(--font-weight-semibold);
+        color: var(--text-primary);
+        margin-top: var(--space-1);
+    }
+    
+    /* Recommendation Card (for trainee) */
+    .ts-card-recommendation {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 200px;
+        box-sizing: border-box;
+    }
+    
+    /* Sidebar info panel style rows */
+    .ts-card-row-align {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: var(--space-3);
+    }
+    
+    /* Tabs Navigation */
     .tabs-container {
         display: flex;
-        border-bottom: 1px solid var(--ts-border);
-        margin-top: 1.5rem;
-        margin-bottom: 1.5rem;
-        gap: 1rem;
+        border-bottom: 1px solid var(--border);
+        margin-top: var(--space-4);
+        margin-bottom: var(--space-4);
+        gap: var(--space-3);
         overflow-x: auto;
     }
+    
     .tab-link {
         background: none;
         border: none;
-        color: var(--ts-text-secondary);
-        padding: 0.75rem 1rem;
-        font-size: 0.95rem;
-        font-weight: 600;
+        color: var(--text-secondary);
+        padding: var(--space-2) var(--space-3);
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-semibold);
         cursor: pointer;
         border-bottom: 2px solid transparent;
-        transition: all 0.2s ease;
+        transition: var(--transition-theme);
         white-space: nowrap;
     }
+    
     .tab-link:hover {
-        color: var(--ts-primary);
-    }
-    .tab-link.active {
-        color: var(--ts-primary);
-        border-bottom-color: var(--ts-primary);
-    }
-    .tab-content {
-        display: none;
-        animation: fadeIn 0.3s ease;
-    }
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
+        color: var(--primary);
     }
     
-    /* Directory tables styling */
+    .tab-link.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+    }
+    
+    .tab-content {
+        display: none;
+        animation: fadeIn 0.25s ease;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Tables design */
     .ts-table {
         width: 100%;
-        border-collapse: collapse;
-        margin-top: 0.5rem;
-        font-size: 0.9rem;
+        border-collapse: separate;
+        border-spacing: 0;
+        margin-top: var(--space-2);
+        font-size: var(--font-size-sm);
     }
+    
     .ts-table th {
         text-align: left;
-        padding: 0.75rem 1rem;
-        color: var(--ts-text-secondary);
-        border-bottom: 2px solid var(--ts-border);
-        font-weight: 600;
+        padding: var(--space-2) var(--space-3);
+        color: var(--text-secondary);
+        border-bottom: 2px solid var(--border);
+        font-weight: var(--font-weight-semibold);
     }
+    
     .ts-table td {
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid var(--ts-border);
-        color: var(--ts-text);
+        padding: var(--space-2) var(--space-3);
+        border-bottom: 1px solid var(--border);
+        color: var(--text-primary);
     }
+    
     .ts-table tr:hover {
-        background-color: rgba(255, 255, 255, 0.02);
+        background-color: var(--surface-alt);
     }
-    body.ts-light-mode .ts-table tr:hover {
-        background-color: rgba(0, 0, 0, 0.01);
+    
+    .ts-badge-info {
+        background-color: var(--surface-alt);
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+        padding: 2px var(--space-1);
+        border-radius: var(--radius);
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-semibold);
+    }
+
+    /* Chart Layout Grids */
+    .chart-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: var(--space-4);
+        margin-top: var(--space-2);
+    }
+    
+    .chart-title {
+        font-size: var(--font-size-md);
+        font-weight: var(--font-weight-semibold);
+        color: var(--text-primary);
+        margin-bottom: var(--space-2);
+    }
+    
+    .ts-card-chart {
+        padding: var(--space-3) !important;
+    }
+    
+    /* Reduced size donut containers */
+    .ts-chart-container-donut {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 200px !important;
+    }
+    
+    .ts-chart-wrapper-donut {
+        width: 180px;
+        height: 180px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Trainee notifications controls styling */
+    .noti-bell-btn {
+        background: var(--surface-alt);
+        border: 1px solid var(--border);
+        padding: var(--space-2);
+        border-radius: 50%;
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: var(--transition-theme);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 42px;
+        position: relative;
+        box-shadow: var(--shadow);
+    }
+    
+    .noti-dropdown {
+        display: none;
+        position: absolute;
+        top: 50px;
+        right: 0;
+        width: 320px;
+        z-index: 1000;
+        background: var(--surface);
+        padding: var(--space-3) !important;
+        border-radius: var(--radius) !important;
+        box-shadow: var(--shadow) !important;
+    }
+    
+    .noti-dropdown-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--space-2);
+        border-bottom: 1px solid var(--border);
+        padding-bottom: calc(var(--space-1) / 2);
     }
 </style>
 {% endblock %}
@@ -90,18 +280,18 @@
     </div>
 
     <!-- Email Notifications Toggle (relocated from Announcements) -->
-    <div class="ts-card" style="padding: 0.9rem 1.4rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--ts-border);">
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <span style="font-size: 1.35rem;">✉️</span>
+    <div class="ts-card card-email-toggle">
+        <div style="display: flex; align-items: center; gap: var(--space-2);">
+            <span style="font-size: var(--font-size-lg);">✉️</span>
             <div>
-                <div style="font-weight: 600; color: var(--ts-text); font-size: 0.9rem;">Global Email Notifications</div>
-                <div style="font-size: 0.78rem; color: var(--ts-text-secondary); margin-top: 0.1rem;">
+                <div style="font-weight: var(--font-weight-semibold); color: var(--text-primary); font-size: var(--font-size-sm);">Global Email Notifications</div>
+                <div style="font-size: var(--font-size-xs); color: var(--text-secondary); margin-top: 2px;">
                     Enable or disable outgoing SMTP emails to trainees for announcements and new exam assignments.
                 </div>
             </div>
         </div>
         <form action="/dashboard/settings/toggle_email" method="POST" style="margin: 0;">
-            <button type="submit" class="btn-ts {% if email_enabled %}btn-ts-primary{% else %}btn-ts-secondary{% endif %}" style="width: auto; padding: 0.45rem 1.3rem; font-size: 0.84rem; font-weight: 600; border-radius: 8px; white-space: nowrap;">
+            <button type="submit" class="btn-ts {% if email_enabled %}btn-ts-primary{% else %}btn-ts-secondary{% endif %}" style="width: auto; padding: var(--space-2) var(--space-3); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); border-radius: var(--radius); white-space: nowrap;">
                 {% if email_enabled %}🟢 Enabled{% else %}🔴 Disabled{% endif %}
             </button>
         </form>
@@ -109,40 +299,40 @@
 
     <!-- 8 Metrics Grid -->
     <div class="ts-metrics-grid">
-        <div class="ts-metric ts-metric-card" onclick="switchTabDirectly('directory')" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
-            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.trainees_count }}</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">Trainees</div>
+        <div class="ts-metric-card" onclick="switchTabDirectly('directory')">
+            <div class="ts-metric-value">{{ admin_stats.trainees_count }}</div>
+            <div class="ts-metric-label metric-label-primary">Trainees</div>
         </div>
-        <div class="ts-metric ts-metric-card" onclick="switchTabDirectly('directory')" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
-            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.active_now }}</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-secondary);">Active Now</div>
+        <div class="ts-metric-card" onclick="switchTabDirectly('directory')">
+            <div class="ts-metric-value">{{ admin_stats.active_now }}</div>
+            <div class="ts-metric-label metric-label-accent">Active Now</div>
         </div>
-        <div class="ts-metric ts-metric-card" onclick="window.location.href='/documents'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
-            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.doc_count }}</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-accent);">Documents</div>
+        <div class="ts-metric-card" onclick="window.location.href='/documents'">
+            <div class="ts-metric-value">{{ admin_stats.doc_count }}</div>
+            <div class="ts-metric-label metric-label-accent">Documents</div>
         </div>
-        <div class="ts-metric ts-metric-card" onclick="window.location.href='/documents'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
-            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.chunk_count }}</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">Knowledge Chunks</div>
+        <div class="ts-metric-card" onclick="window.location.href='/documents'">
+            <div class="ts-metric-value">{{ admin_stats.chunk_count }}</div>
+            <div class="ts-metric-label metric-label-primary">Knowledge Chunks</div>
         </div>
     </div>
     
     <div class="ts-metrics-grid">
-        <div class="ts-metric ts-metric-card" onclick="window.location.href='/assistant'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
-            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.total_sessions }}</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-secondary);">Chat Sessions</div>
+        <div class="ts-metric-card" onclick="window.location.href='/assistant'">
+            <div class="ts-metric-value">{{ admin_stats.total_sessions }}</div>
+            <div class="ts-metric-label metric-label-accent">Chat Sessions</div>
         </div>
-        <div class="ts-metric ts-metric-card" onclick="window.location.href='/assistant'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
-            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.total_messages }}</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-accent);">Total Messages</div>
+        <div class="ts-metric-card" onclick="window.location.href='/assistant'">
+            <div class="ts-metric-value">{{ admin_stats.total_messages }}</div>
+            <div class="ts-metric-label metric-label-accent">Total Messages</div>
         </div>
-        <div class="ts-metric ts-metric-card" onclick="window.location.href='/exams'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
-            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ admin_stats.exams_count }}</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">Exams Created</div>
+        <div class="ts-metric-card" onclick="window.location.href='/exams'">
+            <div class="ts-metric-value">{{ admin_stats.exams_count }}</div>
+            <div class="ts-metric-label metric-label-primary">Exams Created</div>
         </div>
-        <div class="ts-metric ts-metric-card" onclick="switchTabDirectly('performance')" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
-            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ "%.1f"|format(admin_stats.avg_score_pct) }}%</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-secondary);">Avg Exam Score</div>
+        <div class="ts-metric-card" onclick="switchTabDirectly('performance')">
+            <div class="ts-metric-value">{{ "%.1f"|format(admin_stats.avg_score_pct) }}%</div>
+            <div class="ts-metric-label metric-label-accent">Avg Exam Score</div>
         </div>
     </div>
 
@@ -156,34 +346,34 @@
 
     <!-- Tab 1: Performance & Usage -->
     <div id="performance" class="tab-content" style="display: block;">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 1rem;">
+        <div class="chart-grid">
             <div>
-                <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 1rem;'>📈 Assistant Activity (Messages per Day)</div>
-                <div class="ts-card" style="padding: 1rem; border-radius: 12px;">
-                    <canvas id="chatActivityChart" style="height: 250px;"></canvas>
+                <div class="chart-title">📈 Assistant Activity (Messages per Day)</div>
+                <div class="ts-card ts-card-chart">
+                    <canvas id="chatActivityChart" style="height: 160px;"></canvas>
                 </div>
             </div>
             <div>
-                <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-secondary); margin-bottom: 1rem;'>🎯 Exam Score Distribution</div>
-                <div class="ts-card" style="padding: 1rem; border-radius: 12px;">
-                    <canvas id="examScoreChart" style="height: 250px;"></canvas>
+                <div class="chart-title">🎯 Exam Score Distribution</div>
+                <div class="ts-card ts-card-chart">
+                    <canvas id="examScoreChart" style="height: 160px;"></canvas>
                 </div>
             </div>
         </div>
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
+        <div class="chart-grid" style="margin-top: var(--space-4);">
             <div>
-                <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-accent); margin-bottom: 1rem;'>📊 Study vs Assessment Engagement</div>
-                <div class="ts-card" style="padding: 1rem; border-radius: 12px; display: flex; justify-content: center; height: 270px;">
-                    <div style="width: 250px; height: 250px;">
+                <div class="chart-title">📊 Study vs Assessment Engagement</div>
+                <div class="ts-card ts-card-chart ts-chart-container-donut">
+                    <div class="ts-chart-wrapper-donut">
                         <canvas id="logCategoryChart"></canvas>
                     </div>
                 </div>
             </div>
             <div>
-                <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 1rem;'>🕒 Trainee Activity by Hour (Peak Times)</div>
-                <div class="ts-card" style="padding: 1rem; border-radius: 12px;">
-                    <canvas id="logHoursChart" style="height: 250px;"></canvas>
+                <div class="chart-title">🕒 Trainee Activity by Hour (Peak Times)</div>
+                <div class="ts-card ts-card-chart">
+                    <canvas id="logHoursChart" style="height: 160px;"></canvas>
                 </div>
             </div>
         </div>
@@ -191,10 +381,10 @@
 
     <!-- Tab 2: Trainee Directory -->
     <div id="directory" class="tab-content">
-        <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 0.8rem;'>👥 Registered Trainee Activity Log</div>
-        <div class="ts-card" style="padding: 1rem; border-radius: 12px; overflow-x: auto;">
+        <div class="chart-title">👥 Registered Trainee Activity Log</div>
+        <div class="ts-card ts-table-container">
             {% if not trainee_rows %}
-                <div style="padding: 1rem; color: var(--ts-text-muted);">No trainees registered yet.</div>
+                <div style="padding: var(--space-2); color: var(--text-secondary);">No trainees registered yet.</div>
             {% else %}
                 <table class="ts-table">
                     <thead>
@@ -213,13 +403,13 @@
                         {% for t in trainee_rows %}
                         <tr>
                             <td>{{ t.ID }}</td>
-                            <td style="font-weight: 600;">{{ t.Name }}</td>
-                            <td><span class="ts-profile-badge">{{ t.Domain }}</span></td>
+                            <td style="font-weight: var(--font-weight-semibold);">{{ t.Name }}</td>
+                            <td><span class="ts-badge-info">{{ t.Domain }}</span></td>
                             <td>{{ t.Email }}</td>
                             <td>{{ t.Completed }}</td>
                             <td>{{ t.Pending }}</td>
-                            <td style="font-weight: 600; color: var(--ts-primary);">{{ t.Avg_Score }}</td>
-                            <td><span style="font-size: 0.8rem; color: var(--ts-text-muted);">{{ t.Last_Active }}</span></td>
+                            <td style="font-weight: var(--font-weight-semibold); color: var(--primary);">{{ t.Avg_Score }}</td>
+                            <td><span style="font-size: var(--font-size-xs); color: var(--text-secondary);">{{ t.Last_Active }}</span></td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -227,10 +417,10 @@
             {% endif %}
         </div>
         
-        <div style="margin-top: 2rem;">
-            <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-accent); margin-bottom: 1rem;'>📊 Trainees Distribution by Domain</div>
-            <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; display: flex; justify-content: center;">
-                <div style="width: 320px; height: 320px;">
+        <div style="margin-top: var(--space-4);">
+            <div class="chart-title">📊 Trainees Distribution by Domain</div>
+            <div class="ts-card ts-chart-container-donut">
+                <div class="ts-chart-wrapper-donut">
                     <canvas id="domainChart"></canvas>
                 </div>
             </div>
@@ -239,10 +429,10 @@
 
     <!-- Tab 3: Content Sizing -->
     <div id="sizing" class="tab-content">
-        <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 0.8rem;'>📂 Vector Catalog Size Analytics</div>
-        <div class="ts-card" style="padding: 1rem; border-radius: 12px; overflow-x: auto; margin-bottom: 2rem;">
+        <div class="chart-title">📂 Vector Catalog Size Analytics</div>
+        <div class="ts-card ts-table-container" style="margin-bottom: var(--space-4);">
             {% if not doc_rows %}
-                <div style="padding: 1rem; color: var(--ts-text-muted);">No documents indexed yet.</div>
+                <div style="padding: var(--space-2); color: var(--text-secondary);">No documents indexed yet.</div>
             {% else %}
                 <table class="ts-table">
                     <thead>
@@ -256,7 +446,7 @@
                     <tbody>
                         {% for doc in doc_rows %}
                         <tr>
-                            <td style="font-weight: 600;">{{ doc.name }}</td>
+                            <td style="font-weight: var(--font-weight-semibold);">{{ doc.name }}</td>
                             <td>{{ doc.pages }}</td>
                             <td>{{ doc.chunks }}</td>
                             <td>{{ doc.chunks * 1000 }}</td>
@@ -267,40 +457,40 @@
             {% endif %}
         </div>
 
-        <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-accent); margin-bottom: 1rem;'>🧩 Vector Chunks per Indexed Document</div>
-        <div class="ts-card" style="padding: 1rem; border-radius: 12px;">
-            <canvas id="chunksChart" style="height: 250px;"></canvas>
+        <div class="chart-title">🧩 Vector Chunks per Indexed Document</div>
+        <div class="ts-card ts-card-chart">
+            <canvas id="chunksChart" style="height: 160px;"></canvas>
         </div>
     </div>
 
     <!-- Tab 4: AI Coach Analysis -->
     <div id="coach" class="tab-content">
-        <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 0.8rem;'>💬 Assistant Conversational Modes Analysis</div>
-        <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 2rem; margin-top: 1rem;">
-            <div class="ts-card" style="padding: 1rem; border-radius: 12px;">
-                <canvas id="modesChart" style="height: 250px;"></canvas>
+        <div class="chart-title">💬 Assistant Conversational Modes Analysis</div>
+        <div class="chart-grid" style="grid-template-columns: 1.5fr 1fr;">
+            <div class="ts-card ts-card-chart">
+                <canvas id="modesChart" style="height: 160px;"></canvas>
             </div>
             
-            <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; display: flex; flex-direction: column; gap: 1rem;">
-                <div style='font-size: 1.05rem; font-weight: 600;'>🤖 LLM Performance Parameters</div>
-                <hr class="ts-divider-line" style="margin: 0.2rem 0;">
+            <div class="ts-card" style="display: flex; flex-direction: column; gap: var(--space-2);">
+                <div style='font-size: var(--font-size-md); font-weight: var(--font-weight-semibold);'>🤖 LLM Performance Parameters</div>
+                <hr style="margin: calc(var(--space-1) / 2) 0; background-color: var(--border); border: none; height: 1px;">
                 <div>
-                    <span style="font-size: 0.85rem; color: var(--ts-text-secondary);">Active Embedding Model:</span>
-                    <div style="font-weight: 600; margin-top: 0.2rem;">{{ embedding_model_name }}</div>
+                    <span style="font-size: var(--font-size-xs); color: var(--text-secondary);">Active Embedding Model:</span>
+                    <div style="font-weight: var(--font-weight-semibold); margin-top: calc(var(--space-1) / 2);">{{ embedding_model_name }}</div>
                 </div>
                 <div>
-                    <span style="font-size: 0.85rem; color: var(--ts-text-secondary);">RAG Usage Ratio:</span>
-                    <div style="font-weight: 600; margin-top: 0.2rem; color: var(--ts-primary);">
+                    <span style="font-size: var(--font-size-xs); color: var(--text-secondary);">RAG Usage Ratio:</span>
+                    <div style="font-weight: var(--font-weight-semibold); margin-top: calc(var(--space-1) / 2); color: var(--primary);">
                         {{ "%.1f"|format(admin_stats.rag_ratio) }}% (Doc-Guided Queries)
                     </div>
                 </div>
                 <div>
-                    <span style="font-size: 0.85rem; color: var(--ts-text-secondary);">Knowledge Coverage:</span>
-                    <div style="font-weight: 600; margin-top: 0.2rem;">100% Secure Offline</div>
+                    <span style="font-size: var(--font-size-xs); color: var(--text-secondary);">Knowledge Coverage:</span>
+                    <div style="font-weight: var(--font-weight-semibold); margin-top: calc(var(--space-1) / 2);">100% Secure Offline</div>
                 </div>
                 <div>
-                    <span style="font-size: 0.85rem; color: var(--ts-text-secondary);">Avg. Confidence Similarity:</span>
-                    <div style="font-weight: 600; margin-top: 0.2rem;">84.5%</div>
+                    <span style="font-size: var(--font-size-xs); color: var(--text-secondary);">Avg. Confidence Similarity:</span>
+                    <div style="font-weight: var(--font-weight-semibold); margin-top: calc(var(--space-1) / 2);">84.5%</div>
                 </div>
             </div>
         </div>
@@ -310,7 +500,7 @@
     <!-- =======================================================================
          TRAINEE VIEW
          ======================================================================= -->
-    <div class="ts-hero" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; position: relative; overflow: visible !important;">
+    <div class="ts-hero" style="display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); position: relative;">
         <div>
             <div class="ts-hero-title">Welcome back, {{ session.get('current_user') }} 👋</div>
             <div class="ts-hero-subtitle">
@@ -320,18 +510,18 @@
         
         <!-- Notifications Bell System -->
         <div class="notifications-bell-container" style="position: relative;">
-            <button id="notiBellBtn" onclick="toggleNotiDropdown(event)" style="background: rgba(255, 255, 255, 0.08); border: 1px solid var(--ts-border); padding: 0.75rem; border-radius: 50%; color: var(--ts-text); cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; position: relative; backdrop-filter: blur(8px); box-shadow: var(--ts-shadow);" title="View Notifications">
-                <span style="font-size: 1.25rem;">🔔</span>
-                <span id="notiCountBadge" style="position: absolute; top: -2px; right: -2px; background-color: var(--ts-accent, #6366f1); color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid var(--ts-popover-bg, #1e1b4b); display: none;">0</span>
+            <button id="notiBellBtn" onclick="toggleNotiDropdown(event)" class="noti-bell-btn" title="View Notifications">
+                <span style="font-size: var(--font-size-lg);">🔔</span>
+                <span id="notiCountBadge" style="position: absolute; top: -2px; right: -2px; background-color: var(--accent); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: var(--font-size-xs); font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid var(--surface-alt); display: none;">0</span>
             </button>
             
             <!-- Dropdown Menu -->
-            <div id="notiDropdown" class="ts-card" style="display: none; position: absolute; top: 58px; right: 0; width: 340px; border: 1px solid var(--ts-border); border-radius: 12px; box-shadow: var(--ts-shadow); padding: 1rem; text-align: left; z-index: 1000; background: var(--ts-popover-bg); backdrop-filter: blur(16px);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; border-bottom: 1px solid var(--ts-border); padding-bottom: 0.5rem;">
-                    <span style="font-weight: 700; color: var(--ts-text); font-size: 0.95rem; display: flex; align-items: center; gap: 0.4rem;">🔔 Notifications</span>
-                    <button onclick="clearAllNotifications(event)" style="background: none; border: none; color: var(--ts-primary); font-size: 0.85rem; font-weight: 600; cursor: pointer; padding: 0.2rem; transition: color 0.2s;" onmouseover="this.style.color='var(--ts-accent)'" onmouseout="this.style.color='var(--ts-primary)'">Clear All</button>
+            <div id="notiDropdown" class="ts-card noti-dropdown">
+                <div class="noti-dropdown-header">
+                    <span style="font-weight: 700; color: var(--text-primary); font-size: var(--font-size-sm); display: flex; align-items: center; gap: 0.4rem;">🔔 Notifications</span>
+                    <button onclick="clearAllNotifications(event)" style="background: none; border: none; color: var(--primary); font-size: var(--font-size-xs); font-weight: 600; cursor: pointer; padding: 0.2rem; transition: color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--primary)'">Clear All</button>
                 </div>
-                <div id="notiList" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.6rem; padding-right: 2px;">
+                <div id="notiList" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-2); padding-right: 2px;">
                     <!-- Dynamically populated -->
                 </div>
             </div>
@@ -340,21 +530,21 @@
 
     <!-- 4 Metrics Grid -->
     <div class="ts-metrics-grid">
-        <div class="ts-metric ts-metric-card" onclick="window.location.href='/exams'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
-            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ trainee_stats.pending_count }}</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">Pending Exams</div>
+        <div class="ts-metric-card" onclick="window.location.href='/exams'">
+            <div class="ts-metric-value">{{ trainee_stats.pending_count }}</div>
+            <div class="ts-metric-label metric-label-primary">Pending Exams</div>
         </div>
-        <div class="ts-metric ts-metric-card" onclick="window.location.href='/exams'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
-            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ trainee_stats.completed_count }}</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-secondary);">Completed Exams</div>
+        <div class="ts-metric-card" onclick="window.location.href='/exams'">
+            <div class="ts-metric-value">{{ trainee_stats.completed_count }}</div>
+            <div class="ts-metric-label metric-label-accent">Completed Exams</div>
         </div>
-        <div class="ts-metric ts-metric-card" onclick="switchTabDirectly('trainee-progress')" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
-            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ "%.1f"|format(trainee_stats.personal_avg) }}%</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-accent);">My Average Score</div>
+        <div class="ts-metric-card" onclick="switchTabDirectly('trainee-progress')">
+            <div class="ts-metric-value">{{ "%.1f"|format(trainee_stats.personal_avg) }}%</div>
+            <div class="ts-metric-label metric-label-accent">My Average Score</div>
         </div>
-        <div class="ts-metric ts-metric-card" onclick="window.location.href='/assistant'" style="padding: 1.2rem; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
-            <div class="ts-metric-value" style="font-size: 1.8rem; font-weight: 700;">{{ trainee_stats.chat_count }}</div>
-            <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem; color: var(--ts-primary);">AI Chat Sessions</div>
+        <div class="ts-metric-card" onclick="window.location.href='/assistant'">
+            <div class="ts-metric-value">{{ trainee_stats.chat_count }}</div>
+            <div class="ts-metric-label metric-label-primary">AI Chat Sessions</div>
         </div>
     </div>
 
@@ -368,40 +558,40 @@
     <!-- Tab 1: Trainee Progress -->
     <div id="trainee-progress" class="tab-content" style="display: block;">
         <!-- Score Trajectory -->
-        <div style="margin-bottom: 2rem;">
-            <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 1rem;'>📈 My Score Trajectory</div>
-            <div class="ts-card" style="padding: 1rem; border-radius: 12px;">
+        <div style="margin-bottom: var(--space-4);">
+            <div class="chart-title">📈 My Score Trajectory</div>
+            <div class="ts-card ts-card-chart">
                 {% if not trainee_stats.completed_count %}
-                    <div style="padding: 1.5rem; text-align: center; color: var(--ts-text-secondary);">
+                    <div style="padding: var(--space-4); text-align: center; color: var(--text-secondary);">
                         💡 Complete your first exam under the <b>Exams</b> tab to plot your score trajectory!
                     </div>
                 {% else %}
-                    <canvas id="trajectoryChart" style="height: 250px;"></canvas>
+                    <canvas id="trajectoryChart" style="height: 160px;"></canvas>
                 {% endif %}
             </div>
         </div>
 
         <!-- Pending Assessments -->
         <div>
-            <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-secondary); margin-bottom: 0.8rem;'>📝 Pending Training Assessments</div>
+            <div class="chart-title" style="margin-bottom: var(--space-2);">📝 Pending Training Assessments</div>
             {% if not pending_exams %}
-                <div class="ts-info-banner" style="padding: 1rem; border-radius: 8px;">
-                    <div class="ts-info-title" style="font-weight: 600;">🎉 Well done!</div>
-                    <div class="ts-info-body" style="font-size: 0.9rem; margin-top: 0.2rem;">You have completed all assigned assessments.</div>
+                <div class="ts-info-banner">
+                    <div style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-md);">🎉 Well done!</div>
+                    <div style="font-size: var(--font-size-sm); color: var(--text-secondary); margin-top: 2px;">You have completed all assigned assessments.</div>
                 </div>
             {% else %}
-                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: flex; flex-direction: column; gap: var(--space-2);">
                     {% for a in pending_exams %}
-                    <div class="ts-card" style="padding: 1.2rem; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div class="ts-card ts-card-row-align">
                         <div style="flex-grow: 1;">
-                            <div style="font-size: 1.05rem; font-weight: 600; color: var(--ts-text);">📝 {{ a.title }}</div>
-                            <div style="font-size: 0.82rem; color: var(--ts-text-muted); margin-top: 0.2rem;">
+                            <div style="font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); color: var(--text-primary);">📝 {{ a.title }}</div>
+                            <div style="font-size: var(--font-size-xs); color: var(--text-secondary); margin-top: 2px;">
                                 Due Date: <b>{{ a.due_date if a.due_date else 'No Due Date' }}</b> &nbsp;·&nbsp; Total Marks: <b>{{ a.total_marks }}</b>
                             </div>
-                            <div style="font-size: 0.88rem; color: var(--ts-text-secondary); margin-top: 0.5rem;">{{ a.description }}</div>
+                            <div style="font-size: var(--font-size-sm); color: var(--text-secondary); margin-top: 4px;">{{ a.description }}</div>
                         </div>
-                        <div style="margin-left: 1.5rem; width: 140px;">
-                            <a href="/exams" class="btn-ts btn-ts-primary">Start Exam ➡️</a>
+                        <div style="margin-left: var(--space-3); width: 140px; flex-shrink: 0;">
+                            <a href="/exams" class="btn-ts btn-ts-primary" style="display: block; text-align: center; padding: var(--space-2) 0; border-radius: var(--radius);">Start Exam ➡️</a>
                         </div>
                     </div>
                     {% endfor %}
@@ -412,78 +602,78 @@
 
     <!-- Tab 3: Trainee Activity Insights -->
     <div id="trainee-activity" class="tab-content">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 1rem;">
+        <div class="chart-grid">
             <div>
-                <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 1rem;'>📈 My Weekly Activity (Actions per Day)</div>
-                <div class="ts-card" style="padding: 1rem; border-radius: 12px;">
-                    <canvas id="traineeActivityChart" style="height: 250px;"></canvas>
+                <div class="chart-title">📈 My Weekly Activity (Actions per Day)</div>
+                <div class="ts-card ts-card-chart">
+                    <canvas id="traineeActivityChart" style="height: 160px;"></canvas>
                 </div>
             </div>
             <div>
-                <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-secondary); margin-bottom: 1rem;'>🎯 Study vs Assessment Engagement</div>
-                <div class="ts-card" style="padding: 1rem; border-radius: 12px; display: flex; justify-content: center; height: 270px;">
-                    <div style="width: 250px; height: 250px;">
+                <div class="chart-title">🎯 Study vs Assessment Engagement</div>
+                <div class="ts-card ts-card-chart ts-chart-container-donut">
+                    <div class="ts-chart-wrapper-donut">
                         <canvas id="traineeCategoryChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
-            <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
-                <div style="font-size: 2.5rem; font-weight: 800; color: var(--ts-primary);">{{ trainee_stats.study_hours }}</div>
-                <div style="font-size: 1rem; font-weight: 600; color: var(--ts-text); margin-top: 0.5rem;">Estimated Study Hours 📚</div>
-                <div style="font-size: 0.8rem; color: var(--ts-text-muted); margin-top: 0.25rem;">Calculated based on active session blocks on study pages.</div>
+        <div class="chart-grid" style="margin-top: var(--space-4);">
+            <div class="ts-card ts-card-center">
+                <div class="value-large">{{ trainee_stats.study_hours }}</div>
+                <div class="label-large">Estimated Study Hours 📚</div>
+                <div style="font-size: var(--font-size-xs); color: var(--text-secondary); margin-top: 4px; line-height: 1.4;">Calculated based on active session blocks on study pages.</div>
             </div>
-            <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
-                <div style="font-size: 2.5rem; font-weight: 800; color: var(--ts-secondary);">{{ trainee_stats.avg_session_mins }}m</div>
-                <div style="font-size: 1rem; font-weight: 600; color: var(--ts-text); margin-top: 0.5rem;">Average Session Duration ⏱️</div>
-                <div style="font-size: 0.8rem; color: var(--ts-text-muted); margin-top: 0.25rem;">Average length of continuous study sessions.</div>
+            <div class="ts-card ts-card-center">
+                <div class="value-large-accent">{{ trainee_stats.avg_session_mins }}m</div>
+                <div class="label-large">Average Session Duration ⏱️</div>
+                <div style="font-size: var(--font-size-xs); color: var(--text-secondary); margin-top: 4px; line-height: 1.4;">Average length of continuous study sessions.</div>
             </div>
         </div>
     </div>
 
     <!-- Tab 2: Trainee Recommendations -->
     <div id="trainee-recs" class="tab-content">
-        <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-primary); margin-bottom: 0.8rem;'>📚 Recommended Study Material</div>
+        <div class="chart-title">📚 Recommended Study Material</div>
         {% if not recommendations %}
-            <div style="padding: 1rem; color: var(--ts-text-secondary);">No training documents have been ingested to the platform database yet.</div>
+            <div style="padding: var(--space-2); color: var(--text-secondary);">No training documents have been ingested to the platform database yet.</div>
         {% else %}
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+            <div class="chart-grid" style="margin-bottom: var(--space-4);">
                 {% for rec in recommendations %}
-                <div class="ts-card" style="padding: 1.2rem; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between; height: 180px; box-sizing: border-box;">
+                <div class="ts-card ts-card-recommendation">
                     <div>
-                        <div style="font-size: 1.05rem; font-weight: 600; color: var(--ts-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">📄 {{ rec.name }}</div>
-                        <div style="font-size: 0.82rem; color: var(--ts-text-secondary); margin-top: 0.3rem;">
+                        <div style="font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); color: var(--primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">📄 {{ rec.name }}</div>
+                        <div style="font-size: var(--font-size-xs); color: var(--text-secondary); margin-top: 4px;">
                             Pages: <b>{{ rec.pages }}</b> &nbsp;·&nbsp; Chunks: <b>{{ rec.chunks }}</b>
                         </div>
-                        <div style="font-size: 0.85rem; color: var(--ts-text-muted); margin-top: 0.5rem;">Recommended to review based on your learning domain requirements.</div>
+                        <div style="font-size: var(--font-size-sm); color: var(--text-secondary); margin-top: var(--space-2); line-height: 1.4;">Recommended to review based on your learning domain requirements.</div>
                     </div>
-                    <a href="/documents" class="btn-ts btn-ts-secondary" style="margin-top: 0.5rem;">Open Document 🔍</a>
+                    <a href="/documents" class="btn-ts btn-ts-secondary" style="margin-top: var(--space-2); display: block; text-align: center; padding: var(--space-2) 0; border-radius: var(--radius);">Open Document 🔍</a>
                 </div>
                 {% endfor %}
             </div>
         {% endif %}
 
-        <hr class="ts-divider-line">
+        <hr style="margin: var(--space-4) 0; background-color: var(--border); border: none; height: 1px;">
 
         <!-- Resume Chats -->
-        <div style='font-size: 1.15rem; font-weight: 600; color: var(--ts-accent); margin-bottom: 0.8rem; margin-top: 1.5rem;'>💬 Resume AI Coach Conversations</div>
+        <div class="chart-title" style="margin-top: var(--space-4);">💬 Resume AI Coach Conversations</div>
         {% if not resume_chats %}
-            <div class="ts-info-banner" style="padding: 1rem; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-                <div class="ts-info-body">You haven't started any chat conversations with your AI Coach yet.</div>
-                <div style="width: 220px;"><a href="/assistant" class="btn-ts btn-ts-primary">Start AI Coach Session 🤖</a></div>
+            <div class="ts-info-banner ts-card-row-align">
+                <div style="font-size: var(--font-size-sm); color: var(--text-secondary);">You haven't started any chat conversations with your AI Coach yet.</div>
+                <div style="width: 220px; flex-shrink: 0;"><a href="/assistant" class="btn-ts btn-ts-primary" style="display: block; text-align: center; padding: var(--space-2) 0; border-radius: var(--radius);">Start AI Coach Session 🤖</a></div>
             </div>
         {% else %}
-            <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+            <div style="display: flex; flex-direction: column; gap: var(--space-2);">
                 {% for chat in resume_chats %}
-                <div class="ts-card" style="padding: 1.2rem; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <div class="ts-card ts-card-row-align">
                     <div>
-                        <div style="font-size: 0.98rem; font-weight: 600; color: var(--ts-text);">💬 {{ chat.title }}</div>
-                        <div style="font-size: 0.78rem; color: var(--ts-text-muted); margin-top: 0.2rem;">Started: {{ chat.created_at }}</div>
+                        <div style="font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); color: var(--text-primary);">💬 {{ chat.title }}</div>
+                        <div style="font-size: var(--font-size-xs); color: var(--text-secondary); margin-top: 2px;">Started: {{ chat.created_at }}</div>
                     </div>
-                    <div style="width: 160px;">
-                        <a href="/assistant?session_id={{ chat.session_id }}" class="btn-ts btn-ts-primary">Resume Chat ➡️</a>
+                    <div style="width: 160px; flex-shrink: 0;">
+                        <a href="/assistant?session_id={{ chat.session_id }}" class="btn-ts btn-ts-primary" style="display: block; text-align: center; padding: var(--space-2) 0; border-radius: var(--radius);">Resume Chat ➡️</a>
                     </div>
                 </div>
                 {% endfor %}
@@ -743,9 +933,31 @@
     
     // Setup Chart.js charts
     document.addEventListener("DOMContentLoaded", function() {
-        const isLightTheme = document.body.classList.contains('ts-light-mode');
-        const gridColor = isLightTheme ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.05)';
-        const textColor = isLightTheme ? '#4b5563' : '#9ca3af';
+        const style = getComputedStyle(document.documentElement);
+        const gridColor = style.getPropertyValue('--border').trim() || 'rgba(255, 255, 255, 0.05)';
+        const textColor = style.getPropertyValue('--text-secondary').trim() || '#9ca3af';
+
+        // Colors from theme tokens
+        const primaryColor = style.getPropertyValue('--primary').trim() || '#3B5BFF';
+        const accentColor = style.getPropertyValue('--accent').trim() || '#0D9488';
+        const chart1 = style.getPropertyValue('--chart-1').trim() || '#3B5BFF';
+        const chart2 = style.getPropertyValue('--chart-2').trim() || '#0D9488';
+        const chart3 = style.getPropertyValue('--chart-3').trim() || '#F59E0B';
+        const chart4 = style.getPropertyValue('--chart-4').trim() || '#10B981';
+        const chart5 = style.getPropertyValue('--chart-5').trim() || '#EF4444';
+        const chart6 = style.getPropertyValue('--chart-6').trim() || '#8B5CF6';
+
+        // Hex to rgba helper for low-opacity area chart fills
+        function hexToRgba(hex, alpha) {
+            hex = hex.replace('#', '');
+            if (hex.length === 3) {
+                hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+            }
+            const r = parseInt(hex.substring(0, 2), 16);
+            const g = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
 
         // --- Admin Charts ---
         {% if session.get('user_role') == 'admin' %}
@@ -759,11 +971,12 @@
                         datasets: [{
                             label: 'Messages',
                             data: {{ admin_stats.chat_counts|tojson }},
-                            borderColor: '#60A5FA',
-                            backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                            borderColor: primaryColor,
+                            backgroundColor: hexToRgba(primaryColor, 0.1),
                             fill: true,
                             tension: 0.3,
-                            borderWidth: 2
+                            borderWidth: 2,
+                            pointBackgroundColor: primaryColor
                         }]
                     },
                     options: {
@@ -787,7 +1000,7 @@
                         labels: {{ admin_stats.score_ranges|tojson }},
                         datasets: [{
                             data: {{ admin_stats.score_counts|tojson }},
-                            backgroundColor: '#34D399',
+                            backgroundColor: accentColor,
                             borderRadius: 6
                         }]
                     },
@@ -803,7 +1016,7 @@
                 });
             }
 
-            // 3. Domain distribution donut chart
+            // 3. Domain distribution doughnut chart
             const domainCtx = document.getElementById('domainChart');
             if (domainCtx) {
                 new Chart(domainCtx, {
@@ -812,7 +1025,7 @@
                         labels: {{ admin_stats.domain_labels|tojson }},
                         datasets: [{
                             data: {{ admin_stats.domain_counts|tojson }},
-                            backgroundColor: ['#60A5FA', '#34D399', '#A78BFA', '#FBBF24', '#F87171'],
+                            backgroundColor: [chart1, chart2, chart3, chart4, chart5],
                             borderWidth: 0
                         }]
                     },
@@ -838,7 +1051,7 @@
                         labels: {{ admin_stats.doc_labels|tojson }},
                         datasets: [{
                             data: {{ admin_stats.doc_chunks|tojson }},
-                            backgroundColor: '#A78BFA',
+                            backgroundColor: chart6,
                             borderRadius: 4
                         }]
                     },
@@ -864,7 +1077,7 @@
                         labels: ['RAG (Document Guided)', 'General Assistant'],
                         datasets: [{
                             data: [{{ admin_stats.rag_use_count }}, {{ admin_stats.general_use_count }}],
-                            backgroundColor: ['#60A5FA', '#8B5CF6'],
+                            backgroundColor: [primaryColor, chart6],
                             borderRadius: 6
                         }]
                     },
@@ -889,7 +1102,7 @@
                         labels: {{ admin_stats.log_category_labels|tojson }},
                         datasets: [{
                             data: {{ admin_stats.log_category_counts|tojson }},
-                            backgroundColor: ['#6366F1', '#10B981', '#F59E0B'],
+                            backgroundColor: [chart1, chart2, chart3],
                             borderWidth: 0
                         }]
                     },
@@ -916,7 +1129,7 @@
                         datasets: [{
                             label: 'Actions Logged',
                             data: {{ admin_stats.log_hours_counts|tojson }},
-                            backgroundColor: '#8B5CF6',
+                            backgroundColor: chart6,
                             borderRadius: 4
                         }]
                     },
@@ -944,12 +1157,12 @@
                         datasets: [{
                             label: 'Score Percentage',
                             data: {{ trainee_stats.trajectory_scores|tojson }},
-                            borderColor: '#60A5FA',
-                            backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                            borderColor: primaryColor,
+                            backgroundColor: hexToRgba(primaryColor, 0.1),
                             fill: true,
                             tension: 0.3,
                             borderWidth: 2,
-                            pointBackgroundColor: '#60A5FA'
+                            pointBackgroundColor: primaryColor
                         }]
                     },
                     options: {
@@ -981,12 +1194,12 @@
                         datasets: [{
                             label: 'Actions Done',
                             data: {{ trainee_stats.log_trend_counts|tojson }},
-                            borderColor: '#10B981',
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderColor: accentColor,
+                            backgroundColor: hexToRgba(accentColor, 0.1),
                             fill: true,
                             tension: 0.3,
                             borderWidth: 2,
-                            pointBackgroundColor: '#10B981'
+                            pointBackgroundColor: accentColor
                         }]
                     },
                     options: {
@@ -1010,7 +1223,7 @@
                         labels: {{ trainee_stats.log_category_labels|tojson }},
                         datasets: [{
                             data: {{ trainee_stats.log_category_counts|tojson }},
-                            backgroundColor: ['#6366F1', '#10B981', '#F59E0B'],
+                            backgroundColor: [chart1, chart2, chart3],
                             borderWidth: 0
                         }]
                     },
