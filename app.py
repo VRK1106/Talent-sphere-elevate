@@ -940,7 +940,8 @@ def documents():
 @app.route('/documents/download/<path:filename>')
 @login_required
 def download_document(filename):
-    return send_from_directory(DOCUMENTS_DIR, filename, as_attachment=True)
+    preview = request.args.get('preview') == 'true'
+    return send_from_directory(DOCUMENTS_DIR, filename, as_attachment=(not preview))
 
 # KNOWLEDGE SEARCH
 @app.route('/search')
@@ -3060,4 +3061,4 @@ if __name__ == '__main__':
             print(f"Warning: Failed to preload embedding model: {e}")
 
     threading.Thread(target=preload_model_bg, daemon=True).start()
-    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=True)
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)

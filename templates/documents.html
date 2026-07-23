@@ -15,41 +15,81 @@
         <div class="ts-info-body" style="margin-top: 0.3rem;">No documents have been ingested yet. Please contact an administrator to upload PDF training documents.</div>
     </div>
 {% else %}
-    <div class="ts-card" style="padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
-        <form id="docSelectorForm" method="GET" action="/documents">
-            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
-                <label style="font-size: 0.9rem; font-weight: 600; color: var(--ts-text);">Select Document to Browse</label>
-                <select name="selected_doc" onchange="this.form.submit()" 
-                        style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--ts-border); background-color: var(--ts-input-bg, #0f172a); color: var(--ts-text); outline: none; font-size: 0.95rem;">
-                    {% for name in source_names %}
-                        <option value="{{ name }}" {% if name == selected_doc %}selected{% endif %}>{{ name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-        </form>
+    <!-- Document Selection Grid -->
+    <div style="margin-bottom: 2rem;">
+        <label style="font-size: 0.95rem; font-weight: 600; color: var(--ts-text); display: block; margin-bottom: 0.8rem;">Select Document to Browse</label>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem;">
+            {% for name in source_names %}
+                {% set is_active = (name == selected_doc) %}
+                <div onclick="window.location.href='/documents?selected_doc=' + encodeURIComponent('{{ name }}')" 
+                     style="cursor: pointer; padding: 1rem 1.25rem; border-radius: 12px; border: 1.5px solid {% if is_active %}var(--ts-primary){% else %}var(--ts-border){% endif %}; background: {% if is_active %}rgba(96, 165, 250, 0.1){% else %}var(--ts-surface){% endif %}; transition: all 0.25s ease; display: flex; align-items: center; gap: 0.8rem; box-shadow: {% if is_active %}var(--ts-shadow-glow){% else %}var(--ts-shadow){% endif %};"
+                     onmouseover="this.style.borderColor='var(--ts-primary)'; this.style.transform='translateY(-2px)';" 
+                     onmouseout="this.style.borderColor='{% if is_active %}var(--ts-primary){% else %}var(--ts-border){% endif %}'; this.style.transform='none';">
+                    <div style="font-size: 1.8rem; color: {% if is_active %}var(--ts-primary){% else %}var(--ts-text-secondary){% endif %}; transition: color 0.2s;">📄</div>
+                    <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">
+                        <div style="font-weight: 600; color: var(--ts-text); font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ name }}">{{ name }}</div>
+                        <div style="font-size: 0.75rem; color: var(--ts-text-secondary); margin-top: 0.15rem;">
+                            {% if is_active %}
+                                <span style="color: var(--ts-primary); font-weight: 600;">Active document</span>
+                            {% else %}
+                                Click to open
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
     </div>
 
     {% if selected_doc %}
         {% if session.get('user_role') == 'trainee' %}
             <!-- TRAINEE VIEW -->
-            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; align-items: center; margin-bottom: 2rem;">
-                <div class="ts-metric ts-metric-card" style="padding: 1.2rem; border-radius: 12px; text-align: center; margin-bottom: 0;">
-                    <div class="ts-metric-value" style="font-size: 2.2rem; font-weight: 700;">{{ doc_details.pages }}</div>
-                    <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-top: 0.3rem;">Total Pages</div>
-                </div>
-                <div>
-                    {% if pdf_exists %}
-                        <a href="/documents/download/{{ selected_doc }}" class="btn-ts btn-ts-primary" style="padding: 1rem; font-size: 1rem;">
-                            📥 Open / Download PDF Document
-                        </a>
-                    {% else %}
-                        <div class="ts-info-banner" style="padding: 1rem; border-radius: 8px; margin: 0;">
-                            <div class="ts-info-body" style="font-size: 0.88rem;">
-                                ℹ️ The original PDF file copy is not available in the server's 'documents/' directory. Please copy the PDF file to that folder to enable downloading.
-                            </div>
+            <div style="display: grid; grid-template-columns: 1.8fr 1fr; gap: 1.5rem; margin-bottom: 2rem; align-items: start;">
+                
+                <!-- Left: PDF Preview Panel -->
+                <div class="ts-card" style="padding: 1.25rem; border-radius: 16px; display: flex; flex-direction: column; gap: 0.8rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--ts-border); padding-bottom: 0.6rem;">
+                        <div style="font-weight: 700; color: var(--ts-text); font-size: 1.05rem; display: flex; align-items: center; gap: 0.4rem;">
+                            <span>📖 Inline Document Viewer</span>
                         </div>
-                    {% endif %}
+                        {% if pdf_exists %}
+                            <a href="/documents/download/{{ selected_doc }}" class="btn-ts btn-ts-secondary" style="padding: 0.35rem 0.8rem; font-size: 0.8rem; width: auto; text-decoration: none; border-radius: 6px; display: inline-flex; align-items: center; gap: 0.3rem;">
+                                📥 Download PDF
+                            </a>
+                        {% endif %}
+                    </div>
+                    
+                    <div style="height: 600px; border-radius: 10px; overflow: hidden; border: 1px solid var(--ts-border); background: rgba(0, 0, 0, 0.2); position: relative;">
+                        {% if pdf_exists %}
+                            <iframe src="/documents/download/{{ selected_doc|urlencode }}?preview=true" style="width: 100%; height: 100%; border: none;"></iframe>
+                        {% else %}
+                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 2rem; text-align: center; color: var(--ts-text-secondary); gap: 0.8rem;">
+                                <div style="font-size: 2.5rem;">⚠️</div>
+                                <div style="font-size: 0.95rem; font-style: italic;">No PDF file copy available in 'documents/' folder to preview.</div>
+                                <div style="font-size: 0.8rem; max-width: 320px;">Please contact your administrator to upload the physical PDF file to the server.</div>
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
+
+                <!-- Right: Metadata & Information Panel -->
+                <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                    <div class="ts-card" style="padding: 1.5rem; border-radius: 16px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.4rem; background: var(--ts-surface);">
+                        <div style="font-size: 2.2rem; color: var(--ts-primary);">📄</div>
+                        <div class="ts-metric-value" style="font-size: 2.4rem; font-weight: 700; color: var(--ts-text); background: none; -webkit-background-clip: unset; -webkit-text-fill-color: unset;">{{ doc_details.pages }}</div>
+                        <div class="ts-metric-label" style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; color: var(--ts-text-secondary); letter-spacing: 0.05em;">Total Document Pages</div>
+                    </div>
+                    
+                    <div class="ts-card" style="padding: 1.25rem; border-radius: 16px; display: flex; flex-direction: column; gap: 0.5rem; background: var(--ts-surface);">
+                        <div style="font-weight: 700; color: var(--ts-primary); font-size: 0.95rem; display: flex; align-items: center; gap: 0.3rem;">
+                            💡 Quick Tip
+                        </div>
+                        <p style="font-size: 0.88rem; color: var(--ts-text-secondary); line-height: 1.5; margin: 0;">
+                            You can read the entire material directly in the viewer window on the left. Expand or scroll within the viewer, print, or bookmark directly through the interactive toolbar.
+                        </p>
+                    </div>
+                </div>
+                
             </div>
         {% else %}
             <!-- ADMIN VIEW -->
